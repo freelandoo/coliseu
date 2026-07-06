@@ -130,6 +130,36 @@ async function main() {
     });
   }
 
+  // Espelho financeiro para as cobranças que têm asaasId
+  const statusPay: Record<string, "PENDING" | "PAID" | "OVERDUE"> = {
+    pago: "PAID", pendente: "PENDING", atrasado: "OVERDUE",
+  };
+  for (const c of cobrancas) {
+    if (!c.asaasId) continue;
+    const person = await prisma.person.findUnique({ where: { codigo: c.codigo } });
+    if (!person) continue;
+    const bc = await prisma.billingCustomer.upsert({
+      where: { asaasCustomerId: `cus_seed_${c.codigo}` },
+      update: {},
+      create: { asaasCustomerId: `cus_seed_${c.codigo}`, personId: person.id, externalReference: person.id },
+    });
+    const bs = await prisma.billingSubscription.upsert({
+      where: { asaasSubscriptionId: `sub_seed_${c.codigo}` },
+      update: {},
+      create: { asaasSubscriptionId: `sub_seed_${c.codigo}`, customerId: bc.id, value: c.valor },
+    });
+    await prisma.payment.upsert({
+      where: { asaasPaymentId: c.asaasId },
+      update: {},
+      create: {
+        asaasPaymentId: c.asaasId, subscriptionId: bs.id, value: c.valor,
+        dueDate: offset(c.venc), status: statusPay[c.status] ?? "PENDING",
+        paidAt: c.status === "pago" ? offset(c.venc) : null,
+        statusUpdatedAt: offset(c.venc),
+      },
+    });
+  }
+
   const despesas = [
     { categoria: "Luz", valor: 320, data: "2026-07-05", recorrente: false },
     { categoria: "Água", valor: 140, data: "2026-07-05", recorrente: false },
