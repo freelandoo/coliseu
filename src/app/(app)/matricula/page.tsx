@@ -7,16 +7,20 @@ import {
   listarAlunos,
   listarCobrancas,
   listarPlanos,
-  planoPorId,
   proximoCodigoCadastro,
 } from "@/lib/store";
 
 export const dynamic = "force-dynamic";
 
-export default function MatriculaPage() {
-  const candidatos = candidatosMatricula();
-  const alunos = listarAlunos();
-  const cobrancas = listarCobrancas();
+export default async function MatriculaPage() {
+  const [candidatos, alunos, cobrancas, planos, proximoCodigo] = await Promise.all([
+    candidatosMatricula(),
+    listarAlunos(),
+    listarCobrancas(),
+    listarPlanos(),
+    proximoCodigoCadastro(),
+  ]);
+  const planoById = new Map(planos.map((p) => [p.id, p]));
 
   // Matrículas já pendentes (dados semente) para a lista "Aguardando pagamento".
   const matriculadosIniciais = alunos
@@ -25,7 +29,7 @@ export default function MatriculaPage() {
       const cobranca = cobrancas.find(
         (c) => c.alunoId === a.id && c.status === "pendente",
       );
-      const plano = planoPorId(a.planoId);
+      const plano = planoById.get(a.planoId);
       const link = cobranca?.linkPagamento ?? "";
       return {
         id: `seed-${a.id}`,
@@ -52,10 +56,10 @@ export default function MatriculaPage() {
 
       <Reveal delay={0.05}>
         <MatriculaFlow
-          planos={listarPlanos().filter((p) => p.ativo !== false)}
+          planos={planos.filter((p) => p.ativo !== false)}
           candidatosIniciais={candidatos}
           matriculadosIniciais={matriculadosIniciais}
-          proximoCodigoInicial={proximoCodigoCadastro()}
+          proximoCodigoInicial={proximoCodigo}
         />
       </Reveal>
     </>

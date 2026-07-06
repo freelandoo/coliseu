@@ -1,36 +1,42 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Coliseu CRM — Academia Coliseu Team
 
-## Getting Started
+CRM de academia que implementa o fluxograma operacional em **4 estágios
+integrados**, com identidade visual *Industrial Coliseum* (cinza dark +
+vermelho fosco) e animações em **GSAP**.
 
-First, run the development server:
+## Stack
+
+- **Next.js 16** (App Router) + **React 19** + **TypeScript**
+- **Tailwind CSS v4** (design system via `@theme` em `globals.css`)
+- **GSAP** + `@gsap/react` (`useGSAP`) para as animações
+- Tipografia: **Oswald** (display condensada) + **Sora** (corpo)
+
+## Os 4 estágios
+
+| Rota | Estágio | O que faz |
+|------|---------|-----------|
+| `/painel` | Visão geral | Métricas consolidadas dos 4 estágios |
+| `/captacao` | 1 · Captação | Kanban de leads por origem (WhatsApp, redes, balcão, indicação) e funil |
+| `/matricula` | 2 · Matrícula | Planos + esteira animada da matrícula + integração Asaas |
+| `/cobranca` | 3 · Cobrança | Avisos de vencimento, inadimplência e renovação de planos |
+| `/retencao` | 4 · Retenção | Presença e reativação por faixas de 7 / 14 / 21 dias |
+
+## Integrações
+
+- **Asaas** — cliente em [`src/lib/asaas.ts`](src/lib/asaas.ts) (criar cliente,
+  gerar cobrança, link de pagamento via WhatsApp). Roda mockado sem credenciais.
+- **Webhook Asaas** — [`src/app/api/webhooks/asaas/route.ts`](src/app/api/webhooks/asaas/route.ts)
+  trata `PAYMENT_CONFIRMED` / `PAYMENT_RECEIVED` / `PAYMENT_OVERDUE`.
+- **WhatsApp** — links `wa.me` gerados a partir do telefone do lead/aluno.
+
+## Rodar
 
 ```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+npm install
+cp .env.example .env.local   # opcional: credenciais Asaas
+npm run dev                  # http://localhost:3000
+npm run build                # build de produção
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
-
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
-
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
-
-## Learn More
-
-To learn more about Next.js, take a look at the following resources:
-
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
-
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
-
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+> Os dados são de demonstração ([`src/lib/mock-data.ts`](src/lib/mock-data.ts)).
+> Próximo passo: trocar os mocks por persistência real (DB + Asaas) e auth.

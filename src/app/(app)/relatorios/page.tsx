@@ -10,7 +10,6 @@ import {
   listarCobrancas,
   listarLeads,
   listarPlanos,
-  planoPorId,
   totalDespesas,
 } from "@/lib/store";
 import {
@@ -20,17 +19,22 @@ import {
 
 export const dynamic = "force-dynamic";
 
-export default function RelatoriosPage() {
-  const alunos = listarAlunos();
-  const cobrancas = listarCobrancas();
-  const leads = listarLeads();
+export default async function RelatoriosPage() {
+  const [alunos, cobrancas, leads, planos, despesas] = await Promise.all([
+    listarAlunos(),
+    listarCobrancas(),
+    listarLeads(),
+    listarPlanos(),
+    totalDespesas(),
+  ]);
+  const planoById = new Map(planos.map((p) => [p.id, p]));
 
   // ---------- base ----------
   const naoCancelados = alunos.filter((a) => a.status !== "cancelado");
   const base = naoCancelados.length;
   const inadimplentes = naoCancelados.filter((a) => a.status === "inadimplente");
 
-  const valorMensal = (planoId: string) => planoPorId(planoId)?.valorMensal ?? 0;
+  const valorMensal = (planoId: string) => planoById.get(planoId)?.valorMensal ?? 0;
 
   // ---------- financeiro ----------
   const mrr = naoCancelados.reduce((s, a) => s + valorMensal(a.planoId), 0);
@@ -42,7 +46,6 @@ export default function RelatoriosPage() {
   const ticketMedio = base ? mrr / base : 0;
 
   // ---------- lucro (receita − despesas) ----------
-  const despesas = totalDespesas();
   const lucro = mrr - despesas;
   const margemLucro = mrr > 0 ? (lucro / mrr) * 100 : 0;
 
@@ -81,7 +84,7 @@ export default function RelatoriosPage() {
     tone: funilTone[e],
   }));
 
-  const planosData = listarPlanos().map((p) => ({
+  const planosData = planos.map((p) => ({
     label: p.nome,
     valor: naoCancelados.filter((a) => a.planoId === p.id).length,
     tone: "neutral" as const,

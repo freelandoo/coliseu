@@ -11,10 +11,10 @@ export default async function ClientePage({
   params: Promise<{ id: string }>;
 }) {
   const { id } = await params;
-  const pessoa = obterPessoa(id);
+  const pessoa = await obterPessoa(id);
   if (!pessoa) notFound();
 
-  const plano = pessoa.planoId ? planoPorId(pessoa.planoId) : undefined;
+  const plano = pessoa.planoId ? await planoPorId(pessoa.planoId) : undefined;
 
   return (
     <Reveal>

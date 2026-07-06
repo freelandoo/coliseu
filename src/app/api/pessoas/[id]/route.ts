@@ -8,12 +8,15 @@ import {
 } from "@/lib/store";
 import { linkPagamentoWhatsApp, matricularNoAsaas } from "@/lib/asaas";
 import type { Pessoa } from "@/lib/types";
+import { exigirSessaoApi } from "@/lib/auth/api-guard";
 
 type Ctx = { params: Promise<{ id: string }> };
 
 export async function GET(_req: Request, { params }: Ctx) {
+  const g = await exigirSessaoApi();
+  if (g.erro) return g.erro;
   const { id } = await params;
-  const pessoa = obterPessoa(id);
+  const pessoa = await obterPessoa(id);
   if (!pessoa) {
     return NextResponse.json({ erro: "Pessoa não encontrada" }, { status: 404 });
   }
@@ -21,6 +24,8 @@ export async function GET(_req: Request, { params }: Ctx) {
 }
 
 export async function PATCH(req: Request, { params }: Ctx) {
+  const g = await exigirSessaoApi();
+  if (g.erro) return g.erro;
   const { id } = await params;
   const body = (await req.json()) as {
     acao?: "matricular";
@@ -35,10 +40,10 @@ export async function PATCH(req: Request, { params }: Ctx) {
       return NextResponse.json({ erro: "planoId é obrigatório" }, { status: 400 });
     }
     // aplica campos de cadastro preenchidos no fluxo antes de matricular
-    if (Object.keys(campos).length > 0) atualizarPessoa(id, campos);
+    if (Object.keys(campos).length > 0) await atualizarPessoa(id, campos);
 
-    const pessoaAtual = obterPessoa(id);
-    const plano = planoPorId(planoId);
+    const pessoaAtual = await obterPessoa(id);
+    const plano = await planoPorId(planoId);
     if (!pessoaAtual || !plano) {
       return NextResponse.json(
         { erro: "Pessoa ou plano não encontrado" },
@@ -66,7 +71,7 @@ export async function PATCH(req: Request, { params }: Ctx) {
       );
     }
 
-    const pessoa = matricularPessoa(id, planoId, asaas);
+    const pessoa = await matricularPessoa(id, planoId, asaas);
     if (!pessoa) {
       return NextResponse.json({ erro: "Pessoa não encontrada" }, { status: 404 });
     }
@@ -87,7 +92,7 @@ export async function PATCH(req: Request, { params }: Ctx) {
   }
 
   // Atualização normal da ficha
-  const pessoa = atualizarPessoa(id, body);
+  const pessoa = await atualizarPessoa(id, body);
   if (!pessoa) {
     return NextResponse.json({ erro: "Pessoa não encontrada" }, { status: 404 });
   }
@@ -95,8 +100,10 @@ export async function PATCH(req: Request, { params }: Ctx) {
 }
 
 export async function DELETE(_req: Request, { params }: Ctx) {
+  const g = await exigirSessaoApi();
+  if (g.erro) return g.erro;
   const { id } = await params;
-  const ok = removerPessoa(id);
+  const ok = await removerPessoa(id);
   if (!ok) {
     return NextResponse.json({ erro: "Pessoa não encontrada" }, { status: 404 });
   }
