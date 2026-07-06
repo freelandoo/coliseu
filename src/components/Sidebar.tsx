@@ -32,6 +32,14 @@ const IconCustos = (
   </svg>
 );
 
+const IconAcesso = (
+  <svg width="15" height="15" viewBox="0 0 15 15" fill="none" aria-hidden>
+    <rect x="2" y="1.5" width="11" height="12" rx="1.4" stroke="currentColor" strokeWidth="1.3" />
+    <path d="M5 1.5v12M10 1.5v12" stroke="currentColor" strokeWidth="1.1" />
+    <circle cx="7.5" cy="7.5" r="1.1" fill="currentColor" />
+  </svg>
+);
+
 const NAV: {
   href: string;
   step?: number;
@@ -46,6 +54,7 @@ const NAV: {
   { href: "/cobranca", step: 3, label: "Cobrança", hint: "Renovação e inadimplência" },
   { href: "/retencao", step: 4, label: "Retenção", hint: "Presença e reativação" },
   { href: "/custos", icon: IconCustos, label: "Custos", hint: "Despesas e lucro" },
+  { href: "/acesso", icon: IconAcesso, label: "Acesso", hint: "Catracas e credenciais" },
   { href: "/relatorios", icon: IconBarras, label: "Relatórios", hint: "Indicadores do negócio" },
 ];
 

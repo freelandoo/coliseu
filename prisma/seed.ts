@@ -172,6 +172,18 @@ async function main() {
     });
   }
 
+  // Domínio de acesso (Fase 3): 1 catraca + 3 alunos com credencial FACE + mapeamento IN_SYNC.
+  const device = await prisma.accessDevice.create({
+    data: { unitId: unit.id, name: "Catraca Principal", mode: "HYBRID", status: "ONLINE", firmware: "sim-1.0", lastHeartbeatAt: new Date() },
+  });
+  const ativos = await prisma.person.findMany({ where: { fase: "aluno" }, take: 3 });
+  let ext = 1000;
+  for (const p of ativos) {
+    ext += 1;
+    await prisma.accessCredential.create({ data: { personId: p.id, type: "FACE", status: "ENROLLED", enrolledAt: new Date() } });
+    await prisma.deviceUserMapping.create({ data: { deviceId: device.id, personId: p.id, externalUserId: String(ext), syncStatus: "IN_SYNC", lastSyncAt: new Date() } });
+  }
+
   const despesas = [
     { categoria: "Luz", valor: 320, data: "2026-07-05", recorrente: false },
     { categoria: "Água", valor: 140, data: "2026-07-05", recorrente: false },
