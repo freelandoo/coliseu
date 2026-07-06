@@ -44,7 +44,8 @@ export async function processarEvento(ev: AsaasEvent): Promise<void> {
   const novoStatus = statusDoEvento(ev.event);
   if (!novoStatus || !ev.payment?.id) return;
 
-  const asaasPaymentId = ev.payment.id;
+  const payment = ev.payment;
+  const asaasPaymentId = payment.id;
   const eventAt = ev.dateCreated ? new Date(ev.dateCreated) : new Date();
 
   await prisma.$transaction(async (tx) => {
@@ -54,18 +55,18 @@ export async function processarEvento(ev: AsaasEvent): Promise<void> {
     if (existing && existing.status === novoStatus && existing.statusUpdatedAt.getTime() === eventAt.getTime()) return;
 
     const paidAt = novoStatus === "PAID"
-      ? (ev.payment.paymentDate ? new Date(ev.payment.paymentDate) : eventAt)
+      ? (payment.paymentDate ? new Date(payment.paymentDate) : eventAt)
       : null;
 
     await tx.payment.upsert({
       where: { asaasPaymentId },
       create: {
         asaasPaymentId,
-        value: ev.payment.value ?? existing?.value ?? 0,
-        dueDate: ev.payment.dueDate ? new Date(ev.payment.dueDate) : (existing?.dueDate ?? eventAt),
+        value: payment.value ?? existing?.value ?? 0,
+        dueDate: payment.dueDate ? new Date(payment.dueDate) : (existing?.dueDate ?? eventAt),
         status: novoStatus,
         paidAt,
-        invoiceUrl: ev.payment.invoiceUrl ?? null,
+        invoiceUrl: payment.invoiceUrl ?? null,
         statusUpdatedAt: eventAt,
       },
       update: { status: novoStatus, paidAt, statusUpdatedAt: eventAt },

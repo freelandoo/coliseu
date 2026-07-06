@@ -1,24 +1,15 @@
 import { NextResponse } from "next/server";
-import { marcarCobrancaAtrasada, marcarCobrancaPaga } from "@/lib/store";
-
-// ============================================================
-// Webhook do Asaas (Estágio 2 — "Asaas confirma via webhook")
-// Configurar em: Asaas → Integrações → Webhooks → URL /api/webhooks/asaas
-// Eventos relevantes: PAYMENT_CONFIRMED, PAYMENT_RECEIVED, PAYMENT_OVERDUE
-// ============================================================
+import { registrarWebhookEvent, marcarEventoProcessado, marcarEventoFalho } from "@/lib/billing/webhook-store";
+import { processarEvento } from "@/lib/billing/processor";
 
 interface AsaasWebhookBody {
+  id?: string;
   event: string;
-  payment?: {
-    id: string;
-    customer: string;
-    value: number;
-    status: string;
-  };
+  dateCreated?: string;
+  payment?: { id: string; status?: string; value?: number; dueDate?: string; paymentDate?: string; invoiceUrl?: string; subscription?: string; dateCreated?: string };
 }
 
 export async function POST(req: Request) {
-  // Validação do segredo configurado no Asaas (header asaas-access-token).
   const expected = process.env.ASAAS_WEBHOOK_TOKEN;
   if (process.env.NODE_ENV === "production" && !expected) {
     return NextResponse.json({ error: "webhook token not configured" }, { status: 503 });
@@ -28,22 +19,18 @@ export async function POST(req: Request) {
   }
 
   const body = (await req.json()) as AsaasWebhookBody;
-  const asaasId = body.payment?.id;
+  const asaasEventId = body.id ?? `${body.event}:${body.payment?.id ?? "none"}:${body.dateCreated ?? ""}`;
 
-  switch (body.event) {
-    case "PAYMENT_CONFIRMED":
-    case "PAYMENT_RECEIVED": {
-      const ok = asaasId ? await marcarCobrancaPaga(asaasId) : false;
-      console.log("[asaas] pagamento confirmado:", asaasId, "→ baixa:", ok);
-      break;
-    }
-    case "PAYMENT_OVERDUE": {
-      const ok = asaasId ? await marcarCobrancaAtrasada(asaasId) : false;
-      console.log("[asaas] pagamento atrasado:", asaasId, "→ atraso:", ok);
-      break;
-    }
-    default:
-      console.log("[asaas] evento ignorado:", body.event);
+  const { created, event } = await registrarWebhookEvent(asaasEventId, body);
+  if (!created) {
+    return NextResponse.json({ received: true, duplicate: true });
+  }
+
+  try {
+    await processarEvento(body);
+    await marcarEventoProcessado(event.id);
+  } catch (e) {
+    await marcarEventoFalho(event.id, e instanceof Error ? e.message : String(e));
   }
 
   return NextResponse.json({ received: true });
