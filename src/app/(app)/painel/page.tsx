@@ -4,6 +4,8 @@ import { Badge, Card, Stat } from "@/components/ui/primitives";
 import { diasSemPresenca, faixaAusencia, formatBRL } from "@/lib/mock-data";
 import { listarAlunos, listarCobrancas, listarLeads } from "@/lib/store";
 
+export const dynamic = "force-dynamic";
+
 export default async function PainelPage() {
   const [alunos, cobrancas, leads] = await Promise.all([
     listarAlunos(),
@@ -14,9 +16,11 @@ export default async function PainelPage() {
   const leadsAtivos = leads.filter(
     (l) => l.estagio !== "perdido" && l.estagio !== "convertido",
   ).length;
-  const convertidos = leads.filter((l) => l.estagio === "convertido").length;
+  // Leads convertidos já viraram alunos (fase "aluno"), então a base de
+  // convertidos é a de alunos; a taxa considera o total que passou pelo funil.
+  const convertidos = alunos.length;
   const taxaConversao = Math.round(
-    (convertidos / (leads.length - leadsAtivos || 1)) * 100,
+    (convertidos / (convertidos + leadsAtivos || 1)) * 100,
   );
 
   const ativos = alunos.filter((a) => a.status === "ativo").length;
