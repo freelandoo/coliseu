@@ -20,6 +20,9 @@ interface AsaasWebhookBody {
 export async function POST(req: Request) {
   // Validação do segredo configurado no Asaas (header asaas-access-token).
   const expected = process.env.ASAAS_WEBHOOK_TOKEN;
+  if (process.env.NODE_ENV === "production" && !expected) {
+    return NextResponse.json({ error: "webhook token not configured" }, { status: 503 });
+  }
   if (expected && req.headers.get("asaas-access-token") !== expected) {
     return NextResponse.json({ error: "unauthorized" }, { status: 401 });
   }

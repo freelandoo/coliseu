@@ -66,6 +66,7 @@ function membershipToStatus(s: PMembership["status"]): AlunoStatus {
   switch (s) {
     case "ACTIVE":
       return "ativo";
+    case "DRAFT":
     case "PENDING_PAYMENT":
       return "pendente";
     case "CANCELED":

@@ -8,10 +8,13 @@ import {
 } from "@/lib/store";
 import { linkPagamentoWhatsApp, matricularNoAsaas } from "@/lib/asaas";
 import type { Pessoa } from "@/lib/types";
+import { exigirSessaoApi } from "@/lib/auth/api-guard";
 
 type Ctx = { params: Promise<{ id: string }> };
 
 export async function GET(_req: Request, { params }: Ctx) {
+  const g = await exigirSessaoApi();
+  if (g.erro) return g.erro;
   const { id } = await params;
   const pessoa = await obterPessoa(id);
   if (!pessoa) {
@@ -21,6 +24,8 @@ export async function GET(_req: Request, { params }: Ctx) {
 }
 
 export async function PATCH(req: Request, { params }: Ctx) {
+  const g = await exigirSessaoApi();
+  if (g.erro) return g.erro;
   const { id } = await params;
   const body = (await req.json()) as {
     acao?: "matricular";
@@ -95,6 +100,8 @@ export async function PATCH(req: Request, { params }: Ctx) {
 }
 
 export async function DELETE(_req: Request, { params }: Ctx) {
+  const g = await exigirSessaoApi();
+  if (g.erro) return g.erro;
   const { id } = await params;
   const ok = await removerPessoa(id);
   if (!ok) {

@@ -7,7 +7,6 @@ import {
   listarAlunos,
   listarCobrancas,
   listarPlanos,
-  planoPorId,
   proximoCodigoCadastro,
 } from "@/lib/store";
 

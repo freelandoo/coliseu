@@ -1,12 +1,17 @@
 import { NextResponse } from "next/server";
 import { criarDespesa, listarDespesas } from "@/lib/store";
 import type { NovaDespesa } from "@/lib/types";
+import { exigirSessaoApi } from "@/lib/auth/api-guard";
 
 export async function GET() {
+  const g = await exigirSessaoApi();
+  if (g.erro) return g.erro;
   return NextResponse.json(await listarDespesas());
 }
 
 export async function POST(req: Request) {
+  const g = await exigirSessaoApi();
+  if (g.erro) return g.erro;
   const body = (await req.json()) as Partial<NovaDespesa>;
 
   if (!body?.categoria?.trim()) {
