@@ -13,6 +13,7 @@ export interface AsaasCustomer {
   mobilePhone: string;
   email?: string;
   cpfCnpj?: string; // exigido pelo Asaas para gerar cobrança/assinatura PIX
+  externalReference?: string;
 }
 
 export interface AsaasCharge {
@@ -32,6 +33,7 @@ export interface AsaasSubscription {
   cycle: "MONTHLY";
   nextDueDate: string; // YYYY-MM-DD
   status: string;
+  externalReference?: string;
 }
 
 /** Resultado consolidado de uma matrícula no Asaas (mock ou real). */
@@ -106,6 +108,7 @@ export async function criarAssinatura(input: {
   customer: string;
   value: number;
   description?: string;
+  externalReference?: string;
 }): Promise<AsaasSubscription> {
   // 1ª cobrança vence amanhã (dá tempo de o aluno pagar o PIX de matrícula).
   const nextDueDate = new Date(Date.now() + 86_400_000)
@@ -136,6 +139,7 @@ export async function criarAssinatura(input: {
       value: input.value,
       nextDueDate,
       description: input.description,
+      externalReference: input.externalReference,
     }),
   });
   if (!res.ok) throw new Error(`Asaas subscriptions: ${res.status}`);
@@ -191,6 +195,8 @@ export async function matricularNoAsaas(input: {
   cpf?: string;
   planoNome: string;
   valorMensal: number;
+  membershipId?: string;
+  personId?: string;
 }): Promise<AsaasMatricula> {
   if (!temCredenciais()) {
     const cobrancaId = `pay_mock_${input.codigo.toLowerCase()}`;
@@ -207,11 +213,13 @@ export async function matricularNoAsaas(input: {
     mobilePhone: (input.telefone ?? "").replace(/\D/g, ""),
     email: input.email,
     cpfCnpj: (input.cpf ?? "").replace(/\D/g, "") || undefined,
+    externalReference: input.personId,
   });
   const assinatura = await criarAssinatura({
     customer: cliente.id,
     value: input.valorMensal,
     description: `Plano ${input.planoNome} — Coliseu Team`,
+    externalReference: input.membershipId,
   });
   const cobranca = await primeiraCobrancaAssinatura(assinatura.id);
   return {
