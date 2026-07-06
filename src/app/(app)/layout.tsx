@@ -1,7 +1,9 @@
 import type { ReactNode } from "react";
 import { Sidebar } from "@/components/Sidebar";
+import { requireUser } from "@/lib/auth/rbac";
 
-export default function AppLayout({ children }: { children: ReactNode }) {
+export default async function AppLayout({ children }: { children: ReactNode }) {
+  await requireUser();
   return (
     <div className="flex min-h-dvh">
       <Sidebar />
