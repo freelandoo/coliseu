@@ -1,26 +1,118 @@
 @import "tailwindcss";
 
+/* ============================================================
+   INDUSTRIAL COLISEUM — design system
+   Base cinza dark + acento vermelho fosco (desaturado)
+   ============================================================ */
+@theme {
+  /* superfícies */
+  --color-bg: #0e0f11;
+  --color-surface: #16181b;
+  --color-surface-2: #1e2126;
+  --color-elevated: #24282e;
+  --color-border: #2a2e34;
+  --color-border-strong: #3a3f47;
+
+  /* texto */
+  --color-ink: #e7e8ea;
+  --color-muted: #9aa0a6;
+  --color-faint: #6b7077;
+
+  /* vermelho fosco (desaturado, sem neon) */
+  --color-red: #a82824;
+  --color-red-bright: #c8302b;
+  --color-red-deep: #6e1a18;
+  --color-red-ghost: #2a1413;
+
+  /* estados */
+  --color-ok: #3f9d6b;
+  --color-warn: #c79a3a;
+
+  /* tipografia */
+  --font-display: var(--font-oswald), "Arial Narrow", sans-serif;
+  --font-sans: var(--font-sora), system-ui, sans-serif;
+
+  /* sombras com intenção (não defaults) */
+  --shadow-plate: 0 1px 0 rgba(255, 255, 255, 0.04) inset,
+    0 8px 24px -12px rgba(0, 0, 0, 0.8);
+  --shadow-red: 0 0 0 1px rgba(168, 40, 36, 0.4),
+    0 12px 32px -16px rgba(168, 40, 36, 0.55);
+}
+
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  color-scheme: dark;
 }
 
-@theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
-}
-
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+html {
+  scrollbar-color: var(--color-border-strong) var(--color-bg);
 }
 
 body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  background-color: var(--color-bg);
+  color: var(--color-ink);
+  font-family: var(--font-sans);
+  /* grão sutil + halo vermelho fosco no topo, fixos */
+  background-image:
+    radial-gradient(
+      900px 480px at 78% -10%,
+      rgba(168, 40, 36, 0.14),
+      transparent 60%
+    ),
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='120' height='120'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.025'/%3E%3C/svg%3E");
+  background-attachment: fixed;
+}
+
+/* tracking atlético para os displays condensados */
+.font-display {
+  letter-spacing: 0.01em;
+}
+
+::selection {
+  background: var(--color-red);
+  color: #fff;
+}
+
+/* scrollbar industrial */
+::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+::-webkit-scrollbar-track {
+  background: var(--color-bg);
+}
+::-webkit-scrollbar-thumb {
+  background: var(--color-border-strong);
+  border: 2px solid var(--color-bg);
+  border-radius: 999px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: var(--color-red-deep);
+}
+
+/* utilidade: chapa de aço numerada (âncora visual do fluxograma) */
+.steel-plate {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: linear-gradient(180deg, var(--color-red-bright), var(--color-red-deep));
+  box-shadow: var(--shadow-red), 0 1px 0 rgba(255, 255, 255, 0.2) inset;
+  color: #fff;
+  font-family: var(--font-display);
+  font-weight: 700;
+}
+
+/* foco acessível consistente */
+:focus-visible {
+  outline: 2px solid var(--color-red-bright);
+  outline-offset: 2px;
+}
+
+/* respeita usuários sensíveis a movimento */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.001ms !important;
+    transition-duration: 0.001ms !important;
+  }
 }
