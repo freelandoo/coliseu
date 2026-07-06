@@ -12,6 +12,7 @@ import {
   leads as seedLeads,
   planosSeed,
 } from "./mock-data";
+import type { AsaasMatricula } from "./asaas";
 import {
   LEAD_ESTAGIO_LABEL,
   ORIGEM_LABEL,
@@ -201,6 +202,7 @@ export function removerPessoa(id: string): boolean {
 export function matricularPessoa(
   id: string,
   planoId: string,
+  asaas?: AsaasMatricula,
 ): Pessoa | undefined {
   const p = obterPessoa(id);
   if (!p) return undefined;
@@ -220,6 +222,7 @@ export function matricularPessoa(
     estagio: undefined,
   });
 
+  const asaasId = asaas?.cobrancaId ?? `pay_mock_${p.codigo.toLowerCase()}`;
   cobrancas.unshift({
     id: `c-${Date.now().toString(36)}`,
     alunoId: id,
@@ -227,8 +230,9 @@ export function matricularPessoa(
     valor: plano?.valorMensal ?? 0,
     vencimento: venc.toISOString(),
     status: "pendente",
-    asaasId: `pay_mock_${p.codigo.toLowerCase()}`,
-    linkPagamento: `https://asaas.com/c/pay_mock_${p.codigo.toLowerCase()}`,
+    asaasId,
+    assinaturaId: asaas?.assinaturaId,
+    linkPagamento: asaas?.linkPagamento ?? `https://asaas.com/c/${asaasId}`,
   });
 
   return atualizado;

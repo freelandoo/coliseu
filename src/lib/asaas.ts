@@ -12,6 +12,7 @@ export interface AsaasCustomer {
   name: string;
   mobilePhone: string;
   email?: string;
+  cpfCnpj?: string; // exigido pelo Asaas para gerar cobrança/assinatura PIX
 }
 
 export interface AsaasCharge {
@@ -187,6 +188,7 @@ export async function matricularNoAsaas(input: {
   nome: string;
   telefone?: string;
   email?: string;
+  cpf?: string;
   planoNome: string;
   valorMensal: number;
 }): Promise<AsaasMatricula> {
@@ -204,6 +206,7 @@ export async function matricularNoAsaas(input: {
     name: input.nome,
     mobilePhone: (input.telefone ?? "").replace(/\D/g, ""),
     email: input.email,
+    cpfCnpj: (input.cpf ?? "").replace(/\D/g, "") || undefined,
   });
   const assinatura = await criarAssinatura({
     customer: cliente.id,
