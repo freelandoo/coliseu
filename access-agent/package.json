@@ -1,0 +1,14 @@
+{
+  "name": "coliseu-access-agent",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "start": "tsx src/agent.ts",
+    "typecheck": "tsc --noEmit"
+  },
+  "devDependencies": {
+    "tsx": "^4.23.0",
+    "typescript": "^5"
+  }
+}
