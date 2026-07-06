@@ -1,5 +1,6 @@
 import { prisma } from "@/lib/db";
 import { upsertPaymentRepo } from "@/lib/repositories/billing";
+import { sincronizarCobrancaMembership } from "@/lib/billing/apply";
 import type { PaymentStatus } from "@prisma/client";
 
 export interface AsaasPaymentLike {
@@ -43,6 +44,7 @@ export async function reconciliarPayments(
       invoiceUrl: ap.invoiceUrl ?? null,
       statusUpdatedAt: new Date(),
     });
+    await prisma.$transaction(async (tx) => sincronizarCobrancaMembership(tx, ap.id, status));
     if (existing) atualizados++;
     else criados++;
   }

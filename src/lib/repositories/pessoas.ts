@@ -123,11 +123,16 @@ export async function matricularPessoaRepo(
   ]);
 
   if (asaas) {
+    const membership = await prisma.membership.findFirst({
+      where: { personId: id },
+      orderBy: { matriculadoEm: "desc" },
+    });
     const bc = await upsertBillingCustomerRepo({
       asaasCustomerId: asaas.customerId, personId: id, externalReference: id,
     });
     const bs = await upsertBillingSubscriptionRepo({
       asaasSubscriptionId: asaas.assinaturaId, customerId: bc.id, value: plano.valorMensal,
+      externalReference: membership?.id ?? null,
     });
     await upsertPaymentRepo({
       asaasPaymentId: asaas.cobrancaId, subscriptionId: bs.id, value: plano.valorMensal,

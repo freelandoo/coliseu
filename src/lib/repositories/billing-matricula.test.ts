@@ -12,4 +12,6 @@ test("matrícula com dados Asaas grava BillingCustomer/Subscription/Payment", as
   const pay = await prisma.payment.findUnique({ where: { asaasPaymentId: "pay_bt_1" } });
   expect(bc?.personId).toBe(p.id);
   expect(pay?.status).toBe("PENDING");
+  const bs = await prisma.billingSubscription.findUnique({ where: { asaasSubscriptionId: "sub_bt_1" } });
+  expect(bs?.externalReference).toBeTruthy();
 });
