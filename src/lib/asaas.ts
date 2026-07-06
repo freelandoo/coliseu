@@ -229,3 +229,17 @@ export async function matricularNoAsaas(input: {
     linkPagamento: cobranca.invoiceUrl,
   };
 }
+
+/** Lista pagamentos da conta no Asaas (para reconciliação). Mock: lista vazia. */
+export async function listarPaymentsAsaas(): Promise<import("@/lib/billing/reconcile").AsaasPaymentLike[]> {
+  if (!temCredenciais()) return [];
+  const res = await fetch(`${ASAAS_BASE}/payments?limit=100`, {
+    headers: { access_token: process.env.ASAAS_API_KEY! },
+  });
+  if (!res.ok) throw new Error(`Asaas payments list: ${res.status}`);
+  const data = (await res.json()) as { data: Array<{ id: string; status: string; value: number; dueDate: string; paymentDate?: string; invoiceUrl?: string; subscription?: string }> };
+  return data.data.map((p) => ({
+    id: p.id, status: p.status, value: p.value, dueDate: p.dueDate,
+    paymentDate: p.paymentDate, invoiceUrl: p.invoiceUrl, subscription: p.subscription,
+  }));
+}
