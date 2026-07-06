@@ -2,6 +2,7 @@ import { prisma } from "@/lib/db";
 import { Prisma } from "@prisma/client";
 import type { PaymentStatus } from "@prisma/client";
 import { sincronizarCobrancaMembership } from "@/lib/billing/apply";
+import { recalcularAcessoDePessoa } from "@/lib/access/outbox";
 
 interface AsaasEvent {
   id?: string;
@@ -38,6 +39,8 @@ export async function processarEvento(ev: AsaasEvent): Promise<void> {
   const payment = ev.payment;
   const asaasPaymentId = payment.id;
   const eventAt = ev.dateCreated ? new Date(ev.dateCreated) : new Date();
+
+  let afetadoPersonId: string | null = null;
 
   await prisma.$transaction(async (tx) => {
     const existing = await tx.payment.findUnique({ where: { asaasPaymentId } });
@@ -83,6 +86,12 @@ export async function processarEvento(ev: AsaasEvent): Promise<void> {
 
     if (aplicado) {
       await sincronizarCobrancaMembership(tx, asaasPaymentId, novoStatus);
+      const cob = await tx.cobranca.findFirst({ where: { asaasId: asaasPaymentId } });
+      if (cob) afetadoPersonId = cob.personId;
     }
   });
+
+  if (afetadoPersonId) {
+    try { await recalcularAcessoDePessoa(afetadoPersonId); } catch (e) { console.error("[outbox] falha ao recalcular acesso:", e); }
+  }
 }
