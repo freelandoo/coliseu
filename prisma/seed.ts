@@ -13,6 +13,10 @@ function offset(days: number): Date {
 async function main() {
   // Idempotente: limpa em ordem FK-safe antes de recriar (permite re-rodar o seed
   // sem depender de `prisma migrate reset`, que é bloqueado pelo guard do Prisma).
+  await prisma.payment.deleteMany();
+  await prisma.billingSubscription.deleteMany();
+  await prisma.billingCustomer.deleteMany();
+  await prisma.webhookEvent.deleteMany();
   await prisma.cobranca.deleteMany();
   await prisma.membership.deleteMany();
   await prisma.despesa.deleteMany();
@@ -122,6 +126,36 @@ async function main() {
         personId: person.id, tipo: c.tipo as never, valor: c.valor,
         vencimento: offset(c.venc), status: c.status as never,
         asaasId: c.asaasId ?? undefined, linkPagamento: c.link ?? undefined,
+      },
+    });
+  }
+
+  // Espelho financeiro para as cobranças que têm asaasId
+  const statusPay: Record<string, "PENDING" | "PAID" | "OVERDUE"> = {
+    pago: "PAID", pendente: "PENDING", atrasado: "OVERDUE",
+  };
+  for (const c of cobrancas) {
+    if (!c.asaasId) continue;
+    const person = await prisma.person.findUnique({ where: { codigo: c.codigo } });
+    if (!person) continue;
+    const bc = await prisma.billingCustomer.upsert({
+      where: { asaasCustomerId: `cus_seed_${c.codigo}` },
+      update: {},
+      create: { asaasCustomerId: `cus_seed_${c.codigo}`, personId: person.id, externalReference: person.id },
+    });
+    const bs = await prisma.billingSubscription.upsert({
+      where: { asaasSubscriptionId: `sub_seed_${c.codigo}` },
+      update: {},
+      create: { asaasSubscriptionId: `sub_seed_${c.codigo}`, customerId: bc.id, value: c.valor },
+    });
+    await prisma.payment.upsert({
+      where: { asaasPaymentId: c.asaasId },
+      update: {},
+      create: {
+        asaasPaymentId: c.asaasId, subscriptionId: bs.id, value: c.valor,
+        dueDate: offset(c.venc), status: statusPay[c.status] ?? "PENDING",
+        paidAt: c.status === "pago" ? offset(c.venc) : null,
+        statusUpdatedAt: offset(c.venc),
       },
     });
   }

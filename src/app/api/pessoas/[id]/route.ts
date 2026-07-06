@@ -62,6 +62,7 @@ export async function PATCH(req: Request, { params }: Ctx) {
         cpf: pessoaAtual.cpf,
         planoNome: plano.nome,
         valorMensal: plano.valorMensal,
+        personId: pessoaAtual.id,
       });
     } catch (e) {
       console.error("[asaas] falha ao matricular:", e);

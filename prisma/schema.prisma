@@ -110,6 +110,7 @@ model Person {
 
   memberships Membership[]
   cobrancas   Cobranca[]
+  billingCustomer BillingCustomer?
 
   @@index([unitId, fase])
   @@index([nome])
@@ -169,4 +170,83 @@ model Despesa {
   valor      Float
   data       DateTime
   recorrente Boolean  @default(false)
+}
+
+enum WebhookProcessState {
+  PENDING
+  PROCESSED
+  FAILED
+  DEAD_LETTER
+}
+
+enum PaymentStatus {
+  PENDING
+  PAID
+  OVERDUE
+  REFUNDED
+  CHARGEBACK
+  CANCELED
+}
+
+model WebhookEvent {
+  id           String              @id @default(cuid())
+  asaasEventId String              @unique
+  event        String
+  paymentId    String?
+  payload      Json
+  processState WebhookProcessState @default(PENDING)
+  attempts     Int                 @default(0)
+  lastError    String?
+  eventAt      DateTime?
+  receivedAt   DateTime            @default(now())
+  processedAt  DateTime?
+
+  @@index([processState, receivedAt])
+  @@index([paymentId])
+}
+
+model BillingCustomer {
+  id                String   @id @default(cuid())
+  asaasCustomerId   String   @unique
+  externalReference String?
+  person            Person   @relation(fields: [personId], references: [id], onDelete: Cascade)
+  personId          String   @unique
+  createdAt         DateTime @default(now())
+
+  subscriptions BillingSubscription[]
+}
+
+model BillingSubscription {
+  id                   String          @id @default(cuid())
+  asaasSubscriptionId  String          @unique
+  externalReference    String?
+  customer             BillingCustomer @relation(fields: [customerId], references: [id], onDelete: Cascade)
+  customerId           String
+  cycle                String          @default("MONTHLY")
+  value                Float
+  status               String          @default("ACTIVE")
+  createdAt            DateTime         @default(now())
+
+  payments Payment[]
+
+  @@index([customerId])
+}
+
+model Payment {
+  id                String               @id @default(cuid())
+  asaasPaymentId    String               @unique
+  externalReference String?
+  subscription      BillingSubscription? @relation(fields: [subscriptionId], references: [id], onDelete: SetNull)
+  subscriptionId    String?
+  billingType       String               @default("UNDEFINED")
+  value             Float
+  dueDate           DateTime
+  status            PaymentStatus        @default(PENDING)
+  paidAt            DateTime?
+  invoiceUrl        String?
+  statusUpdatedAt   DateTime             @default(now())
+  createdAt         DateTime             @default(now())
+
+  @@index([subscriptionId, dueDate])
+  @@index([status])
 }

@@ -2,6 +2,7 @@ import { prisma } from "@/lib/db";
 import { toPessoa } from "@/lib/repositories/mappers";
 import type { NovaPessoa, Pessoa } from "@/lib/types";
 import type { AsaasMatricula } from "@/lib/asaas";
+import { upsertBillingCustomerRepo, upsertBillingSubscriptionRepo, upsertPaymentRepo } from "@/lib/repositories/billing";
 
 const UNIT_SLUG = "coliseu-team";
 const withMemberships = { memberships: { orderBy: { matriculadoEm: "desc" as const }, take: 1 } };
@@ -120,6 +121,25 @@ export async function matricularPessoaRepo(
       },
     }),
   ]);
+
+  if (asaas) {
+    const membership = await prisma.membership.findFirst({
+      where: { personId: id },
+      orderBy: { matriculadoEm: "desc" },
+    });
+    const bc = await upsertBillingCustomerRepo({
+      asaasCustomerId: asaas.customerId, personId: id, externalReference: id,
+    });
+    const bs = await upsertBillingSubscriptionRepo({
+      asaasSubscriptionId: asaas.assinaturaId, customerId: bc.id, value: plano.valorMensal,
+      externalReference: membership?.id ?? null,
+    });
+    await upsertPaymentRepo({
+      asaasPaymentId: asaas.cobrancaId, subscriptionId: bs.id, value: plano.valorMensal,
+      dueDate: venc, status: "PENDING", invoiceUrl: asaas.linkPagamento,
+      statusUpdatedAt: new Date(),
+    });
+  }
 
   return obterPessoaRepo(id);
 }
