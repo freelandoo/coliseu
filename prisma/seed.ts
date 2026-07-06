@@ -11,6 +11,17 @@ function offset(days: number): Date {
 }
 
 async function main() {
+  // Idempotente: limpa em ordem FK-safe antes de recriar (permite re-rodar o seed
+  // sem depender de `prisma migrate reset`, que é bloqueado pelo guard do Prisma).
+  await prisma.cobranca.deleteMany();
+  await prisma.membership.deleteMany();
+  await prisma.despesa.deleteMany();
+  await prisma.session.deleteMany();
+  await prisma.person.deleteMany();
+  await prisma.plan.deleteMany();
+  await prisma.user.deleteMany();
+  await prisma.unit.deleteMany();
+
   const unit = await prisma.unit.upsert({
     where: { slug: "coliseu-team" },
     update: {},
