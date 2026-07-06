@@ -1,11 +1,16 @@
 import { Reveal } from "@/components/ui/Reveal";
 import { PageHeader, Stat } from "@/components/ui/primitives";
-import {
-  CobrancaFiltro,
-  type LinhaCobranca,
-} from "@/components/cobranca/CobrancaFiltro";
+import { type LinhaCobranca } from "@/components/cobranca/CobrancaFiltro";
+import { CobrancaTabs } from "@/components/cobranca/CobrancaTabs";
+import { type PlanoComContagem } from "@/components/cobranca/GestaoPlanos";
 import { diasEntre, formatBRL, formatData } from "@/lib/mock-data";
-import { alunoPorId, listarAlunos, listarCobrancas, planoPorId } from "@/lib/store";
+import {
+  alunoPorId,
+  listarAlunos,
+  listarCobrancas,
+  listarPlanos,
+  planoPorId,
+} from "@/lib/store";
 
 export const dynamic = "force-dynamic";
 
@@ -63,6 +68,17 @@ export default function CobrancaPage() {
     .filter((c) => c.status === "atrasado")
     .reduce((s, c) => s + c.valor, 0);
 
+  // Planos com contagem de alunos ativos (para a aba "Planos")
+  const contagemPorPlano = new Map<string, number>();
+  for (const a of alunos) {
+    if (a.status === "cancelado") continue;
+    contagemPorPlano.set(a.planoId, (contagemPorPlano.get(a.planoId) ?? 0) + 1);
+  }
+  const planosComContagem: PlanoComContagem[] = listarPlanos().map((p) => ({
+    ...p,
+    alunos: contagemPorPlano.get(p.id) ?? 0,
+  }));
+
   return (
     <>
       <Reveal>
@@ -88,7 +104,7 @@ export default function CobrancaPage() {
 
       <Reveal delay={0.1}>
         <div className="mt-10">
-          <CobrancaFiltro linhas={linhas} />
+          <CobrancaTabs linhas={linhas} planos={planosComContagem} />
         </div>
       </Reveal>
     </>
