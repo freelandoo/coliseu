@@ -5,12 +5,15 @@ import {
   type LinhaRetencao,
 } from "@/components/retencao/RetencaoFiltro";
 import { diasSemPresenca, faixaAusencia, formatData } from "@/lib/mock-data";
-import { listarAlunos, planoPorId } from "@/lib/store";
+import { listarAlunos, listarPlanos } from "@/lib/store";
 
 export const dynamic = "force-dynamic";
 
-export default function RetencaoPage() {
-  const linhas: LinhaRetencao[] = listarAlunos()
+export default async function RetencaoPage() {
+  const [alunos, planos] = await Promise.all([listarAlunos(), listarPlanos()]);
+  const planoById = new Map(planos.map((p) => [p.id, p]));
+
+  const linhas: LinhaRetencao[] = alunos
     .filter((a) => a.status !== "cancelado")
     .map((a) => {
       const dias = diasSemPresenca(a);
@@ -18,7 +21,7 @@ export default function RetencaoPage() {
         id: a.id,
         nome: a.nome,
         telefone: a.telefone,
-        planoNome: planoPorId(a.planoId)?.nome ?? "—",
+        planoNome: planoById.get(a.planoId)?.nome ?? "—",
         ultimaPresenca: formatData(a.ultimaPresenca),
         dias,
         faixa: faixaAusencia(dias),

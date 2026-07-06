@@ -34,7 +34,7 @@ export async function PATCH(req: Request, { params }: Ctx) {
     patch.descricao = body.descricao.trim() || undefined;
   }
 
-  const plano = atualizarPlano(id, patch);
+  const plano = await atualizarPlano(id, patch);
   if (!plano) {
     return NextResponse.json({ erro: "Plano não encontrado" }, { status: 404 });
   }

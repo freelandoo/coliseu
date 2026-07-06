@@ -30,12 +30,12 @@ export async function POST(req: Request) {
   switch (body.event) {
     case "PAYMENT_CONFIRMED":
     case "PAYMENT_RECEIVED": {
-      const ok = asaasId ? marcarCobrancaPaga(asaasId) : false;
+      const ok = asaasId ? await marcarCobrancaPaga(asaasId) : false;
       console.log("[asaas] pagamento confirmado:", asaasId, "→ baixa:", ok);
       break;
     }
     case "PAYMENT_OVERDUE": {
-      const ok = asaasId ? marcarCobrancaAtrasada(asaasId) : false;
+      const ok = asaasId ? await marcarCobrancaAtrasada(asaasId) : false;
       console.log("[asaas] pagamento atrasado:", asaasId, "→ atraso:", ok);
       break;
     }

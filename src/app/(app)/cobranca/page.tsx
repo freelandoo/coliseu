@@ -5,23 +5,26 @@ import { CobrancaTabs } from "@/components/cobranca/CobrancaTabs";
 import { type PlanoComContagem } from "@/components/cobranca/GestaoPlanos";
 import { diasEntre, formatBRL, formatData } from "@/lib/mock-data";
 import {
-  alunoPorId,
   listarAlunos,
   listarCobrancas,
   listarPlanos,
-  planoPorId,
 } from "@/lib/store";
 
 export const dynamic = "force-dynamic";
 
-export default function CobrancaPage() {
-  const alunos = listarAlunos();
-  const cobrancas = listarCobrancas();
+export default async function CobrancaPage() {
+  const [alunos, cobrancas, planos] = await Promise.all([
+    listarAlunos(),
+    listarCobrancas(),
+    listarPlanos(),
+  ]);
+  const alunoById = new Map(alunos.map((a) => [a.id, a]));
+  const planoById = new Map(planos.map((p) => [p.id, p]));
   // A) Cobrança: atrasadas (mais urgentes) + a vencer
   const atrasadas: LinhaCobranca[] = cobrancas
     .filter((c) => c.status === "atrasado")
     .map((c) => {
-      const aluno = alunoPorId(c.alunoId);
+      const aluno = alunoById.get(c.alunoId);
       return {
         id: c.id,
         nome: aluno?.nome ?? "—",
@@ -36,7 +39,7 @@ export default function CobrancaPage() {
   const aVencer: LinhaCobranca[] = cobrancas
     .filter((c) => c.status === "pendente")
     .map((c) => {
-      const aluno = alunoPorId(c.alunoId);
+      const aluno = alunoById.get(c.alunoId);
       return {
         id: c.id,
         nome: aluno?.nome ?? "—",
@@ -58,7 +61,7 @@ export default function CobrancaPage() {
       id: `renov-${aluno.id}`,
       nome: aluno.nome,
       telefone: aluno.telefone,
-      detalhe: `${planoPorId(aluno.planoId)?.nome} · expira em ${dias}d`,
+      detalhe: `${planoById.get(aluno.planoId)?.nome} · expira em ${dias}d`,
       categoria: "arenovar" as const,
       dias,
     }));
@@ -74,7 +77,7 @@ export default function CobrancaPage() {
     if (a.status === "cancelado") continue;
     contagemPorPlano.set(a.planoId, (contagemPorPlano.get(a.planoId) ?? 0) + 1);
   }
-  const planosComContagem: PlanoComContagem[] = listarPlanos().map((p) => ({
+  const planosComContagem: PlanoComContagem[] = planos.map((p) => ({
     ...p,
     alunos: contagemPorPlano.get(p.id) ?? 0,
   }));

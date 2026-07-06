@@ -3,7 +3,7 @@ import { criarPlano, listarPlanos } from "@/lib/store";
 import type { NovoPlano } from "@/lib/types";
 
 export async function GET() {
-  return NextResponse.json(listarPlanos());
+  return NextResponse.json(await listarPlanos());
 }
 
 export async function POST(req: Request) {
@@ -21,7 +21,7 @@ export async function POST(req: Request) {
     return NextResponse.json({ erro: "Duração inválida" }, { status: 400 });
   }
 
-  const plano = criarPlano({
+  const plano = await criarPlano({
     nome: body.nome,
     valorMensal,
     duracaoMeses,
