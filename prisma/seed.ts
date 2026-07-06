@@ -21,6 +21,18 @@ async function main() {
   await prisma.membership.deleteMany();
   await prisma.despesa.deleteMany();
   await prisma.session.deleteMany();
+  // Domínio de acesso (Fase 3): limpar antes de Person/Unit para não violar FK
+  // (tabelas criadas por testes de integração ficam pendentes entre execuções).
+  await prisma.deviceCommand.deleteMany();
+  await prisma.deviceHeartbeat.deleteMany();
+  await prisma.accessEvent.deleteMany();
+  await prisma.deviceUserMapping.deleteMany();
+  await prisma.accessCredential.deleteMany();
+  await prisma.enrollmentSession.deleteMany();
+  await prisma.manualAccessOverride.deleteMany();
+  await prisma.accessPolicy.deleteMany();
+  await prisma.accessDevice.deleteMany();
+  await prisma.auditLog.deleteMany();
   await prisma.person.deleteMany();
   await prisma.plan.deleteMany();
   await prisma.user.deleteMany();
