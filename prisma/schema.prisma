@@ -62,6 +62,9 @@ model Unit {
   users     User[]
   people    Person[]
   plans     Plan[]
+
+  devices    AccessDevice[]
+  policies   AccessPolicy[]
 }
 
 model User {
@@ -112,6 +115,12 @@ model Person {
   cobrancas   Cobranca[]
   billingCustomer BillingCustomer?
 
+  credentials      AccessCredential[]
+  deviceMappings   DeviceUserMapping[]
+  accessEvents     AccessEvent[]
+  enrollments      EnrollmentSession[]
+  overrides        ManualAccessOverride[]
+
   @@index([unitId, fase])
   @@index([nome])
 }
@@ -128,6 +137,8 @@ model Plan {
   unitId String
 
   memberships Membership[]
+
+  accessPolicies AccessPolicy[]
 
   @@index([unitId, ativo])
 }
@@ -249,4 +260,205 @@ model Payment {
 
   @@index([subscriptionId, dueDate])
   @@index([status])
+}
+
+enum EnrollmentStatus {
+  NOT_STARTED
+  IN_PROGRESS
+  ENROLLED
+  FAILED
+  REVOKED
+}
+
+enum DeviceSyncStatus {
+  IN_SYNC
+  PENDING
+  ERROR
+}
+
+enum DeviceCommandStatus {
+  PENDING
+  DISPATCHED
+  ACKNOWLEDGED
+  SUCCEEDED
+  FAILED
+  DEAD_LETTER
+}
+
+enum CredentialType {
+  FACE
+  CARD
+  PIN
+}
+
+enum AccessDeviceStatus {
+  ONLINE
+  OFFLINE
+  MAINTENANCE
+}
+
+enum OverrideAction {
+  ALLOW
+  BLOCK
+}
+
+model AccessDevice {
+  id              String             @id @default(cuid())
+  unit            Unit               @relation(fields: [unitId], references: [id])
+  unitId          String
+  name            String
+  lanHost         String?
+  lanPort         Int?
+  firmware        String?
+  mode            String             @default("HYBRID")
+  status          AccessDeviceStatus @default(OFFLINE)
+  lastHeartbeatAt DateTime?
+  agentId         String?
+  createdAt       DateTime           @default(now())
+
+  mappings   DeviceUserMapping[]
+  commands   DeviceCommand[]
+  heartbeats DeviceHeartbeat[]
+  events     AccessEvent[]
+
+  @@unique([unitId, name])
+  @@index([unitId, status])
+}
+
+model AccessCredential {
+  id         String           @id @default(cuid())
+  person     Person           @relation(fields: [personId], references: [id], onDelete: Cascade)
+  personId   String
+  type       CredentialType
+  status     EnrollmentStatus @default(NOT_STARTED)
+  deviceRef  String?          // id no dispositivo (NUNCA template bruto)
+  enrolledAt DateTime?
+  revokedAt  DateTime?
+  createdAt  DateTime         @default(now())
+
+  @@index([personId, type])
+}
+
+model DeviceUserMapping {
+  id             String           @id @default(cuid())
+  device         AccessDevice     @relation(fields: [deviceId], references: [id], onDelete: Cascade)
+  deviceId       String
+  person         Person           @relation(fields: [personId], references: [id], onDelete: Cascade)
+  personId       String
+  externalUserId String
+  syncStatus     DeviceSyncStatus @default(PENDING)
+  lastSyncAt     DateTime?
+
+  @@unique([deviceId, externalUserId])
+  @@unique([deviceId, personId])
+  @@index([syncStatus])
+}
+
+model AccessPolicy {
+  id              String   @id @default(cuid())
+  unit            Unit     @relation(fields: [unitId], references: [id])
+  unitId          String
+  plan            Plan?    @relation(fields: [planId], references: [id])
+  planId          String?
+  graceDays       Int      @default(5)
+  maxEntriesPerDay Int?
+  timeZones       Json?    // janelas de horário (livre)
+  createdAt       DateTime @default(now())
+
+  @@index([unitId, planId])
+}
+
+model AccessEvent {
+  id               String   @id @default(cuid())
+  device           AccessDevice @relation(fields: [deviceId], references: [id], onDelete: Cascade)
+  deviceId         String
+  person           Person?  @relation(fields: [personId], references: [id], onDelete: SetNull)
+  personId         String?
+  unitId           String
+  deviceEventId    String?
+  deviceTime       DateTime
+  serverTime       DateTime @default(now())
+  direction        String   @default("ENTRY")
+  credentialType   String?
+  decision         String   // ALLOWED | DENIED
+  reason           String?
+  physicallyPassed Boolean  @default(false)
+  mode             String   @default("ONLINE")
+  deviceCursor     String?
+
+  @@unique([deviceId, deviceEventId])
+  @@index([personId, deviceTime])
+  @@index([unitId, serverTime])
+}
+
+model DeviceCommand {
+  id           String              @id @default(cuid())
+  device       AccessDevice        @relation(fields: [deviceId], references: [id], onDelete: Cascade)
+  deviceId     String
+  personId     String?
+  type         String              // UPSERT_USER | ENABLE | DISABLE | REMOVE_USER | ENROLL | OPEN | SYNC_RULES
+  payload      Json?
+  status       DeviceCommandStatus @default(PENDING)
+  attempts     Int                 @default(0)
+  dedupeKey    String              @unique
+  lastError    String?
+  dispatchedAt DateTime?
+  ackAt        DateTime?
+  createdAt    DateTime            @default(now())
+
+  @@index([status, deviceId])
+  @@index([deviceId, personId, status])
+}
+
+model DeviceHeartbeat {
+  id           String       @id @default(cuid())
+  device       AccessDevice @relation(fields: [deviceId], references: [id], onDelete: Cascade)
+  deviceId     String
+  at           DateTime     @default(now())
+  firmware     String?
+  connectivity String?
+  clockDriftMs Int?
+
+  @@index([deviceId, at])
+}
+
+model EnrollmentSession {
+  id        String           @id @default(cuid())
+  person    Person           @relation(fields: [personId], references: [id], onDelete: Cascade)
+  personId  String
+  deviceId  String?
+  type      CredentialType   @default(FACE)
+  status    EnrollmentStatus @default(IN_PROGRESS)
+  startedAt DateTime         @default(now())
+  resultAt  DateTime?
+
+  @@index([status])
+}
+
+model ManualAccessOverride {
+  id             String        @id @default(cuid())
+  person         Person        @relation(fields: [personId], references: [id], onDelete: Cascade)
+  personId       String
+  action         OverrideAction
+  reason         String
+  expiresAt      DateTime?
+  createdByUserId String?
+  createdAt      DateTime      @default(now())
+
+  @@index([personId, expiresAt])
+}
+
+model AuditLog {
+  id        String   @id @default(cuid())
+  actorType String   // USER | AGENT | SYSTEM | WEBHOOK
+  actorId   String?
+  action    String
+  entity    String
+  entityId  String?
+  before    Json?
+  after     Json?
+  ip        String?
+  at        DateTime @default(now())
+
+  @@index([entity, entityId, at])
 }

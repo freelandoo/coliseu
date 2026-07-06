@@ -21,6 +21,18 @@ async function main() {
   await prisma.membership.deleteMany();
   await prisma.despesa.deleteMany();
   await prisma.session.deleteMany();
+  // Domínio de acesso (Fase 3): limpar antes de Person/Unit para não violar FK
+  // (tabelas criadas por testes de integração ficam pendentes entre execuções).
+  await prisma.deviceCommand.deleteMany();
+  await prisma.deviceHeartbeat.deleteMany();
+  await prisma.accessEvent.deleteMany();
+  await prisma.deviceUserMapping.deleteMany();
+  await prisma.accessCredential.deleteMany();
+  await prisma.enrollmentSession.deleteMany();
+  await prisma.manualAccessOverride.deleteMany();
+  await prisma.accessPolicy.deleteMany();
+  await prisma.accessDevice.deleteMany();
+  await prisma.auditLog.deleteMany();
   await prisma.person.deleteMany();
   await prisma.plan.deleteMany();
   await prisma.user.deleteMany();
@@ -158,6 +170,18 @@ async function main() {
         statusUpdatedAt: offset(c.venc),
       },
     });
+  }
+
+  // Domínio de acesso (Fase 3): 1 catraca + 3 alunos com credencial FACE + mapeamento IN_SYNC.
+  const device = await prisma.accessDevice.create({
+    data: { unitId: unit.id, name: "Catraca Principal", mode: "HYBRID", status: "ONLINE", firmware: "sim-1.0", lastHeartbeatAt: new Date() },
+  });
+  const ativos = await prisma.person.findMany({ where: { fase: "aluno" }, take: 3 });
+  let ext = 1000;
+  for (const p of ativos) {
+    ext += 1;
+    await prisma.accessCredential.create({ data: { personId: p.id, type: "FACE", status: "ENROLLED", enrolledAt: new Date() } });
+    await prisma.deviceUserMapping.create({ data: { deviceId: device.id, personId: p.id, externalUserId: String(ext), syncStatus: "IN_SYNC", lastSyncAt: new Date() } });
   }
 
   const despesas = [
