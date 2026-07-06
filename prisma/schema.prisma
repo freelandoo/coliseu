@@ -1,13 +1,172 @@
-// This is your Prisma schema file,
-// learn more about it in the docs: https://pris.ly/d/prisma-schema
-
-// Get a free hosted Postgres database in seconds: `npx create-db`
-
 generator client {
-  provider = "prisma-client"
-  output   = "../src/generated/prisma"
+  provider = "prisma-client-js"
 }
 
 datasource db {
   provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum Role {
+  ADMIN
+  RECEPCAO
+  TECNICO
+}
+
+enum Origem {
+  whatsapp
+  redes
+  balcao
+  indicacao
+}
+
+enum PessoaFase {
+  lead
+  aluno
+}
+
+enum LeadEstagio {
+  novo
+  qualificado
+  interesse
+  perdido
+  convertido
+}
+
+enum MembershipStatus {
+  DRAFT
+  PENDING_PAYMENT
+  ACTIVE
+  SUSPENDED
+  CANCELED
+  EXPIRED
+}
+
+enum CobrancaStatus {
+  pendente
+  pago
+  atrasado
+}
+
+enum CobrancaTipo {
+  matricula
+  mensalidade
+  renovacao
+}
+
+model Unit {
+  id        String   @id @default(cuid())
+  slug      String   @unique
+  nome      String
+  createdAt DateTime @default(now())
+  users     User[]
+  people    Person[]
+  plans     Plan[]
+}
+
+model User {
+  id           String   @id @default(cuid())
+  email        String   @unique
+  nome         String
+  passwordHash String
+  role         Role     @default(RECEPCAO)
+  unit         Unit     @relation(fields: [unitId], references: [id])
+  unitId       String
+  createdAt    DateTime @default(now())
+  sessions     Session[]
+}
+
+model Session {
+  id        String   @id @default(cuid())
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId    String
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+
+  @@index([userId])
+}
+
+model Person {
+  id             String       @id @default(cuid())
+  codigo         String       @unique
+  nome           String
+  telefone       String?
+  email          String?
+  cpf            String?
+  origem         Origem
+  fase           PessoaFase   @default(lead)
+  estagio        LeadEstagio?
+  motivoPerdido  String?
+  dataNascimento String?
+  cep     String?
+  estado  String?
+  cidade  String?
+  rua     String?
+  numero  String?
+  criadoEm DateTime @default(now())
+
+  unit   Unit   @relation(fields: [unitId], references: [id])
+  unitId String
+
+  memberships Membership[]
+  cobrancas   Cobranca[]
+
+  @@index([unitId, fase])
+  @@index([nome])
+}
+
+model Plan {
+  id           String  @id @default(cuid())
+  nome         String
+  valorMensal  Float
+  duracaoMeses Int
+  ativo        Boolean @default(true)
+  descricao    String?
+
+  unit   Unit   @relation(fields: [unitId], references: [id])
+  unitId String
+
+  memberships Membership[]
+
+  @@index([unitId, ativo])
+}
+
+model Membership {
+  id                  String           @id @default(cuid())
+  person              Person           @relation(fields: [personId], references: [id], onDelete: Cascade)
+  personId            String
+  plan                Plan             @relation(fields: [planId], references: [id])
+  planId              String
+  status              MembershipStatus @default(DRAFT)
+  matriculadoEm       DateTime         @default(now())
+  vencimentoPlano     DateTime
+  ultimaPresenca      DateTime         @default(now())
+  courtesyEntriesLeft Int              @default(1)
+
+  @@index([personId, status])
+}
+
+model Cobranca {
+  id            String         @id @default(cuid())
+  person        Person         @relation(fields: [personId], references: [id], onDelete: Cascade)
+  personId      String
+  tipo          CobrancaTipo
+  valor         Float
+  vencimento    DateTime
+  status        CobrancaStatus @default(pendente)
+  asaasId       String?
+  assinaturaId  String?
+  linkPagamento String?
+
+  @@index([personId, status])
+  @@index([asaasId])
+}
+
+model Despesa {
+  id         String   @id @default(cuid())
+  categoria  String
+  descricao  String?
+  valor      Float
+  data       DateTime
+  recorrente Boolean  @default(false)
 }
