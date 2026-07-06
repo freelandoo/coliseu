@@ -313,6 +313,26 @@ export function listarCobrancas(): Cobranca[] {
   return cobrancas;
 }
 
+/** Webhook Asaas: pagamento confirmado → cobrança paga + aluno ativo. */
+export function marcarCobrancaPaga(asaasId: string): boolean {
+  const c = cobrancas.find((c) => c.asaasId === asaasId);
+  if (!c) return false;
+  c.status = "pago";
+  const p = pessoas.find((p) => p.id === c.alunoId);
+  if (p) p.status = "ativo";
+  return true;
+}
+
+/** Webhook Asaas: pagamento vencido → cobrança atrasada + aluno inadimplente. */
+export function marcarCobrancaAtrasada(asaasId: string): boolean {
+  const c = cobrancas.find((c) => c.asaasId === asaasId);
+  if (!c) return false;
+  c.status = "atrasado";
+  const p = pessoas.find((p) => p.id === c.alunoId);
+  if (p) p.status = "inadimplente";
+  return true;
+}
+
 export function alunoPorId(id: string): Aluno | undefined {
   return listarAlunos().find((a) => a.id === id);
 }
