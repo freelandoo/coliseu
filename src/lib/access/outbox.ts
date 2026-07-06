@@ -1,7 +1,7 @@
 import { prisma } from "@/lib/db";
 import { evaluateAccessEligibility } from "@/lib/access/policy";
 import type { AccessContext } from "@/lib/access/types";
-import { criarComando } from "@/lib/repositories/access";
+import { enfileirarComandoAcesso } from "@/lib/repositories/access";
 
 /** Reavalia o acesso de uma pessoa e enfileira ENABLE/DISABLE por device mapeado. */
 export async function recalcularAcessoDePessoa(personId: string): Promise<void> {
@@ -10,7 +10,7 @@ export async function recalcularAcessoDePessoa(personId: string): Promise<void> 
   });
   const payment = await prisma.payment.findFirst({
     where: { subscription: { customer: { personId } } },
-    orderBy: { dueDate: "desc" },
+    orderBy: { statusUpdatedAt: "desc" },
   });
   const credEnrolled = await prisma.accessCredential.count({ where: { personId, status: "ENROLLED" } });
   const mappings = await prisma.deviceUserMapping.findMany({ where: { personId } });
@@ -36,13 +36,12 @@ export async function recalcularAcessoDePessoa(personId: string): Promise<void> 
   };
 
   const decisao = evaluateAccessEligibility(ctx);
+  if (decisao.reason === "CORTESIA") return; // cortesia = decisão online por giro, não ENABLE durável
   const tipo = decisao.allow ? "ENABLE" : "DISABLE";
 
   for (const m of mappings) {
-    // dedupeKey inclui o status para não recriar comando igual repetido.
-    await criarComando({
-      deviceId: m.deviceId, type: tipo,
-      dedupeKey: `${tipo}:${m.deviceId}:${personId}:${decisao.reason}`,
+    await enfileirarComandoAcesso({
+      deviceId: m.deviceId, personId, type: tipo,
       payload: { externalUserId: m.externalUserId, reason: decisao.reason },
     });
   }

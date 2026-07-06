@@ -395,6 +395,7 @@ model DeviceCommand {
   id           String              @id @default(cuid())
   device       AccessDevice        @relation(fields: [deviceId], references: [id], onDelete: Cascade)
   deviceId     String
+  personId     String?
   type         String              // UPSERT_USER | ENABLE | DISABLE | REMOVE_USER | ENROLL | OPEN | SYNC_RULES
   payload      Json?
   status       DeviceCommandStatus @default(PENDING)
@@ -406,6 +407,7 @@ model DeviceCommand {
   createdAt    DateTime            @default(now())
 
   @@index([status, deviceId])
+  @@index([deviceId, personId, status])
 }
 
 model DeviceHeartbeat {
