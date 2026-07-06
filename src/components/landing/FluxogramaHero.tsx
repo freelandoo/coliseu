@@ -17,7 +17,7 @@ const ESTAGIOS = [
     n: 2,
     titulo: "Matrícula",
     desc: "Plano → cadastro → Asaas → link de pagamento no WhatsApp → webhook confirma.",
-    href: "/matricula",
+    href: "/matriculados/renovar",
   },
   {
     n: 3,
@@ -29,7 +29,7 @@ const ESTAGIOS = [
     n: 4,
     titulo: "Retenção",
     desc: "Monitora presença e reativa ausentes em 7, 14 e 21 dias.",
-    href: "/retencao",
+    href: "/matriculados/retencao",
   },
 ];
 

@@ -5,7 +5,7 @@ import { obterPessoa, planoPorId } from "@/lib/store";
 
 export const dynamic = "force-dynamic";
 
-export default async function ClientePage({
+export default async function MatriculadoPage({
   params,
 }: {
   params: Promise<{ id: string }>;

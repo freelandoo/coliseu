@@ -1,5 +1,6 @@
 import { Reveal } from "@/components/ui/Reveal";
 import { PageHeader } from "@/components/ui/primitives";
+import { MatriculadosTabs } from "@/components/matriculados/MatriculadosTabs";
 import { MatriculaFlow } from "@/components/matricula/MatriculaFlow";
 import { linkPagamentoWhatsApp } from "@/lib/asaas";
 import {
@@ -12,7 +13,7 @@ import {
 
 export const dynamic = "force-dynamic";
 
-export default async function MatriculaPage() {
+export default async function RenovarPage() {
   const [candidatos, alunos, cobrancas, planos, proximoCodigo] = await Promise.all([
     candidatosMatricula(),
     listarAlunos(),
@@ -47,10 +48,13 @@ export default async function MatriculaPage() {
   return (
     <>
       <Reveal>
+        <MatriculadosTabs />
+      </Reveal>
+
+      <Reveal>
         <PageHeader
-          step={2}
-          title="Matrícula e Pagamento"
-          subtitle="Busque a pessoa → confirme o cadastro → escolha o plano → matricule. O sistema gera o código, a cobrança e o link de pagamento no WhatsApp."
+          title="Renovar e Matricular"
+          subtitle="Leads novos e matriculados para renovação. Busque a pessoa → confirme o cadastro → escolha o plano → matricule. O sistema gera o código, a cobrança e o link de pagamento no WhatsApp."
         />
       </Reveal>
 

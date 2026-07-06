@@ -48,11 +48,9 @@ const NAV: {
   hint: string;
 }[] = [
   { href: "/painel", label: "Painel", hint: "Visão geral" },
-  { href: "/clientes", icon: IconPessoas, label: "Clientes", hint: "Cadastro e fichas" },
+  { href: "/matriculados", icon: IconPessoas, label: "Matriculados", hint: "Alunos, renovação, retenção e fidelidade" },
   { href: "/captacao", step: 1, label: "Captação", hint: "Leads e atendimento" },
-  { href: "/matricula", step: 2, label: "Matrícula", hint: "Planos e pagamento" },
   { href: "/cobranca", step: 3, label: "Cobrança", hint: "Renovação e inadimplência" },
-  { href: "/retencao", step: 4, label: "Retenção", hint: "Presença e reativação" },
   { href: "/custos", icon: IconCustos, label: "Custos", hint: "Despesas e lucro" },
   { href: "/acesso", icon: IconAcesso, label: "Acesso", hint: "Catracas e credenciais" },
   { href: "/relatorios", icon: IconBarras, label: "Relatórios", hint: "Indicadores do negócio" },
@@ -121,7 +119,7 @@ export function Sidebar() {
 
         <nav className="flex flex-1 flex-col gap-1 p-3">
           {NAV.map((item) => {
-            const active = pathname === item.href;
+            const active = pathname === item.href || pathname.startsWith(item.href + "/");
             return (
               <Link
                 key={item.href}

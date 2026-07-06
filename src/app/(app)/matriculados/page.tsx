@@ -1,19 +1,24 @@
 import { Reveal } from "@/components/ui/Reveal";
 import { PageHeader } from "@/components/ui/primitives";
+import { MatriculadosTabs } from "@/components/matriculados/MatriculadosTabs";
 import { ClientesView } from "@/components/clientes/ClientesView";
 import { listarPessoas } from "@/lib/store";
 
 export const dynamic = "force-dynamic";
 
-export default async function ClientesPage() {
-  const pessoas = await listarPessoas();
+export default async function MatriculadosPage() {
+  const pessoas = (await listarPessoas()).filter((p) => p.fase === "aluno");
 
   return (
     <>
       <Reveal>
+        <MatriculadosTabs />
+      </Reveal>
+
+      <Reveal>
         <PageHeader
-          title="Clientes"
-          subtitle="Cadastro único de cada pessoa — do primeiro contato como lead até virar aluno. Busque, filtre por situação e abra a ficha completa."
+          title="Matriculados"
+          subtitle="Alunos matriculados na academia. Busque, filtre por situação e abra a ficha completa de cada um."
         />
       </Reveal>
 

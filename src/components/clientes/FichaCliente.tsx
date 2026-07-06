@@ -61,7 +61,7 @@ export function FichaCliente({
       return;
     setExcluindo(true);
     await fetch(`/api/pessoas/${pessoa.id}`, { method: "DELETE" });
-    router.push("/clientes");
+    router.push("/matriculados");
     router.refresh();
   }
 
@@ -88,10 +88,10 @@ export function FichaCliente({
   return (
     <div className="flex flex-col gap-6">
       <Link
-        href="/clientes"
+        href="/matriculados"
         className="text-xs font-medium text-faint transition-colors hover:text-ink"
       >
-        ← Clientes
+        ← Matriculados
       </Link>
 
       <div className="grid gap-4 lg:grid-cols-[1.4fr_1fr]">
@@ -190,7 +190,7 @@ export function FichaCliente({
                   ))}
                 </select>
                 <Link
-                  href="/matricula"
+                  href="/matriculados/renovar"
                   className="mt-3 block rounded-lg bg-red px-4 py-2.5 text-center font-display text-sm font-semibold uppercase tracking-widest text-white transition-colors hover:bg-red-bright"
                 >
                   Matricular →

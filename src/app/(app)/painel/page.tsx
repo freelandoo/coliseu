@@ -42,7 +42,7 @@ export default async function PainelPage() {
     {
       step: 2,
       title: "Matrícula",
-      href: "/matricula",
+      href: "/matriculados/renovar",
       metric: `${alunos.filter((a) => a.status === "pendente").length} aguardando pagamento`,
       desc: "Plano → cadastro → Asaas → link via WhatsApp → webhook confirma.",
     },
@@ -56,7 +56,7 @@ export default async function PainelPage() {
     {
       step: 4,
       title: "Retenção",
-      href: "/retencao",
+      href: "/matriculados/retencao",
       metric: `${ausentes.length} em risco de evasão`,
       desc: "Monitora presença e dispara campanhas em 7, 14 e 21 dias.",
     },

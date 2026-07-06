@@ -12,11 +12,10 @@ import {
   type Pessoa,
 } from "@/lib/types";
 
-type Filtro = "todos" | "lead" | "ativo" | "pendente" | "inadimplente" | "cancelado";
+type Filtro = "todos" | "ativo" | "pendente" | "inadimplente" | "cancelado";
 
 const CHIPS: { key: Filtro; label: string }[] = [
   { key: "todos", label: "Todos" },
-  { key: "lead", label: "Leads" },
   { key: "ativo", label: "Ativos" },
   { key: "pendente", label: "Pendentes" },
   { key: "inadimplente", label: "Inadimplentes" },
@@ -47,7 +46,6 @@ export function situacaoDe(p: Pessoa): {
 
 function combina(p: Pessoa, filtro: Filtro): boolean {
   if (filtro === "todos") return true;
-  if (filtro === "lead") return p.fase === "lead";
   return p.fase === "aluno" && p.status === filtro;
 }
 
@@ -140,7 +138,7 @@ export function ClientesView({ pessoas }: { pessoas: Pessoa[] }) {
                   return (
                     <tr
                       key={p.id}
-                      onClick={() => router.push(`/clientes/${p.id}`)}
+                      onClick={() => router.push(`/matriculados/${p.id}`)}
                       className="cursor-pointer border-b border-border last:border-0 transition-colors hover:bg-surface-2"
                     >
                       <td className="px-4 py-3 font-mono text-xs text-faint">{p.codigo}</td>

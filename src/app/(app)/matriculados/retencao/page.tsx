@@ -1,5 +1,6 @@
 import { Reveal } from "@/components/ui/Reveal";
 import { PageHeader, Stat } from "@/components/ui/primitives";
+import { MatriculadosTabs } from "@/components/matriculados/MatriculadosTabs";
 import {
   RetencaoFiltro,
   type LinhaRetencao,
@@ -36,10 +37,13 @@ export default async function RetencaoPage() {
   return (
     <>
       <Reveal>
+        <MatriculadosTabs />
+      </Reveal>
+
+      <Reveal>
         <PageHeader
-          step={4}
           title="Retenção e Reativação"
-          subtitle="Monitora a presença dos alunos. Após 7, 14 ou 21 dias sem comparecer, dispara acompanhamento, alerta de risco e campanha de reativação."
+          subtitle="Monitora a presença dos matriculados. Após 7, 14 ou 21 dias sem comparecer, dispara acompanhamento, alerta de risco e campanha de reativação."
         />
       </Reveal>
 
