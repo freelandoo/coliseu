@@ -8,7 +8,15 @@ import { Badge, Card } from "@/components/ui/primitives";
 import { cn } from "@/lib/cn";
 import { formatBRL } from "@/lib/mock-data";
 import { linkPagamentoWhatsApp } from "@/lib/asaas";
+import { CheckoutBalcao, type MetodoBalcao } from "@/components/matricula/CheckoutBalcao";
 import type { Candidato, Plano } from "@/lib/types";
+
+const METODO_LABEL: Record<MetodoBalcao, string> = {
+  dinheiro: "Dinheiro",
+  pix: "PIX",
+  debito: "Cartão débito",
+  credito: "Cartão crédito",
+};
 
 const PASSOS = [
   "Escolher plano",
@@ -37,6 +45,7 @@ const LABEL_OPCIONAL: Record<CampoOpcional, string> = {
 /** Registro de uma matrícula feita nesta sessão (vive só na aba). */
 interface Matriculado {
   id: string;
+  personId: string; // id da pessoa (para o checkout de balcão)
   codigo: string;
   nome: string;
   planoNome: string;
@@ -105,6 +114,15 @@ export function MatriculaFlow({
 
   const [matriculados, setMatriculados] = useState(matriculadosIniciais);
   const [modal, setModal] = useState<Matriculado | null>(null);
+  const [checkout, setCheckout] = useState<Matriculado | null>(null);
+  const [pagoInfo, setPagoInfo] = useState<{ nome: string; metodo: MetodoBalcao } | null>(null);
+
+  function aoPagar(m: Matriculado, metodo: MetodoBalcao) {
+    setMatriculados((prev) => prev.filter((x) => x.id !== m.id));
+    setCheckout(null);
+    setPagoInfo({ nome: m.nome, metodo });
+    router.refresh();
+  }
 
   const listaRef = useRef<HTMLOListElement>(null);
   const [codigoSeq, setCodigoSeq] = useState(
@@ -281,6 +299,7 @@ export function MatriculaFlow({
 
     const novo: Matriculado = {
       id: `sess-${sel.refId}-${codigo}`,
+      personId: sel.refId,
       codigo,
       nome: form.nome.trim(),
       planoNome: plano.nome,
@@ -573,11 +592,19 @@ export function MatriculaFlow({
                     )}
                   </p>
                 </div>
-                <div className="flex items-center gap-3">
+                <div className="flex flex-col items-stretch gap-2 sm:items-end">
                   <Badge tone={m.sincronizadoAsaas ? "ok" : "warn"}>
                     {m.sincronizadoAsaas ? "Sincronizado Asaas" : "Aguardando Asaas"}
                   </Badge>
-                  <ContatoLink waLink={m.waLink} email={m.email} />
+                  <div className="flex flex-col gap-1.5">
+                    <ContatoLink waLink={m.waLink} email={m.email} />
+                    <button
+                      onClick={() => setCheckout(m)}
+                      className="rounded-md border border-red/50 px-3 py-1.5 text-xs font-semibold uppercase tracking-wide text-red-bright transition-colors hover:bg-red-ghost"
+                    >
+                      Venda de balcão
+                    </button>
+                  </div>
                 </div>
               </div>
             ))}
@@ -586,7 +613,61 @@ export function MatriculaFlow({
       </section>
 
       {/* ---------- modal de sucesso ---------- */}
-      {modal && <ModalSucesso dados={modal} onFechar={() => setModal(null)} />}
+      {modal && (
+        <ModalSucesso
+          dados={modal}
+          onFechar={() => setModal(null)}
+          onBalcao={() => {
+            const m = modal;
+            setModal(null);
+            setCheckout(m);
+          }}
+        />
+      )}
+
+      {/* ---------- checkout de balcão ---------- */}
+      {checkout && (
+        <CheckoutBalcao
+          personId={checkout.personId}
+          nome={checkout.nome}
+          planoNome={checkout.planoNome}
+          valor={checkout.valor}
+          onPago={(metodo) => aoPagar(checkout, metodo)}
+          onFechar={() => setCheckout(null)}
+        />
+      )}
+
+      {/* ---------- confirmação de pagamento (balcão) ---------- */}
+      {pagoInfo && (
+        <div
+          className="fixed inset-0 z-[60] flex items-center justify-center bg-black/70 p-4"
+          onClick={() => setPagoInfo(null)}
+        >
+          <div
+            role="dialog"
+            aria-modal="true"
+            onClick={(e) => e.stopPropagation()}
+            className="w-full max-w-sm rounded-xl border border-border bg-surface p-6 text-center shadow-[var(--shadow-plate)]"
+          >
+            <span className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-ok/15 text-2xl text-ok">
+              ✓
+            </span>
+            <h3 className="mt-4 font-display text-xl font-semibold uppercase tracking-wide text-ink">
+              Pagamento confirmado
+            </h3>
+            <p className="mt-1 text-sm text-muted">
+              {pagoInfo.nome} · {METODO_LABEL[pagoInfo.metodo]}
+            </p>
+            <p className="mt-0.5 text-xs text-faint">Matrícula ativa e acesso liberado.</p>
+            <button
+              onClick={() => setPagoInfo(null)}
+              className="mt-5 w-full rounded-lg bg-red px-4 py-2.5 font-display text-sm font-semibold uppercase tracking-widest text-white transition-colors hover:bg-red-bright"
+            >
+              Concluir
+            </button>
+          </div>
+        </div>
+      )}
     </>
   );
 }
@@ -653,9 +734,11 @@ function Campo({
 function ModalSucesso({
   dados,
   onFechar,
+  onBalcao,
 }: {
   dados: Matriculado;
   onFechar: () => void;
+  onBalcao: () => void;
 }) {
   return (
     <div
@@ -699,11 +782,19 @@ function ModalSucesso({
           </a>
         )}
 
+        {/* venda de balcão — sempre abaixo do link de pagamento */}
+        <button
+          onClick={onBalcao}
+          className="mt-3 flex w-full items-center justify-center gap-2 rounded-lg border border-red/50 px-4 py-3 font-display text-sm font-semibold uppercase tracking-widest text-red-bright transition-colors hover:bg-red-ghost"
+        >
+          Venda de balcão →
+        </button>
+
         <button
           onClick={onFechar}
           className="mt-3 w-full rounded-lg border border-border-strong px-4 py-2.5 text-sm font-semibold uppercase tracking-widest text-muted transition-colors hover:text-ink"
         >
-          Confirmar
+          Fechar
         </button>
 
         {dados.faltando.length > 0 && (

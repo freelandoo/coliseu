@@ -34,6 +34,7 @@ export default async function RenovarPage() {
       const link = cobranca?.linkPagamento ?? "";
       return {
         id: `seed-${a.id}`,
+        personId: a.id,
         codigo: a.codigo,
         nome: a.nome,
         planoNome: plano?.nome ?? "—",

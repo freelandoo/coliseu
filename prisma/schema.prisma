@@ -169,6 +169,7 @@ model Cobranca {
   asaasId       String?
   assinaturaId  String?
   linkPagamento String?
+  metodo        String? // venda de balcão: dinheiro | pix | debito | credito
 
   @@index([personId, status])
   @@index([asaasId])
