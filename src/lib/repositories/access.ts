@@ -27,8 +27,14 @@ export async function criarComando(input: {
 export async function enfileirarComandoAcesso(input: {
   deviceId: string; personId: string; type: "ENABLE" | "DISABLE"; payload?: unknown;
 }): Promise<DeviceCommand> {
+  // Escopo restrito ao par ENABLE/DISABLE: um DISABLE da política NÃO pode
+  // superseder um UPSERT_USER/ENROLL pendente (são comandos de provisionamento,
+  // não de habilitação — engolir o UPSERT deixa o aluno para sempre fora do device).
   const pendentes = await prisma.deviceCommand.findMany({
-    where: { deviceId: input.deviceId, personId: input.personId, status: { in: ["PENDING", "DISPATCHED"] } },
+    where: {
+      deviceId: input.deviceId, personId: input.personId,
+      type: { in: ["ENABLE", "DISABLE"] }, status: { in: ["PENDING", "DISPATCHED"] },
+    },
     orderBy: { createdAt: "desc" },
   });
   const mesmoTipo = pendentes.find((c) => c.type === input.type);
@@ -46,6 +52,27 @@ export async function enfileirarComandoAcesso(input: {
       deviceId: input.deviceId, personId: input.personId, type: input.type,
       dedupeKey: `${input.type}:${input.deviceId}:${input.personId}:${Date.now()}:${Math.random().toString(36).slice(2, 8)}`,
       payload: (input.payload ?? undefined) as never,
+    },
+  });
+}
+
+/**
+ * Enfileira o provisionamento (UPSERT_USER) de uma pessoa num device.
+ * Idempotente enquanto houver um UPSERT pendente/dispatched; se o anterior FALHOU,
+ * cria um novo (retry). `enabled:false` — quem habilita é o ENABLE da política.
+ */
+export async function enfileirarUpsertUser(input: {
+  deviceId: string; personId: string; externalUserId: string; nome: string;
+}): Promise<DeviceCommand> {
+  const existente = await prisma.deviceCommand.findFirst({
+    where: { deviceId: input.deviceId, personId: input.personId, type: "UPSERT_USER", status: { in: ["PENDING", "DISPATCHED"] } },
+  });
+  if (existente) return existente;
+  return prisma.deviceCommand.create({
+    data: {
+      deviceId: input.deviceId, personId: input.personId, type: "UPSERT_USER",
+      dedupeKey: `UPSERT_USER:${input.deviceId}:${input.personId}:${Date.now()}:${Math.random().toString(36).slice(2, 8)}`,
+      payload: { externalUserId: input.externalUserId, nome: input.nome, enabled: false },
     },
   });
 }

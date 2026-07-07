@@ -62,6 +62,16 @@ export async function ackComando(input: {
       where: { deviceId: cmd.deviceId, personId: cmd.personId },
       data: { syncStatus: "IN_SYNC", lastSyncAt: new Date() },
     });
+    // UPSERT concluído = pessoa agora existe/sincronizou no device. Reavalia a política
+    // para emitir o ENABLE de quem já pagou (sem isso o aluno ficaria IN_SYNC porém
+    // desabilitado até o próximo evento de pagamento). Só no UPSERT — repetir no ack
+    // de ENABLE geraria loop ENABLE→ack→ENABLE.
+    if (cmd.type === "UPSERT_USER") {
+      const { recalcularAcessoDePessoa } = await import("@/lib/access/outbox");
+      try { await recalcularAcessoDePessoa(cmd.personId); } catch (e) {
+        console.error("[ack] recalcular pós-UPSERT falhou:", e);
+      }
+    }
   }
 }
 

@@ -141,5 +141,15 @@ export async function matricularPessoaRepo(
     });
   }
 
+  // Fase 6-A: provisiona o aluno nas catracas da unidade (mapping + UPSERT_USER
+  // desabilitado). Best-effort: falha aqui não pode derrubar a matrícula — o
+  // recalcularAcessoDePessoa do primeiro pagamento re-provisiona (idempotente).
+  try {
+    const { provisionarAcessoDePessoa } = await import("@/lib/access/provision");
+    await provisionarAcessoDePessoa(id);
+  } catch (e) {
+    console.error("[matricula] provisionamento de acesso falhou:", e);
+  }
+
   return obterPessoaRepo(id);
 }

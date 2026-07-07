@@ -115,10 +115,12 @@ async function tickInterno() {
       const cmds = await pullCommands(DEVICE_ID);
       for (const c of cmds) {
         try {
-          const p = (c.payload ?? {}) as { externalUserId?: string; nome?: string; type?: "FACE" | "CARD" | "PIN"; direction?: "ENTRY" | "EXIT" };
+          const p = (c.payload ?? {}) as { externalUserId?: string; nome?: string; enabled?: boolean; type?: "FACE" | "CARD" | "PIN"; direction?: "ENTRY" | "EXIT" };
           if (c.type === "ENABLE" && p.externalUserId) await device.enableUser(p.externalUserId);
           else if (c.type === "DISABLE" && p.externalUserId) await device.disableUser(p.externalUserId);
-          else if (c.type === "UPSERT_USER" && p.externalUserId) await device.upsertUser({ externalUserId: p.externalUserId, nome: p.nome ?? p.externalUserId, enabled: true });
+          // enabled default FALSE: provisionar não pode liberar a catraca — o ENABLE
+          // emitido pela política é quem habilita (aluno só entra depois de pago).
+          else if (c.type === "UPSERT_USER" && p.externalUserId) await device.upsertUser({ externalUserId: p.externalUserId, nome: p.nome ?? p.externalUserId, enabled: p.enabled === true });
           else if (c.type === "REMOVE_USER" && p.externalUserId) await device.removeUser(p.externalUserId);
           else if (c.type === "ENROLL" && p.externalUserId) await device.startBiometricEnrollment({ externalUserId: p.externalUserId, type: p.type ?? "FACE" });
           else if (c.type === "OPEN") await device.openTurnstile({ direction: p.direction ?? "ENTRY" });
