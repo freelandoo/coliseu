@@ -44,17 +44,23 @@ async function main() {
     create: { slug: "coliseu-team", nome: "Academia Coliseu Team" },
   });
 
-  await prisma.user.upsert({
-    where: { email: "admin@coliseu.local" },
-    update: {},
-    create: {
-      email: "admin@coliseu.local",
-      nome: "Administrador",
-      passwordHash: await hash("coliseu123"),
-      role: "ADMIN",
-      unitId: unit.id,
-    },
-  });
+  const usuarios = [
+    { email: "admin@coliseu.local", nome: "Administrador", senha: "coliseu123", role: "ADMIN" as const },
+    { email: "alex.rodriguus@gmail.com", nome: "Alex Rodrigues", senha: "coliseu123", role: "ADMIN" as const },
+  ];
+  for (const u of usuarios) {
+    await prisma.user.upsert({
+      where: { email: u.email },
+      update: {},
+      create: {
+        email: u.email,
+        nome: u.nome,
+        passwordHash: await hash(u.senha),
+        role: u.role,
+        unitId: unit.id,
+      },
+    });
+  }
 
   const planosSeed = [
     { id: "p-mensal", nome: "Mensal", valorMensal: 129.9, duracaoMeses: 1 },
