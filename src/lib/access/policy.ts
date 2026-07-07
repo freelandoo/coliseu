@@ -37,24 +37,27 @@ export function evaluateAccessEligibility(ctx: AccessContext): AccessDecision {
     return { allow: false, status: "DENIED", reason: "INADIMPLENTE", consumirCortesia: false };
   }
 
-  // 5) Aguardando 1º pagamento → 1 acesso de cortesia.
-  if (ctx.membershipStatus === "PENDING_PAYMENT" || ctx.billingStatus === "PENDING") {
+  // 5) Aguardando o 1º pagamento (matrícula ainda não ativada) → 1 acesso de cortesia.
+  //    IMPORTANTE: só o status da MATRÍCULA decide isso. Um aluno ATIVO com a próxima
+  //    mensalidade emitida (billing PENDING, ainda não vencida) NÃO cai aqui.
+  if (ctx.membershipStatus === "PENDING_PAYMENT") {
     if (ctx.courtesyEntriesLeft > 0) {
       return { allow: true, status: "ALLOWED", reason: "CORTESIA", consumirCortesia: true };
     }
     return { allow: false, status: "DENIED", reason: "AGUARDANDO_PAGAMENTO", consumirCortesia: false };
   }
 
-  // 6) Vencido → carência.
-  if (ctx.billingStatus === "OVERDUE") {
+  // 6) Vencido → carência. Cobre OVERDUE explícito e PENDING já passado do vencimento
+  //    (caso o webhook de OVERDUE atrase).
+  if (ctx.billingStatus === "OVERDUE" || (ctx.billingStatus === "PENDING" && ctx.diasAtraso > 0)) {
     if (ctx.diasAtraso <= ctx.graceDays) {
       return { allow: true, status: "GRACE", reason: "EM_CARENCIA", consumirCortesia: false };
     }
     return { allow: false, status: "DENIED", reason: "INADIMPLENTE", consumirCortesia: false };
   }
 
-  // 7) Em dia e pago.
-  if (ctx.membershipStatus === "ACTIVE" && ctx.billingStatus === "PAID") {
+  // 7) Em dia: pago, ou próxima fatura emitida e ainda não vencida.
+  if (ctx.membershipStatus === "ACTIVE" && (ctx.billingStatus === "PAID" || ctx.billingStatus === "PENDING")) {
     return { allow: true, status: "ALLOWED", reason: "OK", consumirCortesia: false };
   }
 

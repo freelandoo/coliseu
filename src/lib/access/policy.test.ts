@@ -39,6 +39,22 @@ test("aguardando pagamento sem cortesia → DENIED", () => {
   expect(d.reason).toBe("AGUARDANDO_PAGAMENTO");
 });
 
+test("ATIVO com próxima fatura emitida (PENDING, não vencida) → ALLOWED, sem consumir cortesia", () => {
+  const d = evaluateAccessEligibility({ ...base, billingStatus: "PENDING", diasAtraso: -5 });
+  expect(d.allow).toBe(true);
+  expect(d.reason).toBe("OK");
+  expect(d.consumirCortesia).toBe(false);
+});
+
+test("ATIVO com fatura PENDING já vencida (webhook OVERDUE atrasado) → carência", () => {
+  const d = evaluateAccessEligibility({ ...base, billingStatus: "PENDING", diasAtraso: 3 });
+  expect(d.allow).toBe(true);
+  expect(d.status).toBe("GRACE");
+  const negado = evaluateAccessEligibility({ ...base, billingStatus: "PENDING", diasAtraso: 10 });
+  expect(negado.allow).toBe(false);
+  expect(negado.reason).toBe("INADIMPLENTE");
+});
+
 test("vencido dentro da carência → GRACE (libera)", () => {
   const d = evaluateAccessEligibility({ ...base, billingStatus: "OVERDUE", diasAtraso: 3, graceDays: 5 });
   expect(d.allow).toBe(true);

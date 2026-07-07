@@ -20,6 +20,19 @@ export async function sincronizarCobrancaMembership(
   const cob = await tx.cobranca.findFirst({ where: { asaasId: asaasPaymentId } });
   if (!cob) return;
   await tx.cobranca.update({ where: { id: cob.id }, data: { status: cobrancaStatusDe(status) } });
+
   const ms = membershipStatusDe(status);
-  if (ms) await tx.membership.updateMany({ where: { personId: cob.personId }, data: { status: ms } });
+  if (!ms) return;
+  // Só a matrícula MAIS RECENTE muda, e nunca ressuscita CANCELED/EXPIRED:
+  // um pagamento atrasado de ex-aluno não pode reativar contrato encerrado.
+  const alvo = await tx.membership.findFirst({
+    where: { personId: cob.personId }, orderBy: { matriculadoEm: "desc" },
+  });
+  if (!alvo) return;
+  const transicaoValida =
+    (ms === "ACTIVE" && ["PENDING_PAYMENT", "SUSPENDED", "ACTIVE"].includes(alvo.status)) ||
+    (ms === "SUSPENDED" && alvo.status === "ACTIVE");
+  if (transicaoValida && alvo.status !== ms) {
+    await tx.membership.update({ where: { id: alvo.id }, data: { status: ms } });
+  }
 }
