@@ -17,7 +17,11 @@ export function MatriculadosTabs() {
   return (
     <div className="mb-8 flex flex-wrap gap-2 border-b border-border pb-4">
       {ABAS.map((aba) => {
-        const ativo = pathname === aba.href;
+        // A aba raiz (/matriculados) só acende no match exato; as demais acendem em subrotas.
+        const ativo =
+          aba.href === "/matriculados"
+            ? pathname === aba.href
+            : pathname === aba.href || pathname.startsWith(aba.href + "/");
         return (
           <Link
             key={aba.href}

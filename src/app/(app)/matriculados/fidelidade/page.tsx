@@ -1,21 +1,12 @@
 import { Reveal } from "@/components/ui/Reveal";
 import { Badge, Card, PageHeader, Stat } from "@/components/ui/primitives";
 import { MatriculadosTabs } from "@/components/matriculados/MatriculadosTabs";
+import { FidelidadeSubTabs } from "@/components/matriculados/FidelidadeSubTabs";
 import { diasEntre, formatData } from "@/lib/mock-data";
+import { formatMeses } from "@/lib/fidelidade";
 import { listarAlunos, listarPlanos } from "@/lib/store";
 
 export const dynamic = "force-dynamic";
-
-/** Duração legível a partir de um total de meses. */
-function formatMeses(m: number): string {
-  if (m < 1) return "menos de 1 mês";
-  if (m === 1) return "1 mês";
-  if (m < 12) return `${m} meses`;
-  const anos = Math.floor(m / 12);
-  const resto = m % 12;
-  const anosStr = `${anos} ano${anos > 1 ? "s" : ""}`;
-  return resto ? `${anosStr} e ${resto} ${resto > 1 ? "meses" : "mês"}` : anosStr;
-}
 
 /** Faixa de fidelidade pelo tempo de casa (em meses). */
 function faixaFidelidade(meses: number): { rotulo: string; tone: "neutral" | "ok" | "warn" | "red" } {
@@ -65,6 +56,10 @@ export default async function FidelidadePage() {
           title="Fidelidade"
           subtitle="Mede a lealdade dos matriculados: há quanto tempo cada aluno ativo está na casa e há quanto tempo os cancelados deixaram de frequentar."
         />
+      </Reveal>
+
+      <Reveal delay={0.03}>
+        <FidelidadeSubTabs />
       </Reveal>
 
       <Reveal delay={0.05}>

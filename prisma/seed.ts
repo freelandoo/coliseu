@@ -79,6 +79,13 @@ async function main() {
     { id: "a-06", codigo: "CD00006", nome: "Patrícia Gomes", telefone: "(11) 98123-4514", email: "patricia@email.com", cpf: "867.901.234-56", planoId: "p-mensal", status: "ACTIVE", matric: -33, venc: 3, pres: -15, origem: "balcao" },
     { id: "a-07", codigo: "CD00007", nome: "Rodrigo Barros", telefone: "(11) 98123-4515", email: "rodrigo@email.com", cpf: "978.012.345-67", planoId: "p-tri", status: "ACTIVE", matric: -80, venc: 10, pres: -22, origem: "balcao" },
     { id: "a-08", codigo: "CD00008", nome: "Aline Cardoso", telefone: "(11) 98123-4516", email: "aline@email.com", cpf: "089.123.456-78", planoId: "p-mensal", status: "ACTIVE", matric: -95, venc: -12, pres: -30, origem: "balcao" },
+    // Veterano fiel (2 anos de casa) — alimenta o mix e o LTV
+    { id: "a-09", codigo: "CD00009", nome: "Sérgio Ramos", telefone: "(11) 98123-4517", email: "sergio@email.com", cpf: "190.234.567-89", planoId: "p-anual", status: "ACTIVE", matric: -730, venc: 120, pres: -2, origem: "indicacao" },
+    // Cancelados — tempos de casa e de saída variados (ponto de evasão, reativação, churn)
+    { id: "a-10", codigo: "CD00010", nome: "Marcos Vieira", telefone: "(11) 98123-4518", email: "marcos@email.com", cpf: "201.345.678-90", planoId: "p-mensal", status: "CANCELED", matric: -60, venc: -30, pres: -35, origem: "balcao" },
+    { id: "a-11", codigo: "CD00011", nome: "Beatriz Nunes", telefone: "(11) 98123-4519", email: "beatriz@email.com", cpf: "312.456.789-02", planoId: "p-tri", status: "CANCELED", matric: -95, venc: -5, pres: -18, origem: "redes" },
+    { id: "a-12", codigo: "CD00012", nome: "Sônia Prado", telefone: "(11) 98123-4520", email: "sonia@email.com", cpf: "423.567.890-13", planoId: "p-mensal", status: "CANCELED", matric: -150, venc: -120, pres: -120, origem: "balcao" },
+    { id: "a-13", codigo: "CD00013", nome: "Carlos Dias", telefone: "(11) 98123-4521", email: "carlos@email.com", cpf: "534.678.901-24", planoId: "p-semestral", status: "CANCELED", matric: -400, venc: -230, pres: -250, origem: "indicacao" },
   ] as const;
 
   for (const a of alunos) {

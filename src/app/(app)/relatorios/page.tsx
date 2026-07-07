@@ -5,6 +5,7 @@ import {
   type RelatoriosData,
 } from "@/components/relatorios/RelatoriosView";
 import { diasSemPresenca, faixaAusencia, serieMensal } from "@/lib/mock-data";
+import { pontoDeEvasao, retencaoPorCoorte } from "@/lib/fidelidade";
 import {
   listarAlunos,
   listarCobrancas,
@@ -108,6 +109,20 @@ export default async function RelatoriosPage() {
     },
   ];
 
+  // ---------- fidelidade: ponto de evasão (#1) e retenção por coorte (#2) ----------
+  const evasao_ = pontoDeEvasao(alunos);
+  const evasaoTempo = evasao_.dist.map((d) => ({
+    label: d.label,
+    valor: d.count,
+    tone: (d.label === evasao_.pico.label && d.count > 0 ? "red" : "neutral") as RelatoriosData["evasaoTempo"][number]["tone"],
+  }));
+  const coorte = retencaoPorCoorte(alunos);
+  const retencaoCoorte = coorte.map((c) => ({
+    label: c.label,
+    valor: Math.round(c.pct),
+    tone: (c.pct >= 70 ? "ok" : c.pct >= 40 ? "warn" : "red") as RelatoriosData["retencaoCoorte"][number]["tone"],
+  }));
+
   const retencao = [
     { label: "Em dia", valor: frequentes, tone: "ok" as const },
     {
@@ -180,6 +195,8 @@ export default async function RelatoriosPage() {
       { label: "Lucro", valor: lucro, tone: lucro >= 0 ? "ok" : "red" },
     ],
     serie: serieMensal(),
+    evasaoTempo,
+    retencaoCoorte,
   };
 
   return (

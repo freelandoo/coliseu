@@ -32,6 +32,8 @@ export interface RelatoriosData {
   retencao: BarDatum[];
   resultado: BarDatum[];
   serie: PontoMensal[];
+  evasaoTempo: BarDatum[]; // #1 ponto de evasão — cancelamentos por tempo de casa
+  retencaoCoorte: BarDatum[]; // #2 curva de retenção por coorte (% ainda ativo)
 }
 
 const BAR_TONE: Record<Tone, string> = {
@@ -90,7 +92,15 @@ function CountUp({
 }
 
 /* ---------- gráfico de barras horizontais ---------- */
-function BarChart({ data, moeda = false }: { data: BarDatum[]; moeda?: boolean }) {
+function BarChart({
+  data,
+  moeda = false,
+  sufixo = "",
+}: {
+  data: BarDatum[];
+  moeda?: boolean;
+  sufixo?: string;
+}) {
   const ref = useRef<HTMLDivElement>(null);
   const max = Math.max(...data.map((d) => d.valor), 1);
 
@@ -121,7 +131,7 @@ function BarChart({ data, moeda = false }: { data: BarDatum[]; moeda?: boolean }
               style={{ width: `${(Math.max(d.valor, 0) / max) * 100}%` }}
             />
             <span className="absolute right-2 top-1/2 -translate-y-1/2 text-xs font-semibold text-ink">
-              {moeda ? formatBRL(d.valor) : d.valor}
+              {moeda ? formatBRL(d.valor) : `${d.valor}${sufixo}`}
             </span>
           </div>
         </div>
@@ -309,12 +319,14 @@ function ChartCard({
   data,
   className,
   moeda = false,
+  sufixo = "",
 }: {
   titulo: string;
   descricao: string;
   data: BarDatum[];
   className?: string;
   moeda?: boolean;
+  sufixo?: string;
 }) {
   return (
     <Card className={cn("p-6", className)}>
@@ -322,7 +334,7 @@ function ChartCard({
         {titulo}
       </h3>
       <p className="mb-5 mt-0.5 text-xs text-faint">{descricao}</p>
-      <BarChart data={data} moeda={moeda} />
+      <BarChart data={data} moeda={moeda} sufixo={sufixo} />
     </Card>
   );
 }
@@ -405,6 +417,17 @@ export function RelatoriosView({ data }: { data: RelatoriosData }) {
           descricao="Alunos por faixa de ausência"
           data={data.retencao}
           className="lg:col-span-2"
+        />
+        <ChartCard
+          titulo="Ponto de evasão"
+          descricao="Em que tempo de casa os alunos mais cancelam — aja antes desse ponto"
+          data={data.evasaoTempo}
+        />
+        <ChartCard
+          titulo="Retenção por coorte"
+          descricao="% ainda ativo por tempo desde a matrícula"
+          data={data.retencaoCoorte}
+          sufixo="%"
         />
       </section>
 
