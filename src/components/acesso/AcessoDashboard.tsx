@@ -1,11 +1,13 @@
 "use client";
 import { Card, Badge, Stat } from "@/components/ui/primitives";
+import { SimuladorAcesso, type AlunoOpcao } from "@/components/acesso/SimuladorAcesso";
 
 interface Dados {
   devices: { id: string; name: string; status: string; firmware: string; lastHeartbeatAt: string | null }[];
   pendentesBio: number; pendentesSync: number;
   comandos: { id: string; type: string; status: string; createdAt: string }[];
   eventos: { id: string; nome: string; decision: string; reason: string; deviceTime: string; physicallyPassed: boolean }[];
+  alunos: AlunoOpcao[];
 }
 
 function fmt(iso: string | null): string {
@@ -37,6 +39,8 @@ export function AcessoDashboard({ dados }: { dados: Dados }) {
           ))}
         </div>
       </section>
+
+      <SimuladorAcesso alunos={dados.alunos} />
 
       <section>
         <h2 className="mb-4 font-display text-sm font-semibold uppercase tracking-widest text-faint">Comandos pendentes</h2>

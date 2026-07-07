@@ -48,14 +48,14 @@ export async function ackComando(input: {
 }
 
 export async function ingestarEvento(input: {
-  deviceId: string; deviceEventId: string; externalUserId?: string;
+  deviceId: string; deviceEventId: string; externalUserId?: string; personId?: string;
   deviceTime: string; direction: "ENTRY" | "EXIT";
   decision: "ALLOWED" | "DENIED"; reason?: string; physicallyPassed: boolean;
   mode: "ONLINE" | "OFFLINE" | "CONTINGENCY"; cursor?: string;
 }): Promise<{ created: boolean }> {
-  // Resolve a pessoa pelo mapping (externalUserId → personId).
-  let personId: string | null = null;
-  if (input.externalUserId) {
+  // Resolve a pessoa: personId explícito (ex.: simulador) tem prioridade; senão pelo mapping.
+  let personId: string | null = input.personId ?? null;
+  if (!personId && input.externalUserId) {
     const m = await prisma.deviceUserMapping.findUnique({
       where: { deviceId_externalUserId: { deviceId: input.deviceId, externalUserId: input.externalUserId } },
     });
