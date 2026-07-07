@@ -4,8 +4,9 @@ Serviço Node/TS que fala o protocolo backend↔agente da catraca **sem hardware
 heartbeat, puxa `DeviceCommand`, executa via `FakeDeviceAdapter`, dá ack e empurra
 `AccessEvent` simulados — fechando o ciclo até o dashboard `/acesso` e a presença/retenção.
 
-Na **Fase 5**, o driver real do Control iD iDFace entra trocando **apenas**
-`src/adapters/` (o loop, o cliente HTTP e o backend permanecem iguais).
+Na **Fase 5** entrou o driver real do Control iD iDFace (`ADAPTER=controlid`) — veja a
+seção abaixo. O loop (`agent.ts`) agora opera pela interface `AccessDeviceAdapter` e capta
+giros por `pullAccessEvents`, então fake e iDFace passam pelo mesmo caminho.
 
 ## Pré-requisitos
 
@@ -36,8 +37,44 @@ pendentes e os executa no adapter fake + ack (comandos de provisionamento marcam
 mapping como `IN_SYNC`), (3) ocasionalmente gera um giro simulado de um usuário
 habilitado, que vira `AccessEvent` ALLOWED e atualiza a `ultimaPresenca` da matrícula.
 
-## É um simulador
+## É um simulador (modo fake)
 
 O `FakeDeviceAdapter` não faz nenhum I/O com dispositivo real: mantém um set de usuários
 habilitados em memória e gera `deviceEventId` sintéticos. Serve para validar o protocolo
 e o dashboard ponta a ponta antes do hardware.
+
+## Modo Control iD (Fase 5) — driver real do iDFace
+
+Com `ADAPTER=controlid` o agente fala a API REST (`.fcgi`) do **Control iD iDFace Pro** na
+LAN da academia: login/sessão, CRUD de `users`, habilita/desabilita por vínculo com uma
+`access_rule`, dispara enrollment facial (`remote_enroll`), aciona a catraca DIMEP pelo MAE
+(`execute_actions`) e **capta os giros por polling de `access_logs`** (`load_objects`),
+mantendo um cursor local em `.agent-cursor-<DEVICE_ID>` para não reprocessar após restart.
+
+| Var | Default | Descrição |
+|---|---|---|
+| `ADAPTER` | `fake` | `controlid` para o driver real. |
+| `IDFACE_HOST` | — (obrigatório em controlid) | IP/host do iDFace (com ou sem `http://`). |
+| `IDFACE_USER` | `admin` | usuário da API do device. |
+| `IDFACE_PASS` | `admin` | senha da API do device. |
+| `IDFACE_RULE_ID` | `1` | `access_rule` usada para habilitar o aluno. |
+| `IDFACE_DOOR_ID` | `1` | portal físico acionado (`door=N`). |
+
+```bash
+ADAPTER=controlid IDFACE_HOST=192.168.0.50 IDFACE_USER=admin IDFACE_PASS=<senha> \
+  DEVICE_ID=<id-do-AccessDevice> npm start
+```
+
+Notas:
+- **Polling vs Monitor:** captamos giros por `access_logs`. Como `access_logs` não traz uma
+  linha explícita de "giro confirmado" (isso só existe no `catra_event` do Monitor push),
+  adotamos `Acesso concedido ⇒ physicallyPassed`. A tradução está isolada em
+  `src/adapters/controlid/mapping.ts` para calibração.
+- **mTLS agente↔backend:** fora do escopo do código; a autenticação continua por
+  `x-agent-token`. mTLS de verdade termina num reverse-proxy/ingress na frente do backend.
+
+## Testes
+
+```bash
+npm test   # testes do driver Control iD com fetch mockado (sem device na rede)
+```
