@@ -170,9 +170,11 @@ model Cobranca {
   assinaturaId  String?
   linkPagamento String?
   metodo        String? // venda de balcão: dinheiro | pix | debito | credito
+  updatedAt     DateTime @default(now()) @updatedAt
 
   @@index([personId, status])
   @@index([asaasId])
+  @@index([updatedAt])
 }
 
 model Despesa {
