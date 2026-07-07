@@ -55,7 +55,7 @@ export function AcessoDashboard({ dados }: { dados: Dados }) {
               {dados.comandos.map((c) => (
                 <div key={c.id} className="flex items-center justify-between px-5 py-3">
                   <span className="text-sm text-ink">{c.type}</span>
-                  <Badge tone="neutral">{c.status}</Badge>
+                  <Badge tone={c.status === "DEAD_LETTER" ? "red" : "neutral"}>{c.status}</Badge>
                 </div>
               ))}
             </div>

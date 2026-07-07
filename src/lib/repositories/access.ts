@@ -98,6 +98,26 @@ export async function enfileirarEnroll(input: {
   });
 }
 
+/**
+ * Enfileira a remoção da pessoa no device (REMOVE_USER) — usado na exclusão
+ * LGPD. Idempotente enquanto houver um REMOVE_USER pendente/dispatched.
+ */
+export async function enfileirarRemoveUser(input: {
+  deviceId: string; personId: string; externalUserId: string;
+}): Promise<DeviceCommand> {
+  const existente = await prisma.deviceCommand.findFirst({
+    where: { deviceId: input.deviceId, personId: input.personId, type: "REMOVE_USER", status: { in: ["PENDING", "DISPATCHED"] } },
+  });
+  if (existente) return existente;
+  return prisma.deviceCommand.create({
+    data: {
+      deviceId: input.deviceId, personId: input.personId, type: "REMOVE_USER",
+      dedupeKey: `REMOVE_USER:${input.deviceId}:${input.personId}:${Date.now()}:${Math.random().toString(36).slice(2, 8)}`,
+      payload: { externalUserId: input.externalUserId },
+    },
+  });
+}
+
 export async function comandosPendentes(deviceId: string): Promise<DeviceCommand[]> {
   return prisma.deviceCommand.findMany({
     where: { deviceId, status: { in: ["PENDING", "DISPATCHED"] } },
@@ -124,9 +144,9 @@ export async function criarOverride(input: {
   });
 }
 
-export async function revogarCredencial(id: string): Promise<boolean> {
+export async function revogarCredencial(id: string): Promise<{ ok: boolean; personId?: string }> {
   const c = await prisma.accessCredential.findUnique({ where: { id } });
-  if (!c) return false;
+  if (!c) return { ok: false };
   await prisma.accessCredential.update({ where: { id }, data: { status: "REVOKED", revokedAt: new Date() } });
-  return true;
+  return { ok: true, personId: c.personId };
 }

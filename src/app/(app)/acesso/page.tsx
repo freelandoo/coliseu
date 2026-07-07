@@ -10,7 +10,7 @@ export default async function AcessoPage() {
     prisma.accessDevice.findMany({ orderBy: { name: "asc" } }),
     prisma.person.count({ where: { fase: "aluno", credentials: { none: { status: "ENROLLED" } } } }),
     prisma.deviceUserMapping.count({ where: { syncStatus: { not: "IN_SYNC" } } }),
-    prisma.deviceCommand.findMany({ where: { status: { in: ["PENDING", "DISPATCHED"] } }, take: 20, orderBy: { createdAt: "desc" } }),
+    prisma.deviceCommand.findMany({ where: { status: { in: ["PENDING", "DISPATCHED", "DEAD_LETTER"] } }, take: 20, orderBy: { createdAt: "desc" } }),
     prisma.accessEvent.findMany({ take: 20, orderBy: { serverTime: "desc" }, include: { person: { select: { nome: true } } } }),
     prisma.person.findMany({
       where: { fase: "aluno" },

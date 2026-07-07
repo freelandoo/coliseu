@@ -22,8 +22,20 @@ export async function registrarHeartbeat(input: {
 
 /** Janela após a qual um comando DISPATCHED sem ack volta a ser entregue. */
 const REDELIVERY_MS = 2 * 60_000;
+/** Reentregas máximas antes de desistir (DEAD_LETTER) — evita loop infinito de órfão. */
+const MAX_ATTEMPTS = 10;
 
 export async function entregarComandos(deviceId: string): Promise<DeviceCommand[]> {
+  // Órfão reentregue MAX_ATTEMPTS vezes sem ack = algo estrutural (agente quebra
+  // sempre no mesmo comando). Para de insistir e fica visível para a operação.
+  await prisma.deviceCommand.updateMany({
+    where: {
+      deviceId, status: "DISPATCHED",
+      dispatchedAt: { lt: new Date(Date.now() - REDELIVERY_MS) },
+      attempts: { gte: MAX_ATTEMPTS },
+    },
+    data: { status: "DEAD_LETTER", lastError: `sem ack após ${MAX_ATTEMPTS} entregas` },
+  });
   // Reentrega DISPATCHED "órfão" (agente caiu entre o pull e o ack): sem isso um
   // DISABLE de inadimplente ficaria perdido para sempre. Os comandos são idempotentes
   // no device (enable/disable/upsert), então reentregar é seguro.

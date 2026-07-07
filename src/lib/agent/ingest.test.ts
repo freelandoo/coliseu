@@ -30,6 +30,19 @@ test("entregarComandos marca PENDING como DISPATCHED", async () => {
   expect(after?.status).toBe("DISPATCHED");
 });
 
+test("órfão reentregue demais vira DEAD_LETTER e sai da fila", async () => {
+  const cmd = await prisma.deviceCommand.create({
+    data: {
+      deviceId, personId, type: "ENABLE", dedupeKey: `ing-dl-${Date.now()}`,
+      status: "DISPATCHED", attempts: 10, dispatchedAt: new Date(Date.now() - 10 * 60_000),
+    },
+  });
+  const entregues = await entregarComandos(deviceId);
+  expect(entregues.some((c) => c.id === cmd.id)).toBe(false);
+  const after = await prisma.deviceCommand.findUnique({ where: { id: cmd.id } });
+  expect(after?.status).toBe("DEAD_LETTER");
+});
+
 test("ackComando SUCCEEDED marca comando e sincroniza mapping", async () => {
   const cmd = await prisma.deviceCommand.create({ data: { deviceId, personId, type: "UPSERT_USER", dedupeKey: `ing2-${Date.now()}`, status: "DISPATCHED" } });
   await ackComando({ commandId: cmd.id, status: "SUCCEEDED" });

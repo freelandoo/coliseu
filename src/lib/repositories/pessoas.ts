@@ -85,6 +85,10 @@ export async function atualizarPessoaRepo(
 export async function removerPessoaRepo(id: string): Promise<boolean> {
   const exists = await prisma.person.findUnique({ where: { id } });
   if (!exists) return false;
+  // LGPD: apaga das catracas ANTES do delete (o cascade levaria os mappings e
+  // o externalUserId se perderia — o usuário ficaria órfão no device).
+  const { removerAcessoDePessoa } = await import("@/lib/access/deprovision");
+  await removerAcessoDePessoa(id);
   await prisma.person.delete({ where: { id } });
   return true;
 }
