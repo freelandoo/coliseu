@@ -76,5 +76,21 @@ Notas:
 ## Testes
 
 ```bash
-npm test   # testes do driver Control iD com fetch mockado (sem device na rede)
+npm test   # driver Control iD (fetch mockado) + validação de env
 ```
+
+## Kit de instalação (Windows, PC da academia)
+
+```bash
+npm run make-kit   # gera dist/coliseu-agent-kit/ (precisa de internet p/ NSSM e Node MSI)
+```
+
+Gera uma pasta **offline-installable** (~30 MB): bundle único `coliseu-agent.cjs`
+(zero deps), `nssm.exe` (SHA-256 verificado), instalador do Node LTS (hash conferido
+no SHASUMS oficial), `.env` template e scripts `install/update/uninstall/status.bat`.
+Instalação num único contato via AnyDesk: preencha o `.env`, copie a pasta pra
+`C:\coliseu-agent\` e rode `install.bat` como administrador — vira o serviço Windows
+`ColiseuAgent` (auto-start, restart em falha, log rotacionado em `logs\agent.log`).
+Passo a passo completo: `kit-templates/INSTALL.md` (vai dentro do kit).
+
+Spec/decisões: `docs/superpowers/specs/2026-07-07-agent-install-kit-design.md`.

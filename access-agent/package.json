@@ -6,9 +6,11 @@
   "scripts": {
     "start": "tsx src/agent.ts",
     "typecheck": "tsc --noEmit",
-    "test": "node --import tsx --test src/adapters/controlid/controlid-device.test.ts"
+    "test": "node --import tsx --test src/adapters/controlid/controlid-device.test.ts src/env-check.test.ts",
+    "make-kit": "node scripts/make-kit.mjs"
   },
   "devDependencies": {
+    "esbuild": "^0.28.1",
     "tsx": "^4.23.0",
     "typescript": "^5"
   }
