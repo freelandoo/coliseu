@@ -73,6 +73,27 @@ export async function ackComando(input: {
       }
     }
   }
+  // Cadastro de face (Fase 6-B): captura concluída no device → credencial ENROLLED
+  // e reavalia a política (aluno pago recebe o ENABLE na sequência). Se a captura
+  // falhou, só IN_PROGRESS vira FAILED — quem já era ENROLLED não perde o acesso.
+  if (cmd.personId && cmd.type === "ENROLL") {
+    const tipo = ((cmd.payload as { type?: string } | null)?.type ?? "FACE") as "FACE" | "CARD" | "PIN";
+    if (input.status === "SUCCEEDED") {
+      await prisma.accessCredential.updateMany({
+        where: { personId: cmd.personId, type: tipo, status: { in: ["NOT_STARTED", "IN_PROGRESS", "FAILED", "ENROLLED"] } },
+        data: { status: "ENROLLED", enrolledAt: new Date() },
+      });
+      const { recalcularAcessoDePessoa } = await import("@/lib/access/outbox");
+      try { await recalcularAcessoDePessoa(cmd.personId); } catch (e) {
+        console.error("[ack] recalcular pós-ENROLL falhou:", e);
+      }
+    } else {
+      await prisma.accessCredential.updateMany({
+        where: { personId: cmd.personId, type: tipo, status: "IN_PROGRESS" },
+        data: { status: "FAILED" },
+      });
+    }
+  }
 }
 
 export async function ingestarEvento(input: {

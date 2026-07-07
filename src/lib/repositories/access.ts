@@ -77,6 +77,27 @@ export async function enfileirarUpsertUser(input: {
   });
 }
 
+/**
+ * Enfileira a captura de face (ENROLL) de uma pessoa num device.
+ * Idempotente enquanto houver um ENROLL pendente/dispatched; se o anterior
+ * FALHOU (aluno saiu da frente da câmera etc.), cria um novo (retry).
+ */
+export async function enfileirarEnroll(input: {
+  deviceId: string; personId: string; externalUserId: string; nome: string;
+}): Promise<DeviceCommand> {
+  const existente = await prisma.deviceCommand.findFirst({
+    where: { deviceId: input.deviceId, personId: input.personId, type: "ENROLL", status: { in: ["PENDING", "DISPATCHED"] } },
+  });
+  if (existente) return existente;
+  return prisma.deviceCommand.create({
+    data: {
+      deviceId: input.deviceId, personId: input.personId, type: "ENROLL",
+      dedupeKey: `ENROLL:${input.deviceId}:${input.personId}:${Date.now()}:${Math.random().toString(36).slice(2, 8)}`,
+      payload: { externalUserId: input.externalUserId, nome: input.nome, type: "FACE" },
+    },
+  });
+}
+
 export async function comandosPendentes(deviceId: string): Promise<DeviceCommand[]> {
   return prisma.deviceCommand.findMany({
     where: { deviceId, status: { in: ["PENDING", "DISPATCHED"] } },

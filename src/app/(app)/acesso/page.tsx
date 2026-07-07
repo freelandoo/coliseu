@@ -15,7 +15,11 @@ export default async function AcessoPage() {
     prisma.person.findMany({
       where: { fase: "aluno" },
       orderBy: { nome: "asc" },
-      select: { id: true, nome: true, memberships: { orderBy: { matriculadoEm: "desc" }, take: 1, select: { status: true } } },
+      select: {
+        id: true, nome: true,
+        memberships: { orderBy: { matriculadoEm: "desc" }, take: 1, select: { status: true } },
+        credentials: { where: { type: "FACE", status: "ENROLLED" }, take: 1, select: { id: true } },
+      },
     }),
   ]);
   const dados = {
@@ -23,7 +27,7 @@ export default async function AcessoPage() {
     pendentesBio, pendentesSync,
     comandos: comandos.map((c) => ({ id: c.id, type: c.type, status: c.status, createdAt: c.createdAt.toISOString() })),
     eventos: eventos.map((e) => ({ id: e.id, nome: e.person?.nome ?? "—", decision: e.decision, reason: e.reason ?? "", deviceTime: e.deviceTime.toISOString(), physicallyPassed: e.physicallyPassed })),
-    alunos: alunos.map((a) => ({ id: a.id, nome: a.nome, status: a.memberships[0]?.status ?? null })),
+    alunos: alunos.map((a) => ({ id: a.id, nome: a.nome, status: a.memberships[0]?.status ?? null, temFace: a.credentials.length > 0 })),
   };
   return (
     <>
