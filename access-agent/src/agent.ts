@@ -84,8 +84,21 @@ async function pushUmEvento(ev: AccessEventRecord): Promise<void> {
 /**
  * Tick em etapas INDEPENDENTES: falha na nuvem não impede falar com a catraca e
  * vice-versa. É o que mantém o agente útil durante queda de internet.
+ * Reentrância: um tick lento (timeouts encadeados > INTERVALO) NÃO pode sobrepor
+ * o próximo — sobreposição causa corrida de sessão no device e de cursor no disco.
  */
+let tickEmExecucao = false;
 async function tick() {
+  if (tickEmExecucao) return;
+  tickEmExecucao = true;
+  try {
+    await tickInterno();
+  } finally {
+    tickEmExecucao = false;
+  }
+}
+
+async function tickInterno() {
   // Etapa A — heartbeat (nuvem)
   try {
     await heartbeat(DEVICE_ID, firmwareTag);

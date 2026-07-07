@@ -42,3 +42,4 @@ Pronto. Pode fechar o AnyDesk — o serviço fica rodando sozinho.
 | `heartbeat HTTP 401` | `AGENT_TOKEN` diferente do configurado na nuvem | iguale o token nos dois lados |
 | `Campos faltando no .env` | `.env` incompleto | preencha o campo indicado e rode `install.bat` de novo |
 | Serviço não aparece | `install.bat` sem admin | rode como administrador |
+| Catraca resetada de fábrica e giros pararam de sincronizar | ids de log do aparelho reiniciaram; o cursor local ficou "no futuro" | pare o serviço (`status.bat` p/ conferir), apague o arquivo `.agent-cursor-*` da pasta e inicie de novo |

@@ -55,7 +55,8 @@ export class ControlIdDeviceAdapter implements AccessDeviceAdapter {
 
   async upsertUser(input: DeviceUserInput): Promise<DeviceUserResult> {
     const id = Number(input.externalUserId);
-    await this.client.post("/create_objects.fcgi", {
+    // create_or_modify: re-provisionar usuário existente NÃO pode falhar por id duplicado.
+    await this.client.post("/create_or_modify_objects.fcgi", {
       object: "users",
       values: [{ id, name: input.nome, registration: input.externalUserId }],
     });
@@ -109,8 +110,36 @@ export class ControlIdDeviceAdapter implements AccessDeviceAdapter {
     await this.client.post("/cancel_remote_enroll.fcgi", {});
   }
 
+  /**
+   * Primeira execução (sem cursor): pula o histórico pré-integração. Percorre os ids
+   * existentes no device (só ids, sem emitir eventos) e posiciona o cursor no maior.
+   * Sem isso, um device com milhares de logs antigos inundaria o backend com giros
+   * retroativos (e presenças antigas) logo após a instalação.
+   */
+  private async bootstrapCursor(): Promise<string> {
+    let acc = 0;
+    for (;;) {
+      const res = await this.client.post<{ access_logs?: Array<{ id: number }> }>("/load_objects.fcgi", {
+        object: "access_logs",
+        fields: ["id"],
+        where: [{ object: "access_logs", field: "id", operator: ">", value: acc }],
+        order: ["id"],
+        limit: 1000,
+      });
+      const logs = res.access_logs ?? [];
+      if (logs.length === 0) break;
+      acc = logs.reduce((m, l) => Math.max(m, l.id), acc);
+      if (logs.length < 1000) break;
+    }
+    return String(acc);
+  }
+
   async pullAccessEvents(cursor?: string): Promise<AccessEventBatch> {
-    const lastId = cursor ? Number(cursor) : 0;
+    if (!cursor) {
+      const inicio = await this.bootstrapCursor();
+      return { events: [], cursor: inicio };
+    }
+    const lastId = Number(cursor);
     const res = await this.client.post<{ access_logs?: ControlIdAccessLog[] }>("/load_objects.fcgi", {
       object: "access_logs",
       where: [{ object: "access_logs", field: "id", operator: ">", value: lastId }],

@@ -63,14 +63,30 @@ test("re-loga quando a sessão expira (401) e repete a chamada", async () => {
   assert.ok(last.url.includes("session=S2"), "retry usa a nova sessão");
 });
 
-test("upsertUser cria o usuário e habilita (vínculo com access_rule)", async () => {
+test("upsertUser usa create_or_modify (re-provisionar não pode falhar) e habilita", async () => {
   const a = newAdapter();
   await a.upsertUser({ externalUserId: "1001", nome: "Fulano", enabled: true });
-  const create = calls.find((c) => c.path === "/create_objects.fcgi" && c.body.object === "users");
-  assert.ok(create, "cria users");
-  assert.deepEqual(create!.body.values[0], { id: 1001, name: "Fulano", registration: "1001" });
+  const upsert = calls.find((c) => c.path === "/create_or_modify_objects.fcgi" && c.body.object === "users");
+  assert.ok(upsert, "usa create_or_modify_objects");
+  assert.deepEqual(upsert!.body.values[0], { id: 1001, name: "Fulano", registration: "1001" });
   const link = calls.find((c) => c.path === "/create_objects.fcgi" && c.body.object === "user_access_rules");
   assert.deepEqual(link!.body.values[0], { user_id: 1001, access_rule_id: 1 });
+});
+
+test("primeira execução (sem cursor): bootstrap pula o histórico e não emite eventos", async () => {
+  const historico = Array.from({ length: 3 }, (_, i) => ({ id: i + 1 }));
+  installFetch((path, body) => {
+    if (path === "/login.fcgi") return { json: { session: "S1" } };
+    if (path === "/load_objects.fcgi") {
+      const from = body.where?.[0]?.value ?? 0;
+      return { json: { access_logs: historico.filter((l) => l.id > from) } };
+    }
+    return { json: {} };
+  });
+  const a = newAdapter();
+  const batch = await a.pullAccessEvents(undefined);
+  assert.equal(batch.events.length, 0, "não emite giros retroativos");
+  assert.equal(batch.cursor, "3", "cursor posicionado no maior id do device");
 });
 
 test("disableUser remove o vínculo de access_rule", async () => {
