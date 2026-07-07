@@ -42,11 +42,13 @@ if (ADAPTER === "controlid") {
 // ---- log de estado (1 linha por transição, sem spam) ----
 function ts() { return new Date().toISOString(); }
 let nuvemOnline: boolean | null = null; // null = ainda não sabemos
-function marcarNuvem(ok: boolean) {
+function marcarNuvem(ok: boolean, motivo?: string) {
   if (nuvemOnline === ok) return;
   nuvemOnline = ok;
   if (ok) console.log(`[${ts()}] ONLINE: nuvem reconectada — sincronizando`);
-  else console.log(`[${ts()}] OFFLINE: nuvem inacessível — catraca segue decidindo localmente; eventos ficam retidos no dispositivo`);
+  // o motivo distingue queda de internet (fetch failed) de erro de config
+  // (HTTP 401 = AGENT_TOKEN errado; HTTP 404 = DEVICE_ID errado) — ver INSTALL.md.
+  else console.log(`[${ts()}] OFFLINE: nuvem inacessível${motivo ? ` (${motivo})` : ""} — catraca segue decidindo localmente; eventos ficam retidos no dispositivo`);
 }
 let deviceOnline: boolean | null = null;
 function marcarDevice(ok: boolean) {
@@ -103,8 +105,8 @@ async function tickInterno() {
   try {
     await heartbeat(DEVICE_ID, firmwareTag);
     marcarNuvem(true);
-  } catch {
-    marcarNuvem(false);
+  } catch (e) {
+    marcarNuvem(false, e instanceof Error ? e.message : String(e));
   }
 
   // Etapa B — comandos (nuvem -> device); só tenta com nuvem de pé

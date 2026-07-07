@@ -40,6 +40,7 @@ Pronto. Pode fechar o AnyDesk — o serviço fica rodando sozinho.
 | `OFFLINE: nuvem inacessível` | internet da academia caiu ou `BACKEND_URL` errado | catraca segue funcionando; confira internet/URL |
 | `DEVICE FALHOU: catraca inacessível` | `IDFACE_HOST` errado ou catraca em outra rede | confira o IP no aparelho (Menu → Rede) |
 | `heartbeat HTTP 401` | `AGENT_TOKEN` diferente do configurado na nuvem | iguale o token nos dois lados |
+| `heartbeat HTTP 404` | `DEVICE_ID` errado no `.env` | copie o id certo do dashboard `/acesso` |
 | `Campos faltando no .env` | `.env` incompleto | preencha o campo indicado e rode `install.bat` de novo |
 | Serviço não aparece | `install.bat` sem admin | rode como administrador |
 | Catraca resetada de fábrica e giros pararam de sincronizar | ids de log do aparelho reiniciaram; o cursor local ficou "no futuro" | pare o serviço (`status.bat` p/ conferir), apague o arquivo `.agent-cursor-*` da pasta e inicie de novo |

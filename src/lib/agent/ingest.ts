@@ -3,7 +3,11 @@ import type { DeviceCommand } from "@prisma/client";
 
 export async function registrarHeartbeat(input: {
   deviceId: string; firmware?: string; connectivity?: string; clockDriftMs?: number;
-}): Promise<void> {
+}): Promise<{ ok: boolean; erro?: string }> {
+  // DEVICE_ID errado no .env do agente é o erro nº 1 de instalação: responde 404
+  // claro em vez de estourar 500 (o agente mostra "heartbeat HTTP 404" no log).
+  const existe = await prisma.accessDevice.findUnique({ where: { id: input.deviceId }, select: { id: true } });
+  if (!existe) return { ok: false, erro: "device desconhecido — confira o DEVICE_ID" };
   await prisma.$transaction([
     prisma.deviceHeartbeat.create({
       data: { deviceId: input.deviceId, firmware: input.firmware ?? null, connectivity: input.connectivity ?? null, clockDriftMs: input.clockDriftMs ?? null },
@@ -13,16 +17,30 @@ export async function registrarHeartbeat(input: {
       data: { status: "ONLINE", lastHeartbeatAt: new Date(), firmware: input.firmware ?? undefined },
     }),
   ]);
+  return { ok: true };
 }
 
+/** Janela após a qual um comando DISPATCHED sem ack volta a ser entregue. */
+const REDELIVERY_MS = 2 * 60_000;
+
 export async function entregarComandos(deviceId: string): Promise<DeviceCommand[]> {
+  // Reentrega DISPATCHED "órfão" (agente caiu entre o pull e o ack): sem isso um
+  // DISABLE de inadimplente ficaria perdido para sempre. Os comandos são idempotentes
+  // no device (enable/disable/upsert), então reentregar é seguro.
   const pendentes = await prisma.deviceCommand.findMany({
-    where: { deviceId, status: "PENDING" }, orderBy: { createdAt: "asc" },
+    where: {
+      deviceId,
+      OR: [
+        { status: "PENDING" },
+        { status: "DISPATCHED", dispatchedAt: { lt: new Date(Date.now() - REDELIVERY_MS) } },
+      ],
+    },
+    orderBy: { createdAt: "asc" },
   });
   if (pendentes.length > 0) {
     await prisma.deviceCommand.updateMany({
       where: { id: { in: pendentes.map((c) => c.id) } },
-      data: { status: "DISPATCHED", dispatchedAt: new Date() },
+      data: { status: "DISPATCHED", dispatchedAt: new Date(), attempts: { increment: 1 } },
     });
   }
   return pendentes;
@@ -81,10 +99,17 @@ export async function ingestarEvento(input: {
     throw e;
   }
 
-  // Presença real: só giro autorizado e concluído atualiza ultimaPresenca.
+  // Presença real: só giro autorizado e concluído atualiza ultimaPresenca — e só
+  // avança (evento antigo/fora de ordem não pode regredir a presença).
   if (personId && input.decision === "ALLOWED" && input.physicallyPassed && input.direction === "ENTRY") {
-    const m = await prisma.membership.findFirst({ where: { personId }, orderBy: { matriculadoEm: "desc" } });
-    if (m) await prisma.membership.update({ where: { id: m.id }, data: { ultimaPresenca: new Date(input.deviceTime) } });
+    const quando = new Date(input.deviceTime);
+    await prisma.membership.updateMany({
+      where: {
+        id: (await prisma.membership.findFirst({ where: { personId }, orderBy: { matriculadoEm: "desc" }, select: { id: true } }))?.id ?? "",
+        ultimaPresenca: { lt: quando },
+      },
+      data: { ultimaPresenca: quando },
+    });
   }
   return { created: true };
 }

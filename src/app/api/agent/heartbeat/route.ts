@@ -7,6 +7,7 @@ export async function POST(req: Request) {
   if (erro) return erro;
   const body = (await req.json()) as { deviceId?: string; firmware?: string; connectivity?: string; clockDriftMs?: number };
   if (!body.deviceId) return NextResponse.json({ erro: "deviceId obrigatório" }, { status: 400 });
-  await registrarHeartbeat(body as { deviceId: string });
+  const r = await registrarHeartbeat(body as { deviceId: string });
+  if (!r.ok) return NextResponse.json({ erro: r.erro }, { status: 404 });
   return NextResponse.json({ ok: true });
 }
