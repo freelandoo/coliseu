@@ -1,5 +1,4 @@
 "use client";
-import { useRouter } from "next/navigation";
 import { useState } from "react";
 
 const inputCls =
@@ -9,7 +8,6 @@ const inputCls =
 type Modo = "login" | "cadastro";
 
 export default function LoginPage() {
-  const router = useRouter();
   const [modo, setModo] = useState<Modo>("login");
   const [nome, setNome] = useState("");
   const [email, setEmail] = useState("");
@@ -31,7 +29,7 @@ export default function LoginPage() {
       const d = await r.json().catch(() => ({}));
       setErro(d?.erro ?? "Falha na operação"); setEnviando(false); return;
     }
-    router.push("/painel"); router.refresh();
+    window.location.assign("/painel");
   }
 
   function trocarModo() {
