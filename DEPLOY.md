@@ -27,7 +27,7 @@ Ver `.env.example`. Obrigatórias em produção:
 - `AUTH_SECRET` — `openssl rand -base64 32`
 - `AGENT_TOKEN` — **obrigatório**: sem ele as rotas `/api/agent/*` respondem 503 em produção; o mesmo valor vai no `.env` do agente na academia
 - `ASAAS_ENV=production` + `ASAAS_API_KEY` + `ASAAS_WEBHOOK_TOKEN` — sem elas o billing fica em modo demonstração
-- `FREELANDOO_API_TOKEN` — se a integração Freelandoo estiver em uso
+- `FREELANDOO_API_TOKEN` — fallback opcional; o token da integração Freelandoo agora é gerado/rotacionado pelo ADMIN no card "Integração Freelandoo" do painel (tabela `ApiToken` tem precedência sobre esta env). A env só é usada enquanto nenhum token tiver sido gerado pelo painel.
 
 ## Agente da catraca (recepção da academia)
 
