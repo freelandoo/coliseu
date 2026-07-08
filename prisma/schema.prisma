@@ -77,6 +77,7 @@ model User {
   unitId       String
   createdAt    DateTime @default(now())
   sessions     Session[]
+  apiTokens    ApiToken[]
 }
 
 model Session {
@@ -464,4 +465,14 @@ model AuditLog {
   at        DateTime @default(now())
 
   @@index([entity, entityId, at])
+}
+
+model ApiToken {
+  id          String    @id @default(cuid())
+  provider    String    @unique // "freelandoo"
+  tokenHash   String    // sha256 hex do token em claro — nunca o token
+  createdAt   DateTime  @default(now())
+  createdBy   User      @relation(fields: [createdById], references: [id])
+  createdById String
+  lastUsedAt  DateTime?
 }
