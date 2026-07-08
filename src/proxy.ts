@@ -1,6 +1,8 @@
 import { NextResponse, type NextRequest } from "next/server";
 
-const PUBLIC_PREFIXES = ["/login", "/api/auth", "/api/webhooks", "/api/agent"];
+// /api/freelandoo tem autenticação própria (Bearer FREELANDOO_API_TOKEN,
+// consumida server-to-server pela Freelandoo) — não passa por sessão.
+const PUBLIC_PREFIXES = ["/login", "/api/auth", "/api/webhooks", "/api/agent", "/api/freelandoo"];
 
 export function proxy(req: NextRequest) {
   const { pathname } = req.nextUrl;
