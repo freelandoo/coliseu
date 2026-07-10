@@ -2,6 +2,7 @@
 import { Card, Badge, Stat } from "@/components/ui/primitives";
 import { SimuladorAcesso, type AlunoOpcao } from "@/components/acesso/SimuladorAcesso";
 import { CadastroFace } from "@/components/acesso/CadastroFace";
+import { NovaCatraca } from "@/components/acesso/NovaCatraca";
 
 interface Dados {
   devices: { id: string; name: string; status: string; firmware: string; lastHeartbeatAt: string | null }[];
@@ -16,7 +17,7 @@ function fmt(iso: string | null): string {
   return new Date(iso).toLocaleString("pt-BR");
 }
 
-export function AcessoDashboard({ dados }: { dados: Dados }) {
+export function AcessoDashboard({ dados, podeCriar }: { dados: Dados; podeCriar: boolean }) {
   return (
     <div className="flex flex-col gap-8">
       <section className="grid grid-cols-2 gap-4 lg:grid-cols-4">
@@ -34,10 +35,14 @@ export function AcessoDashboard({ dados }: { dados: Dados }) {
               <div>
                 <p className="font-medium text-ink">{d.name}</p>
                 <p className="text-xs text-faint">firmware {d.firmware} · heartbeat {fmt(d.lastHeartbeatAt)}</p>
+                <p className="mt-1 font-mono text-[11px] text-faint" title="DEVICE_ID do .env do agente">
+                  {d.id}
+                </p>
               </div>
               <Badge tone={d.status === "ONLINE" ? "ok" : d.status === "MAINTENANCE" ? "warn" : "red"}>{d.status}</Badge>
             </Card>
           ))}
+          {podeCriar && <NovaCatraca />}
         </div>
       </section>
 

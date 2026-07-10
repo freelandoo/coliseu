@@ -2,10 +2,12 @@ import { Reveal } from "@/components/ui/Reveal";
 import { PageHeader } from "@/components/ui/primitives";
 import { AcessoDashboard } from "@/components/acesso/AcessoDashboard";
 import { prisma } from "@/lib/db";
+import { requireUser, podePapel, type Papel } from "@/lib/auth/rbac";
 
 export const dynamic = "force-dynamic";
 
 export default async function AcessoPage() {
+  const user = await requireUser();
   const [devices, pendentesBio, pendentesSync, comandos, eventos, alunos] = await Promise.all([
     prisma.accessDevice.findMany({ orderBy: { name: "asc" } }),
     prisma.person.count({ where: { fase: "aluno", credentials: { none: { status: "ENROLLED" } } } }),
@@ -35,7 +37,7 @@ export default async function AcessoPage() {
         <PageHeader step={5} title="Controle de Acesso" subtitle="Catracas, sincronização, comandos pendentes e acessos recentes." />
       </Reveal>
       <Reveal delay={0.05}>
-        <AcessoDashboard dados={dados} />
+        <AcessoDashboard dados={dados} podeCriar={podePapel(user.role as Papel, ["ADMIN"])} />
       </Reveal>
     </>
   );

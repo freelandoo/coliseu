@@ -14,6 +14,15 @@ export async function POST(req: Request) {
     return NextResponse.json({ erro: "A senha deve ter ao menos 8 caracteres" }, { status: 400 });
   }
 
+  // Bootstrap-only: o cadastro público existe só para criar o PRIMEIRO admin.
+  // Com o app exposto na internet, deixar isso aberto = qualquer um vira ADMIN.
+  if ((await prisma.user.count()) > 0) {
+    return NextResponse.json(
+      { erro: "Cadastro desabilitado — peça ao administrador" },
+      { status: 403 },
+    );
+  }
+
   // Vincula à unidade existente (cria a matriz se o banco ainda não tem nenhuma).
   const unit =
     (await prisma.unit.findFirst({ orderBy: { createdAt: "asc" } })) ??
