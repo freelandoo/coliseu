@@ -6,11 +6,11 @@
 
 **Architecture:** Novo model `ApiToken` (um por provider, hash SHA-256). Lib `src/lib/freelandoo/token.ts` concentra gerar/status; `exigirFreelandoo` vira async e valida contra o banco com fallback env. Rota `/api/settings/freelandoo-token` (ADMIN) expõe GET status / POST gerar. Card client-side no painel, renderizado só para ADMIN.
 
-**Tech Stack:** Next.js 16 App Router, Prisma 6 + Postgres (docker `oliseu-db-1`), Vitest (integração, sequencial, DB seedado), Tailwind 4 + primitivos próprios.
+**Tech Stack:** Next.js 16 App Router, Prisma 6 + Postgres (docker `coliseu-db-1`), Vitest (integração, sequencial, DB seedado), Tailwind 4 + primitivos próprios.
 
 **Spec:** `docs/superpowers/specs/2026-07-08-freelandoo-token-painel-design.md`
 
-**Atenção (Windows):** parar o dev server antes de `prisma migrate dev` (lock de DLL do Prisma). O Postgres em docker (`oliseu-db-1`) precisa estar de pé para migration e testes.
+**Atenção (Windows):** parar o dev server antes de `prisma migrate dev` (lock de DLL do Prisma). O Postgres em docker (`coliseu-db-1`) precisa estar de pé para migration e testes.
 
 ---
 
