@@ -1,9 +1,12 @@
 node_modules
+access-agent/node_modules
+access-agent/dist
 .next
 .git
-.env*.local
+.env*
 npm-debug.log*
 Dockerfile
 docker-compose.yml
 .dockerignore
 README.md
+coverage

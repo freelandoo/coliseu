@@ -2,8 +2,8 @@
 // Uso: npm run make-kit   (rodar com internet: baixa NSSM e Node MSI, com cache)
 import { build } from "esbuild";
 import { mkdirSync, copyFileSync, readFileSync, writeFileSync, existsSync, statSync, readdirSync } from "node:fs";
-import { execFileSync } from "node:child_process";
 import { createHash } from "node:crypto";
+import JSZip from "jszip";
 import { fileURLToPath } from "node:url";
 import path from "node:path";
 
@@ -70,12 +70,15 @@ await build({
 console.log("[2/4] NSSM...");
 const nssmZip = path.join(cache, "nssm-2.24.zip");
 await download(NSSM_URLS, nssmZip, NSSM_SHA256);
-const nssmDir = path.join(cache, "nssm");
-if (!existsSync(path.join(nssmDir, "nssm-2.24", "win64", "nssm.exe"))) {
-  execFileSync("powershell", ["-NoProfile", "-Command",
-    `Expand-Archive -Force -LiteralPath '${nssmZip}' -DestinationPath '${nssmDir}'`]);
+// extração com jszip — o kit é gerado tanto no Windows (dev) quanto no build Linux do deploy
+const nssmExe = path.join(cache, "nssm.exe");
+if (!existsSync(nssmExe)) {
+  const zip = await JSZip.loadAsync(readFileSync(nssmZip));
+  const entry = zip.file("nssm-2.24/win64/nssm.exe");
+  if (!entry) throw new Error("nssm.exe não encontrado dentro do zip");
+  writeFileSync(nssmExe, await entry.async("nodebuffer"));
 }
-copyFileSync(path.join(nssmDir, "nssm-2.24", "win64", "nssm.exe"), path.join(kit, "nssm.exe"));
+copyFileSync(nssmExe, path.join(kit, "nssm.exe"));
 
 console.log("[3/4] Node.js LTS (msi)...");
 // hash oficial vem do SHASUMS256.txt da própria release — nada de memória/hardcode.
