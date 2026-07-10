@@ -13,6 +13,11 @@ export async function criarSessao(userId: string): Promise<void> {
   });
 }
 
+/** Id da sessão atual (cookie) — útil para preservá-la ao revogar as demais. */
+export async function sessaoAtualId(): Promise<string | null> {
+  return (await cookies()).get(COOKIE)?.value ?? null;
+}
+
 export async function usuarioAtual() {
   const id = (await cookies()).get(COOKIE)?.value;
   if (!id) return null;

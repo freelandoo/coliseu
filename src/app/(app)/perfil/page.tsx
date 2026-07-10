@@ -1,0 +1,77 @@
+import { prisma } from "@/lib/db";
+import { requireUser, podePapel, type Papel } from "@/lib/auth/rbac";
+import { kitDisponivel } from "@/lib/agent/kit";
+import { Badge, Card } from "@/components/ui/primitives";
+import { Reveal } from "@/components/ui/Reveal";
+import { AlterarSenhaCard } from "@/components/perfil/AlterarSenhaCard";
+import { AgentKitCard } from "@/components/perfil/AgentKitCard";
+
+export const dynamic = "force-dynamic";
+
+const PAPEL_LABEL: Record<string, string> = {
+  ADMIN: "Administrador",
+  RECEPCAO: "Recepção",
+  TECNICO: "Técnico",
+};
+
+export default async function PerfilPage() {
+  const user = await requireUser();
+  const isAdmin = podePapel(user.role as Papel, ["ADMIN"]);
+
+  const [unit, devices] = await Promise.all([
+    prisma.unit.findUnique({ where: { id: user.unitId }, select: { nome: true } }),
+    isAdmin
+      ? prisma.accessDevice.findMany({
+          select: { id: true, name: true },
+          orderBy: { createdAt: "asc" },
+        })
+      : Promise.resolve([]),
+  ]);
+
+  return (
+    <>
+      <Reveal>
+        <header className="mb-8">
+          <p className="text-xs font-medium uppercase tracking-widest text-red-bright">
+            Conta
+          </p>
+          <h1 className="mt-1 font-display text-4xl font-semibold uppercase tracking-wide text-ink">
+            Perfil
+          </h1>
+          <p className="mt-1 text-sm text-muted">
+            Seus dados de acesso e as ferramentas da sua conta.
+          </p>
+        </header>
+      </Reveal>
+
+      <div className="flex max-w-2xl flex-col gap-4">
+        <Reveal delay={0.05}>
+          <Card className="p-5">
+            <div className="flex items-center justify-between">
+              <h3 className="font-display text-xl font-semibold uppercase tracking-wide text-ink">
+                {user.nome}
+              </h3>
+              <Badge tone="red">{PAPEL_LABEL[user.role] ?? user.role}</Badge>
+            </div>
+            <p className="mt-1.5 text-sm text-muted">{user.email}</p>
+            {unit && <p className="mt-1 text-xs text-faint">Unidade: {unit.nome}</p>}
+          </Card>
+        </Reveal>
+
+        <Reveal delay={0.1}>
+          <AlterarSenhaCard />
+        </Reveal>
+
+        {isAdmin && (
+          <Reveal delay={0.15}>
+            <AgentKitCard
+              kitDisponivel={kitDisponivel()}
+              tokenConfigurado={Boolean(process.env.AGENT_TOKEN)}
+              devices={devices}
+            />
+          </Reveal>
+        )}
+      </div>
+    </>
+  );
+}

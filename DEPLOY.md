@@ -31,7 +31,9 @@ Ver `.env.example`. Obrigatórias em produção:
 
 ## Agente da catraca (recepção da academia)
 
-O kit (`access-agent/dist/coliseu-agent-kit`, gerado por `npm run make-kit`) roda como serviço Windows. No `.env` do kit aponte:
+O jeito recomendado de obter o kit: **Perfil → card "Agente da recepção" → Download do kit** (só ADMIN). O ZIP já vem com `BACKEND_URL` (domínio atual), `AGENT_TOKEN` e `DEVICE_ID` preenchidos no `.env` — na academia só falta `IDFACE_HOST/USER/PASS`. Para o botão funcionar em produção, o build do deploy precisa gerar o kit: `npm --prefix access-agent ci && npm run make-kit` (baixa Node MSI + NSSM com verificação de checksum; o resultado fica em `access-agent/dist/coliseu-agent-kit`, fora do git).
+
+Alternativa manual — o kit (`access-agent/dist/coliseu-agent-kit`, gerado por `npm run make-kit`) roda como serviço Windows. No `.env` do kit aponte:
 
 ```
 BACKEND_URL=https://<dominio-do-app>

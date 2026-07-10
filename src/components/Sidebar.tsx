@@ -154,6 +154,37 @@ export function Sidebar() {
           })}
         </nav>
 
+        <div className="border-t border-border p-3">
+          <Link
+            href="/perfil"
+            onClick={() => setAberto(false)}
+            className={cn(
+              "group relative flex items-center gap-3 rounded-lg px-3 py-2.5 transition-colors",
+              pathname === "/perfil"
+                ? "bg-red-ghost text-ink"
+                : "text-muted hover:bg-surface-2 hover:text-ink",
+            )}
+          >
+            {pathname === "/perfil" && (
+              <span className="absolute left-0 top-1/2 h-6 -translate-y-1/2 rounded-r bg-red-bright [width:3px]" />
+            )}
+            <span
+              className={cn(
+                "flex h-7 w-7 shrink-0 items-center justify-center rounded-md border text-xs font-semibold",
+                pathname === "/perfil"
+                  ? "border-red/50 bg-red text-white"
+                  : "border-border bg-surface text-faint group-hover:text-muted",
+              )}
+            >
+              {IconPessoas}
+            </span>
+            <span className="leading-tight">
+              <span className="block text-sm font-medium">Perfil</span>
+              <span className="block text-[11px] text-faint">Conta, senha e downloads</span>
+            </span>
+          </Link>
+        </div>
+
         <div className="border-t border-border px-5 py-4 text-[11px] text-faint">
           <p className="flex items-center gap-2">
             <span className="inline-block h-1.5 w-1.5 rounded-full bg-ok" />
