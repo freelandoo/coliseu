@@ -1,13 +1,7 @@
 import { prisma } from "@/lib/db";
 import { toPlano } from "@/lib/repositories/mappers";
 import type { NovoPlano, Plano } from "@/lib/types";
-
-const UNIT_SLUG = "coliseu-team";
-
-async function unitId(): Promise<string> {
-  const u = await prisma.unit.findUniqueOrThrow({ where: { slug: UNIT_SLUG } });
-  return u.id;
-}
+import { unitIdAtual } from "@/lib/repositories/unit";
 
 export async function listarPlanosRepo(): Promise<Plano[]> {
   const rows = await prisma.plan.findMany({ orderBy: { valorMensal: "desc" } });
@@ -27,7 +21,7 @@ export async function criarPlanoRepo(input: NovoPlano): Promise<Plano> {
       duracaoMeses: input.duracaoMeses,
       descricao: input.descricao?.trim() || null,
       ativo: true,
-      unitId: await unitId(),
+      unitId: await unitIdAtual(),
     },
   });
   return toPlano(row);

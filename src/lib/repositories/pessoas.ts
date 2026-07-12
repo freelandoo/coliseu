@@ -3,14 +3,9 @@ import { toPessoa } from "@/lib/repositories/mappers";
 import type { NovaPessoa, Pessoa } from "@/lib/types";
 import type { AsaasMatricula } from "@/lib/asaas";
 import { upsertBillingCustomerRepo, upsertBillingSubscriptionRepo, upsertPaymentRepo } from "@/lib/repositories/billing";
+import { unitIdAtual } from "@/lib/repositories/unit";
 
-const UNIT_SLUG = "coliseu-team";
 const withMemberships = { memberships: { orderBy: { matriculadoEm: "desc" as const }, take: 1 } };
-
-async function unitId(): Promise<string> {
-  const u = await prisma.unit.findUniqueOrThrow({ where: { slug: UNIT_SLUG } });
-  return u.id;
-}
 
 export async function proximoCodigoRepo(): Promise<string> {
   const rows = await prisma.person.findMany({ select: { codigo: true } });
@@ -48,7 +43,7 @@ export async function criarPessoaRepo(input: NovaPessoa): Promise<Pessoa> {
       cidade: input.endereco?.cidade || null,
       rua: input.endereco?.rua || null,
       numero: input.endereco?.numero || null,
-      unitId: await unitId(),
+      unitId: await unitIdAtual(),
     },
     include: withMemberships,
   });

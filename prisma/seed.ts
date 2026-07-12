@@ -33,6 +33,7 @@ async function main() {
   await prisma.accessPolicy.deleteMany();
   await prisma.accessDevice.deleteMany();
   await prisma.auditLog.deleteMany();
+  await prisma.apiToken.deleteMany();
   await prisma.person.deleteMany();
   await prisma.plan.deleteMany();
   await prisma.user.deleteMany();
