@@ -7,11 +7,23 @@ const inputCls =
 
 type Modo = "login" | "cadastro";
 
+function OlhoIcon({ aberto }: { aberto: boolean }) {
+  return (
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+      strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      <path d="M2 12s3.6-6.5 10-6.5S22 12 22 12s-3.6 6.5-10 6.5S2 12 2 12Z" />
+      <circle cx="12" cy="12" r="3" />
+      {!aberto && <path d="m4 20 16-16" />}
+    </svg>
+  );
+}
+
 export default function LoginPage() {
   const [modo, setModo] = useState<Modo>("login");
   const [nome, setNome] = useState("");
   const [email, setEmail] = useState("");
   const [senha, setSenha] = useState("");
+  const [verSenha, setVerSenha] = useState(false);
   const [erro, setErro] = useState("");
   const [enviando, setEnviando] = useState(false);
 
@@ -50,8 +62,16 @@ export default function LoginPage() {
               onChange={(e) => setNome(e.target.value)} />
           )}
           <input className={inputCls} placeholder="E-mail" value={email} onChange={(e) => setEmail(e.target.value)} />
-          <input className={inputCls} type="password" placeholder={cadastro ? "Senha (mín. 8 caracteres)" : "Senha"} value={senha}
-            onChange={(e) => setSenha(e.target.value)} onKeyDown={(e) => e.key === "Enter" && enviar()} />
+          <div className="relative">
+            <input className={`${inputCls} pr-10`} type={verSenha ? "text" : "password"}
+              placeholder={cadastro ? "Senha (mín. 8 caracteres)" : "Senha"} value={senha}
+              onChange={(e) => setSenha(e.target.value)} onKeyDown={(e) => e.key === "Enter" && enviar()} />
+            <button type="button" onClick={() => setVerSenha((v) => !v)}
+              aria-label={verSenha ? "Ocultar senha" : "Mostrar senha"} aria-pressed={verSenha}
+              className="absolute inset-y-0 right-0 grid w-10 place-items-center text-faint transition-colors hover:text-ink">
+              <OlhoIcon aberto={verSenha} />
+            </button>
+          </div>
         </div>
         {erro && <p className="mt-3 text-xs text-red-bright">{erro}</p>}
         <button onClick={enviar} disabled={enviando}
