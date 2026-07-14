@@ -96,12 +96,16 @@ export class ControlIdDeviceAdapter implements AccessDeviceAdapter {
   async startBiometricEnrollment(input: EnrollmentInput): Promise<EnrollmentResult> {
     const type = input.type === "FACE" ? "face" : input.type === "CARD" ? "card" : "pin";
     // save=true grava no usuário; sync=false devolve resultado via monitor/consulta posterior.
+    // auto=true + countdown: captura automática — detectou a face, conta 3s e confirma a
+    // foto sozinho, sem ninguém precisar tocar na tela do aparelho.
     await this.client.post("/remote_enroll.fcgi", {
       type,
       user_id: Number(input.externalUserId),
       save: true,
       sync: false,
       panic: false,
+      auto: true,
+      countdown: 3,
     });
     return { sessionId: `${input.externalUserId}:${type}`, status: "IN_PROGRESS" };
   }
