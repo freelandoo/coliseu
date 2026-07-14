@@ -99,19 +99,24 @@ export class ControlIdDeviceAdapter implements AccessDeviceAdapter {
     // confirma a foto sozinho, sem tocar na tela (o auto só vale no modo síncrono). A
     // chamada fica aberta até a captura terminar, por isso o timeout estendido; o sucesso
     // aqui é a captura CONCLUÍDA, então o ack do comando vira a credencial cadastrada.
-    const res = await this.client.post<{ success?: boolean; error?: string }>(
+    const payload = {
+      type,
+      user_id: Number(input.externalUserId),
+      save: true,
+      sync: true,
+      panic: false,
+      auto: true,
+      countdown: 3,
+    };
+    console.log(`[${new Date().toISOString()}] [enroll] remote_enroll enviado: ${JSON.stringify(payload)} — aguardando captura (ate 90s)...`);
+    const res = await this.client.post<{ success?: boolean; error?: string; user_image?: string }>(
       "/remote_enroll.fcgi",
-      {
-        type,
-        user_id: Number(input.externalUserId),
-        save: true,
-        sync: true,
-        panic: false,
-        auto: true,
-        countdown: 3,
-      },
+      payload,
       90_000,
     );
+    // loga a resposta crua do aparelho (sem a foto base64) — diagnóstico de campo.
+    const { user_image, ...semFoto } = res as Record<string, unknown>;
+    console.log(`[${new Date().toISOString()}] [enroll] resposta do aparelho: ${JSON.stringify(semFoto)}${user_image ? " (+user_image)" : ""}`);
     if (res.success === false) {
       // FACE_EXISTS = rosto já cadastrado em outro usuário do aparelho (ex.: legado do
       // sistema antigo) — precisa excluir o usuário antigo no iDFace antes de recadastrar.

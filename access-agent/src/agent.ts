@@ -35,6 +35,17 @@ if (ADAPTER === "controlid") {
     doorId: process.env.IDFACE_DOOR_ID ? Number(process.env.IDFACE_DOOR_ID) : undefined,
   });
   firmwareTag = "controlid-idface";
+  // Loga e propaga o firmware REAL do aparelho (best-effort): aparece no boot do log
+  // e no card do /acesso via heartbeat — diagnóstico de recursos por versão.
+  void (async () => {
+    try {
+      const h = await device.testConnection();
+      if (h.firmware) {
+        firmwareTag = `controlid-idface/${h.firmware}`;
+        console.log(`[${ts()}] [agent] firmware do iDFace: ${h.firmware}`);
+      }
+    } catch { /* sem conexão agora; o tick sinaliza DEVICE FALHOU */ }
+  })();
 } else {
   device = new FakeDeviceAdapter();
 }
@@ -135,7 +146,9 @@ async function tickInterno() {
           await ackCommand(c.id, "SUCCEEDED");
           console.log(`[agent] comando ${c.type} ok`);
         } catch (e) {
-          try { await ackCommand(c.id, "FAILED", e instanceof Error ? e.message : String(e)); } catch { /* nuvem caiu no meio */ }
+          const msg = e instanceof Error ? e.message : String(e);
+          console.error(`[${ts()}] [agent] comando ${c.type} FALHOU: ${msg}`);
+          try { await ackCommand(c.id, "FAILED", msg); } catch { /* nuvem caiu no meio */ }
         }
       }
     } catch (e) {
