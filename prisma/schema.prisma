@@ -400,7 +400,7 @@ model DeviceCommand {
   device       AccessDevice        @relation(fields: [deviceId], references: [id], onDelete: Cascade)
   deviceId     String
   personId     String?
-  type         String              // UPSERT_USER | ENABLE | DISABLE | REMOVE_USER | ENROLL | OPEN | SYNC_RULES
+  type         String              // UPSERT_USER | ENABLE | DISABLE | REMOVE_USER | ENROLL | OPEN | SYNC_RULES | SHUTDOWN
   payload      Json?
   status       DeviceCommandStatus @default(PENDING)
   attempts     Int                 @default(0)

@@ -116,6 +116,14 @@ async function tickInterno() {
       for (const c of cmds) {
         try {
           const p = (c.payload ?? {}) as { externalUserId?: string; nome?: string; enabled?: boolean; type?: "FACE" | "CARD" | "PIN"; direction?: "ENTRY" | "EXIT" };
+          if (c.type === "SHUTDOWN") {
+            // Botão "parar agente" do dashboard: só a SIMULAÇÃO obedece. O agente real
+            // roda como serviço (NSSM reiniciaria na hora) — parar é pelo uninstall.bat.
+            if (ADAPTER !== "fake") throw new Error("ignorado: agente real (controlid) não para por comando remoto");
+            await ackCommand(c.id, "SUCCEEDED");
+            console.log(`[${ts()}] [agent] SHUTDOWN recebido — encerrando o agente de simulação`);
+            process.exit(0);
+          }
           if (c.type === "ENABLE" && p.externalUserId) await device.enableUser(p.externalUserId);
           else if (c.type === "DISABLE" && p.externalUserId) await device.disableUser(p.externalUserId);
           // enabled default FALSE: provisionar não pode liberar a catraca — o ENABLE

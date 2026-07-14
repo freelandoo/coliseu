@@ -3,6 +3,7 @@ import { Card, Badge, Stat } from "@/components/ui/primitives";
 import { SimuladorAcesso, type AlunoOpcao } from "@/components/acesso/SimuladorAcesso";
 import { CadastroFace } from "@/components/acesso/CadastroFace";
 import { NovaCatraca } from "@/components/acesso/NovaCatraca";
+import { PararAgente } from "@/components/acesso/PararAgente";
 
 interface Dados {
   devices: { id: string; name: string; status: string; firmware: string; lastHeartbeatAt: string | null }[];
@@ -39,7 +40,10 @@ export function AcessoDashboard({ dados, podeCriar }: { dados: Dados; podeCriar:
                   {d.id}
                 </p>
               </div>
-              <Badge tone={d.status === "ONLINE" ? "ok" : d.status === "MAINTENANCE" ? "warn" : "red"}>{d.status}</Badge>
+              <div className="flex flex-col items-end gap-2">
+                <Badge tone={d.status === "ONLINE" ? "ok" : d.status === "MAINTENANCE" ? "warn" : "red"}>{d.status}</Badge>
+                {podeCriar && d.status === "ONLINE" && <PararAgente deviceId={d.id} />}
+              </div>
             </Card>
           ))}
           {podeCriar && <NovaCatraca />}

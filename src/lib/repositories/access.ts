@@ -118,6 +118,24 @@ export async function enfileirarRemoveUser(input: {
   });
 }
 
+/**
+ * Enfileira o encerramento do agente (SHUTDOWN) — só o agente de SIMULAÇÃO (fake)
+ * obedece; o driver real (controlid) dá ack FAILED e segue rodando.
+ * Idempotente enquanto houver um SHUTDOWN pendente/dispatched.
+ */
+export async function enfileirarShutdown(deviceId: string): Promise<DeviceCommand> {
+  const existente = await prisma.deviceCommand.findFirst({
+    where: { deviceId, type: "SHUTDOWN", status: { in: ["PENDING", "DISPATCHED"] } },
+  });
+  if (existente) return existente;
+  return prisma.deviceCommand.create({
+    data: {
+      deviceId, type: "SHUTDOWN",
+      dedupeKey: `SHUTDOWN:${deviceId}:${Date.now()}:${Math.random().toString(36).slice(2, 8)}`,
+    },
+  });
+}
+
 export async function comandosPendentes(deviceId: string): Promise<DeviceCommand[]> {
   return prisma.deviceCommand.findMany({
     where: { deviceId, status: { in: ["PENDING", "DISPATCHED"] } },
