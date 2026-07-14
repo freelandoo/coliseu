@@ -1,4 +1,4 @@
-import { existsSync, readdirSync, readFileSync } from "node:fs";
+import { existsSync, readdirSync, readFileSync, statSync } from "node:fs";
 import path from "node:path";
 import JSZip from "jszip";
 
@@ -9,6 +9,26 @@ export function kitDir(): string {
 
 export function kitDisponivel(): boolean {
   return existsSync(path.join(kitDir(), "coliseu-agent.cjs"));
+}
+
+export type KitInfo = { version?: string; commit?: string | null; builtAt: string };
+
+/**
+ * Versão/data do kit gerado — lê o kit-version.json gravado pelo make-kit.
+ * Kits antigos (sem o json): usa o mtime do bundle como data do build.
+ */
+export function kitInfo(): KitInfo | null {
+  if (!kitDisponivel()) return null;
+  try {
+    const raw = readFileSync(path.join(kitDir(), "kit-version.json"), "utf8");
+    const info = JSON.parse(raw) as KitInfo;
+    if (info.builtAt) return info;
+  } catch { /* sem json: cai no mtime */ }
+  try {
+    return { builtAt: statSync(path.join(kitDir(), "coliseu-agent.cjs")).mtime.toISOString() };
+  } catch {
+    return null;
+  }
 }
 
 export type ValoresEnvKit = {

@@ -1,6 +1,6 @@
 import { prisma } from "@/lib/db";
 import { requireUser, podePapel, type Papel } from "@/lib/auth/rbac";
-import { kitDisponivel } from "@/lib/agent/kit";
+import { kitDisponivel, kitInfo } from "@/lib/agent/kit";
 import { Badge, Card } from "@/components/ui/primitives";
 import { Reveal } from "@/components/ui/Reveal";
 import { AlterarSenhaCard } from "@/components/perfil/AlterarSenhaCard";
@@ -66,6 +66,7 @@ export default async function PerfilPage() {
           <Reveal delay={0.15}>
             <AgentKitCard
               kitDisponivel={kitDisponivel()}
+              kitInfo={kitInfo()}
               tokenConfigurado={Boolean(process.env.AGENT_TOKEN)}
               devices={devices}
             />

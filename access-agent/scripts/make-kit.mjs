@@ -3,6 +3,7 @@
 import { build } from "esbuild";
 import { mkdirSync, copyFileSync, readFileSync, writeFileSync, existsSync, statSync, readdirSync } from "node:fs";
 import { createHash } from "node:crypto";
+import { execSync } from "node:child_process";
 import JSZip from "jszip";
 import { fileURLToPath } from "node:url";
 import path from "node:path";
@@ -97,6 +98,17 @@ for (const f of readdirSync(tpl)) {
   // .bat exige CRLF (labels/goto quebram com LF); .env/.md CRLF p/ Bloco de Notas.
   writeFileSync(path.join(kit, destName), crlf(src));
 }
+
+// Carimbo de versão do kit — exibido no card do /perfil e vai junto no zip.
+let commit = null;
+try {
+  commit = execSync("git rev-parse --short HEAD", { cwd: root, stdio: ["ignore", "pipe", "ignore"] }).toString().trim();
+} catch { /* build fora de um repo git (ex.: CI sem .git) */ }
+const pkg = JSON.parse(readFileSync(path.join(root, "package.json"), "utf8"));
+writeFileSync(
+  path.join(kit, "kit-version.json"),
+  JSON.stringify({ version: pkg.version, commit, builtAt: new Date().toISOString() }, null, 2),
+);
 
 console.log("\nKit pronto em dist/coliseu-agent-kit/:");
 for (const f of readdirSync(kit)) {

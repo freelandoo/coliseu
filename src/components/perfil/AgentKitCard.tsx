@@ -11,13 +11,16 @@ const selectCls =
   "outline-none transition-colors focus:border-red/60";
 
 export type DeviceOpcao = { id: string; name: string };
+export type KitInfoOpcao = { version?: string; commit?: string | null; builtAt: string } | null;
 
 export function AgentKitCard({
   kitDisponivel,
+  kitInfo,
   tokenConfigurado,
   devices,
 }: {
   kitDisponivel: boolean;
+  kitInfo?: KitInfoOpcao;
   tokenConfigurado: boolean;
   devices: DeviceOpcao[];
 }) {
@@ -102,6 +105,14 @@ export function AgentKitCard({
           {baixando ? "Preparando…" : "Download do kit"}
         </button>
       </div>
+
+      {kitInfo && (
+        <p className="mt-4 border-t border-border pt-3 font-mono text-[11px] text-faint">
+          Última versão: {kitInfo.version ?? "—"}
+          {kitInfo.commit ? ` (${kitInfo.commit})` : ""} · gerada em{" "}
+          {new Date(kitInfo.builtAt).toLocaleString("pt-BR")}
+        </p>
+      )}
     </Card>
   );
 }
