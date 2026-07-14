@@ -40,14 +40,14 @@ export function FreelandooTokenCard({ inicial }: { inicial: StatusTokenFreelando
     <Card className="p-5">
       <div className="flex items-center justify-between">
         <h3 className="font-display text-xl font-semibold uppercase tracking-wide text-ink">
-          Integração Freelandoo
+          Integração API
         </h3>
         {status.exists
           ? <Badge tone="ok">Token ativo</Badge>
           : <Badge>Nunca gerado</Badge>}
       </div>
       <p className="mt-1.5 text-sm text-muted">
-        Token Bearer que a Freelandoo usa para consumir a API da academia
+        Token Bearer usado para consumir a API da academia
         (membros, acessos e pagamentos).
       </p>
 
@@ -87,7 +87,7 @@ export function FreelandooTokenCard({ inicial }: { inicial: StatusTokenFreelando
                 Cancelar
               </button>
               <p className="text-xs text-warn">
-                O token atual para de valer na hora — a integração fica fora até você colar o novo na Freelandoo.
+                O token atual para de valer na hora — a integração fica fora até você colar o novo token no sistema integrado.
               </p>
             </>
           ) : (
