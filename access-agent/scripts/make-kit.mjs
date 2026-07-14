@@ -57,6 +57,12 @@ function crlf(s) {
   return s.replace(/\r?\n/g, "\r\n");
 }
 
+// Commit curto do build — vai para o log de boot do agente e o kit-version.json.
+let commit = null;
+try {
+  commit = execSync("git rev-parse --short HEAD", { cwd: root, stdio: ["ignore", "pipe", "ignore"] }).toString().trim();
+} catch { /* build fora de um repo git (ex.: CI sem .git) */ }
+
 console.log("[1/4] Bundle do agente (esbuild)...");
 await build({
   entryPoints: [path.join(root, "src", "agent.ts")],
@@ -66,6 +72,7 @@ await build({
   format: "cjs",
   outfile: path.join(kit, "coliseu-agent.cjs"),
   banner: { js: "// Coliseu Agent (bundle) — gerado por make-kit; não editar na mão." },
+  define: { "process.env.KIT_VERSION": JSON.stringify(commit ?? "dev") },
 });
 
 console.log("[2/4] NSSM...");
@@ -100,10 +107,6 @@ for (const f of readdirSync(tpl)) {
 }
 
 // Carimbo de versão do kit — exibido no card do /perfil e vai junto no zip.
-let commit = null;
-try {
-  commit = execSync("git rev-parse --short HEAD", { cwd: root, stdio: ["ignore", "pipe", "ignore"] }).toString().trim();
-} catch { /* build fora de um repo git (ex.: CI sem .git) */ }
 const pkg = JSON.parse(readFileSync(path.join(root, "package.json"), "utf8"));
 writeFileSync(
   path.join(kit, "kit-version.json"),

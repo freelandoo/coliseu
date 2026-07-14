@@ -176,7 +176,8 @@ async function tickInterno() {
 }
 
 const INTERVALO = Number(process.env.INTERVALO_MS ?? 5000);
-console.log(`[${ts()}] [agent] iniciando (adapter=${ADAPTER}) para device ${DEVICE_ID}, intervalo ${INTERVALO}ms`);
+// KIT_VERSION é injetado pelo esbuild no make-kit (commit curto); "dev" fora do bundle.
+console.log(`[${ts()}] [agent] iniciando (adapter=${ADAPTER}, versao=${process.env.KIT_VERSION ?? "dev"}) para device ${DEVICE_ID}, intervalo ${INTERVALO}ms`);
 // bootstrap: o seed cria mapeamentos IN_SYNC mas sem comando pendente. Para gerar giros de
 // imediato no demo (modo fake), use SEED_ENABLE=1001,1002,1003 para habilitar os
 // externalUserId já sincronizados.
