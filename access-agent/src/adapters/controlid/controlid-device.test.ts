@@ -103,6 +103,34 @@ test("removeUser destrói o usuário", async () => {
   assert.deepEqual(del!.body.where, { users: { id: 1001 } });
 });
 
+test("enroll facial: síncrono com captura automática; sucesso = ENROLLED", async () => {
+  installFetch((path) => {
+    if (path === "/login.fcgi") return { json: { session: "S1" } };
+    if (path === "/remote_enroll.fcgi") return { json: { success: true, user_id: 1001 } };
+    return { json: {} };
+  });
+  const a = newAdapter();
+  const r = await a.startBiometricEnrollment({ externalUserId: "1001", type: "FACE" });
+  assert.equal(r.status, "ENROLLED");
+  const enroll = calls.find((c) => c.path === "/remote_enroll.fcgi");
+  assert.equal(enroll!.body.sync, true, "auto só vale no modo síncrono");
+  assert.equal(enroll!.body.auto, true);
+  assert.equal(enroll!.body.countdown, 3);
+});
+
+test("enroll facial: FACE_EXISTS vira erro legível (face legada no aparelho)", async () => {
+  installFetch((path) => {
+    if (path === "/login.fcgi") return { json: { session: "S1" } };
+    if (path === "/remote_enroll.fcgi") return { json: { success: false, error: "FACE_EXISTS" } };
+    return { json: {} };
+  });
+  const a = newAdapter();
+  await assert.rejects(
+    () => a.startBiometricEnrollment({ externalUserId: "1001", type: "FACE" }),
+    /já cadastrada em outro usuário/,
+  );
+});
+
 test("pullAccessEvents mapeia logs, respeita cursor e avança", async () => {
   const logs: ControlIdAccessLog[] = [
     { id: 10, time: 1_700_000_000, event: EVENT.ACCESS_GRANTED, user_id: 1001 },

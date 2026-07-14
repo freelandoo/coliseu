@@ -95,19 +95,32 @@ export class ControlIdDeviceAdapter implements AccessDeviceAdapter {
 
   async startBiometricEnrollment(input: EnrollmentInput): Promise<EnrollmentResult> {
     const type = input.type === "FACE" ? "face" : input.type === "CARD" ? "card" : "pin";
-    // save=true grava no usuário; sync=false devolve resultado via monitor/consulta posterior.
-    // auto=true + countdown: captura automática — detectou a face, conta 3s e confirma a
-    // foto sozinho, sem ninguém precisar tocar na tela do aparelho.
-    await this.client.post("/remote_enroll.fcgi", {
-      type,
-      user_id: Number(input.externalUserId),
-      save: true,
-      sync: false,
-      panic: false,
-      auto: true,
-      countdown: 3,
-    });
-    return { sessionId: `${input.externalUserId}:${type}`, status: "IN_PROGRESS" };
+    // sync=true + auto=true + countdown: captura automática — detectou a face, conta 3s e
+    // confirma a foto sozinho, sem tocar na tela (o auto só vale no modo síncrono). A
+    // chamada fica aberta até a captura terminar, por isso o timeout estendido; o sucesso
+    // aqui é a captura CONCLUÍDA, então o ack do comando vira a credencial cadastrada.
+    const res = await this.client.post<{ success?: boolean; error?: string }>(
+      "/remote_enroll.fcgi",
+      {
+        type,
+        user_id: Number(input.externalUserId),
+        save: true,
+        sync: true,
+        panic: false,
+        auto: true,
+        countdown: 3,
+      },
+      90_000,
+    );
+    if (res.success === false) {
+      // FACE_EXISTS = rosto já cadastrado em outro usuário do aparelho (ex.: legado do
+      // sistema antigo) — precisa excluir o usuário antigo no iDFace antes de recadastrar.
+      const motivo = res.error === "FACE_EXISTS"
+        ? "face já cadastrada em outro usuário do aparelho (exclua o cadastro antigo no iDFace)"
+        : (res.error ?? "erro desconhecido");
+      throw new Error(`cadastro facial falhou no aparelho: ${motivo}`);
+    }
+    return { sessionId: `${input.externalUserId}:${type}`, status: "ENROLLED" };
   }
 
   async cancelBiometricEnrollment(_sessionId: string): Promise<void> {

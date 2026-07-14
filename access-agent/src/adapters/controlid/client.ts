@@ -30,10 +30,10 @@ export class ControlIdClient {
     return this.session;
   }
 
-  private async raw(path: string, body: unknown, withSession: boolean): Promise<Response> {
+  private async raw(path: string, body: unknown, withSession: boolean, timeoutMs?: number): Promise<Response> {
     const url = withSession ? `${this.base}${path}?session=${this.session}` : `${this.base}${path}`;
     const ctrl = new AbortController();
-    const timer = setTimeout(() => ctrl.abort(), this.opts.timeoutMs ?? 8000);
+    const timer = setTimeout(() => ctrl.abort(), timeoutMs ?? this.opts.timeoutMs ?? 8000);
     try {
       return await fetch(url, {
         method: "POST",
@@ -46,14 +46,17 @@ export class ControlIdClient {
     }
   }
 
-  /** POST autenticado num endpoint .fcgi, com re-login automático em sessão inválida. */
-  async post<T = unknown>(path: string, body: unknown): Promise<T> {
+  /**
+   * POST autenticado num endpoint .fcgi, com re-login automático em sessão inválida.
+   * `timeoutMs` opcional para chamadas que ficam abertas (ex.: remote_enroll síncrono).
+   */
+  async post<T = unknown>(path: string, body: unknown, timeoutMs?: number): Promise<T> {
     if (!this.session) await this.login();
-    let res = await this.raw(path, body, true);
+    let res = await this.raw(path, body, true, timeoutMs);
     if (res.status === 401 || res.status === 403) {
       this.session = null;
       await this.login();
-      res = await this.raw(path, body, true);
+      res = await this.raw(path, body, true, timeoutMs);
     }
     if (!res.ok) throw new Error(`${path} falhou: HTTP ${res.status}`);
     const text = await res.text();
