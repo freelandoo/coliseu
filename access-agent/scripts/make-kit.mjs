@@ -58,10 +58,13 @@ function crlf(s) {
 }
 
 // Commit curto do build — vai para o log de boot do agente e o kit-version.json.
+// No Railway não há .git no build; o commit vem da env RAILWAY_GIT_COMMIT_SHA.
 let commit = null;
 try {
   commit = execSync("git rev-parse --short HEAD", { cwd: root, stdio: ["ignore", "pipe", "ignore"] }).toString().trim();
-} catch { /* build fora de um repo git (ex.: CI sem .git) */ }
+} catch {
+  commit = process.env.RAILWAY_GIT_COMMIT_SHA?.slice(0, 7) ?? null;
+}
 
 console.log("[1/4] Bundle do agente (esbuild)...");
 await build({
