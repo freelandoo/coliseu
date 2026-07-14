@@ -100,7 +100,7 @@ export function ClientesView({
           placeholder="Buscar por nome, código, CPF ou telefone…"
           className="w-full max-w-sm rounded-lg border border-border bg-surface px-3 py-2 text-sm text-ink placeholder:text-faint outline-none transition-colors focus:border-red/60"
         />
-        <NovoCadastro />
+        <NovoCadastro planos={planos} />
       </div>
 
       <div className="flex flex-wrap gap-2">

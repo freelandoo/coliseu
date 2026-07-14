@@ -3,7 +3,8 @@
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { cn } from "@/lib/cn";
-import { ORIGEM_LABEL, type Endereco, type Origem } from "@/lib/types";
+import { formatBRL } from "@/lib/mock-data";
+import { ORIGEM_LABEL, type Endereco, type Origem, type Plano } from "@/lib/types";
 
 const ORIGENS = Object.entries(ORIGEM_LABEL) as [Origem, string][];
 
@@ -42,7 +43,13 @@ const VAZIO: FormState = {
   numero: "",
 };
 
-export function NovoCadastro() {
+/**
+ * Sem `planos`, cria a pessoa como lead do funil (Captação). Com `planos`
+ * (Matriculados), já matricula direto no plano escolhido: cria a pessoa e
+ * dispara a mesma ação `matricular` do fluxo de matrícula (Asaas + cobrança
+ * pendente + provisionamento nas catracas).
+ */
+export function NovoCadastro({ planos }: { planos?: Plano[] }) {
   const router = useRouter();
   const [aberto, setAberto] = useState(false);
 
@@ -57,6 +64,7 @@ export function NovoCadastro() {
       </button>
       {aberto && (
         <ModalCadastro
+          planos={planos}
           onFechar={() => setAberto(false)}
           onCriado={() => {
             setAberto(false);
@@ -69,16 +77,21 @@ export function NovoCadastro() {
 }
 
 function ModalCadastro({
+  planos,
   onFechar,
   onCriado,
 }: {
+  planos?: Plano[];
   onFechar: () => void;
   onCriado: () => void;
 }) {
+  const matriculaDireta = !!planos && planos.length > 0;
   const [form, setForm] = useState<FormState>(VAZIO);
   const [erros, setErros] = useState<Partial<Record<keyof FormState, string>>>({});
+  const [planoId, setPlanoId] = useState(planos?.[0]?.id ?? "");
   const [enviando, setEnviando] = useState(false);
   const [erroApi, setErroApi] = useState("");
+  const [sucesso, setSucesso] = useState<{ nome: string; planoNome: string; waLink?: string; linkPagamento?: string } | null>(null);
 
   const set = (campo: keyof FormState, v: string) =>
     setForm((f) => ({ ...f, [campo]: v }));
@@ -114,6 +127,8 @@ function ModalCadastro({
       e.telefone = "Informe telefone ou e-mail";
       e.email = "Informe telefone ou e-mail";
     }
+    // Asaas exige CPF para gerar a assinatura/cobrança da matrícula.
+    if (matriculaDireta && soDigitos(form.cpf).length !== 11) e.cpf = "CPF deve ter 11 dígitos";
     setErros(e);
     return Object.keys(e).length === 0;
   }
@@ -154,7 +169,32 @@ function ModalCadastro({
         setEnviando(false);
         return;
       }
-      onCriado();
+
+      if (!matriculaDireta) {
+        onCriado();
+        return;
+      }
+
+      // Matrícula direta: mesma ação do fluxo de matrícula (lead → aluno +
+      // assinatura Asaas + cobrança pendente + provisionamento nas catracas).
+      const pessoa = (await r.json()) as { id: string };
+      const plano = planos!.find((p) => p.id === planoId) ?? planos![0];
+      const rm = await fetch(`/api/pessoas/${pessoa.id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ acao: "matricular", planoId: plano.id }),
+      });
+      if (!rm.ok) {
+        const d = await rm.json().catch(() => ({}));
+        setErroApi(
+          `${d?.erro ?? "Falha ao matricular"} — o cadastro foi criado como lead; matricule pela Captação.`,
+        );
+        setEnviando(false);
+        return;
+      }
+      const dm = (await rm.json()) as { waLink?: string; linkPagamento?: string };
+      setEnviando(false);
+      setSucesso({ nome: form.nome.trim(), planoNome: plano.nome, waLink: dm.waLink, linkPagamento: dm.linkPagamento });
     } catch {
       setErroApi("Falha de conexão.");
       setEnviando(false);
@@ -172,11 +212,46 @@ function ModalCadastro({
         onClick={(e) => e.stopPropagation()}
         className="max-h-[90dvh] w-full max-w-md overflow-y-auto rounded-xl border border-border bg-surface p-6 shadow-[var(--shadow-plate)]"
       >
+        {sucesso ? (
+          <div className="text-center">
+            <span className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-ok/15 text-2xl text-ok">✓</span>
+            <h3 className="mt-4 font-display text-xl font-semibold uppercase tracking-wide text-ink">
+              Matriculado com sucesso
+            </h3>
+            <p className="mt-1 text-sm text-muted">
+              {sucesso.nome} · {sucesso.planoNome}
+            </p>
+            <p className="mt-0.5 text-xs text-faint">
+              Aguardando pagamento — quando confirmar, o acesso é liberado sozinho.
+            </p>
+            {(sucesso.waLink || sucesso.linkPagamento) && (
+              <a
+                href={sucesso.waLink ?? sucesso.linkPagamento}
+                target="_blank"
+                rel="noreferrer"
+                className="mt-5 block rounded-lg bg-red px-4 py-3 font-display text-sm font-semibold uppercase tracking-widest text-white transition-colors hover:bg-red-bright"
+              >
+                {sucesso.waLink ? "Enviar link de pagamento no WhatsApp" : "Abrir link de pagamento"}
+              </a>
+            )}
+            <button
+              onClick={onCriado}
+              className="mt-3 w-full rounded-lg border border-border-strong px-4 py-2.5 text-sm font-semibold uppercase tracking-widest text-muted transition-colors hover:text-ink"
+            >
+              Concluir
+            </button>
+          </div>
+        ) : (
+        <>
         <h3 className="font-display text-xl font-semibold uppercase tracking-wide text-ink">
           Novo cadastro
         </h3>
         <p className="mt-0.5 text-xs text-faint">
-          Entra como <strong className="text-muted">lead novo</strong> no funil.
+          {matriculaDireta ? (
+            <>Já entra <strong className="text-muted">matriculado</strong> no plano escolhido, com pagamento pendente.</>
+          ) : (
+            <>Entra como <strong className="text-muted">lead novo</strong> no funil.</>
+          )}
         </p>
 
         <div className="mt-5 flex flex-col gap-3">
@@ -217,8 +292,9 @@ function ModalCadastro({
             onChange={(v) => set("email", v)}
           />
           <Campo
-            label="CPF"
+            label={matriculaDireta ? "CPF *" : "CPF"}
             value={form.cpf}
+            erro={erros.cpf}
             placeholder="000.000.000-00"
             onChange={(v) => set("cpf", v)}
           />
@@ -247,6 +323,39 @@ function ModalCadastro({
             value={form.dataNascimento}
             onChange={(v) => set("dataNascimento", v)}
           />
+
+          {matriculaDireta && (
+            <>
+              <span className="mt-1 text-xs font-semibold uppercase tracking-widest text-faint">
+                Plano *
+              </span>
+              {planos!.map((p) => {
+                const selecionado = p.id === planoId;
+                return (
+                  <button
+                    key={p.id}
+                    type="button"
+                    onClick={() => !enviando && setPlanoId(p.id)}
+                    className={cn(
+                      "rounded-lg border px-4 py-2.5 text-left transition-colors",
+                      selecionado
+                        ? "border-red/50 bg-red-ghost"
+                        : "border-border bg-surface hover:border-border-strong",
+                    )}
+                  >
+                    <div className="flex items-center justify-between">
+                      <span className="font-display text-base font-semibold uppercase tracking-wide text-ink">
+                        {p.nome}
+                      </span>
+                      <span className={cn("text-sm", selecionado ? "text-red-bright" : "text-muted")}>
+                        {formatBRL(p.valorMensal)}/mês
+                      </span>
+                    </div>
+                  </button>
+                );
+              })}
+            </>
+          )}
         </div>
 
         {erroApi && <p className="mt-3 text-xs text-red-bright">{erroApi}</p>}
@@ -262,7 +371,7 @@ function ModalCadastro({
                 : "bg-red text-white hover:bg-red-bright",
             )}
           >
-            {enviando ? "Salvando…" : "Cadastrar"}
+            {enviando ? "Salvando…" : matriculaDireta ? "Matricular" : "Cadastrar"}
           </button>
           <button
             onClick={onFechar}
@@ -271,6 +380,8 @@ function ModalCadastro({
             Cancelar
           </button>
         </div>
+        </>
+        )}
       </div>
     </div>
   );
