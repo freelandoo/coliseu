@@ -6,7 +6,6 @@ import { cn } from "@/lib/cn";
 
 const ABAS: { href: string; label: string; hint: string }[] = [
   { href: "/matriculados", label: "Matriculados", hint: "Alunos ativos" },
-  { href: "/matriculados/renovar", label: "Renovar", hint: "Novos e renovações" },
   { href: "/matriculados/retencao", label: "Retenção", hint: "Presença e reativação" },
   { href: "/matriculados/fidelidade", label: "Fidelidade", hint: "Tempo de casa" },
 ];

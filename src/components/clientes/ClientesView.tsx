@@ -4,12 +4,14 @@ import { useRouter } from "next/navigation";
 import { useMemo, useState } from "react";
 import { Badge, Card } from "@/components/ui/primitives";
 import { NovoCadastro } from "@/components/clientes/NovoCadastro";
+import { RenovarModal } from "@/components/matriculados/RenovarModal";
 import { cn } from "@/lib/cn";
 import {
   ALUNO_STATUS_LABEL,
   LEAD_ESTAGIO_LABEL,
   ORIGEM_LABEL,
   type Pessoa,
+  type Plano,
 } from "@/lib/types";
 
 type Filtro = "todos" | "ativo" | "pendente" | "inadimplente" | "cancelado";
@@ -49,10 +51,24 @@ function combina(p: Pessoa, filtro: Filtro): boolean {
   return p.fase === "aluno" && p.status === filtro;
 }
 
-export function ClientesView({ pessoas }: { pessoas: Pessoa[] }) {
+export function ClientesView({
+  pessoas,
+  planos = [],
+}: {
+  pessoas: Pessoa[];
+  planos?: Plano[];
+}) {
   const router = useRouter();
   const [filtro, setFiltro] = useState<Filtro>("todos");
   const [busca, setBusca] = useState("");
+  const [renovando, setRenovando] = useState<Pessoa | null>(null);
+
+  const planoById = useMemo(() => new Map(planos.map((p) => [p.id, p])), [planos]);
+
+  function fecharRenovacao() {
+    setRenovando(null);
+    router.refresh();
+  }
 
   const contagem = useMemo(() => {
     const c = {} as Record<Filtro, number>;
@@ -130,11 +146,13 @@ export function ClientesView({ pessoas }: { pessoas: Pessoa[] }) {
                   <Th>Contato</Th>
                   <Th>Origem</Th>
                   <Th>Situação</Th>
+                  <Th>Renovação</Th>
                 </tr>
               </thead>
               <tbody>
                 {visiveis.map((p) => {
                   const s = situacaoDe(p);
+                  const plano = p.planoId ? planoById.get(p.planoId) : undefined;
                   return (
                     <tr
                       key={p.id}
@@ -152,6 +170,19 @@ export function ClientesView({ pessoas }: { pessoas: Pessoa[] }) {
                       <td className="px-4 py-3">
                         <Badge tone={s.tone}>{s.rotulo}</Badge>
                       </td>
+                      <td className="px-4 py-3">
+                        {plano && (
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setRenovando(p);
+                            }}
+                            className="rounded-md border border-red/50 px-3 py-1.5 text-xs font-semibold uppercase tracking-wide text-red-bright transition-colors hover:bg-red-ghost"
+                          >
+                            Renovar
+                          </button>
+                        )}
+                      </td>
                     </tr>
                   );
                 })}
@@ -160,6 +191,14 @@ export function ClientesView({ pessoas }: { pessoas: Pessoa[] }) {
           </div>
         )}
       </Card>
+
+      {renovando && renovando.planoId && planoById.get(renovando.planoId) && (
+        <RenovarModal
+          pessoa={renovando}
+          plano={planoById.get(renovando.planoId)!}
+          onFechar={fecharRenovacao}
+        />
+      )}
     </div>
   );
 }
