@@ -6,6 +6,7 @@ import { Badge, Card } from "@/components/ui/primitives";
 import { NovoCadastro } from "@/components/clientes/NovoCadastro";
 import { RemoverPessoa } from "@/components/clientes/RemoverPessoa";
 import { RenovarModal } from "@/components/matriculados/RenovarModal";
+import { CheckoutBalcao } from "@/components/matricula/CheckoutBalcao";
 import { cn } from "@/lib/cn";
 import {
   ALUNO_STATUS_LABEL,
@@ -63,6 +64,7 @@ export function ClientesView({
   const [filtro, setFiltro] = useState<Filtro>("todos");
   const [busca, setBusca] = useState("");
   const [renovando, setRenovando] = useState<Pessoa | null>(null);
+  const [pagando, setPagando] = useState<Pessoa | null>(null);
 
   const planoById = useMemo(() => new Map(planos.map((p) => [p.id, p])), [planos]);
 
@@ -173,7 +175,19 @@ export function ClientesView({
                         <Badge tone={s.tone}>{s.rotulo}</Badge>
                       </td>
                       <td className="px-4 py-3">
-                        {plano && (
+                        {plano && (p.status === "pendente" ? (
+                          // Pagamento pendente: em vez de renovar, oferece o checkout de
+                          // balcão — confirma o pagamento, ativa e libera a catraca.
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setPagando(p);
+                            }}
+                            className="rounded-md border border-red/50 px-3 py-1.5 text-xs font-semibold uppercase tracking-wide text-red-bright transition-colors hover:bg-red-ghost"
+                          >
+                            Confirmar pgto
+                          </button>
+                        ) : (
                           <button
                             onClick={(e) => {
                               e.stopPropagation();
@@ -183,7 +197,7 @@ export function ClientesView({
                           >
                             Renovar
                           </button>
-                        )}
+                        ))}
                       </td>
                       <td className="px-4 py-3">
                         <RemoverPessoa id={p.id} nome={p.nome} />
@@ -202,6 +216,20 @@ export function ClientesView({
           pessoa={renovando}
           plano={planoById.get(renovando.planoId)!}
           onFechar={fecharRenovacao}
+        />
+      )}
+
+      {pagando && pagando.planoId && planoById.get(pagando.planoId) && (
+        <CheckoutBalcao
+          personId={pagando.id}
+          nome={pagando.nome}
+          planoNome={planoById.get(pagando.planoId)!.nome}
+          valor={planoById.get(pagando.planoId)!.valorMensal}
+          onPago={() => {
+            setPagando(null);
+            router.refresh();
+          }}
+          onFechar={() => setPagando(null)}
         />
       )}
     </div>
