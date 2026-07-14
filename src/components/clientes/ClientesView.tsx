@@ -4,6 +4,7 @@ import { useRouter } from "next/navigation";
 import { useMemo, useState } from "react";
 import { Badge, Card } from "@/components/ui/primitives";
 import { NovoCadastro } from "@/components/clientes/NovoCadastro";
+import { RemoverPessoa } from "@/components/clientes/RemoverPessoa";
 import { RenovarModal } from "@/components/matriculados/RenovarModal";
 import { cn } from "@/lib/cn";
 import {
@@ -147,6 +148,7 @@ export function ClientesView({
                   <Th>Origem</Th>
                   <Th>Situação</Th>
                   <Th>Renovação</Th>
+                  <Th>Remover</Th>
                 </tr>
               </thead>
               <tbody>
@@ -182,6 +184,9 @@ export function ClientesView({
                             Renovar
                           </button>
                         )}
+                      </td>
+                      <td className="px-4 py-3">
+                        <RemoverPessoa id={p.id} nome={p.nome} />
                       </td>
                     </tr>
                   );

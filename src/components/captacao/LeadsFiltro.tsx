@@ -2,6 +2,7 @@
 
 import { useMemo, useState } from "react";
 import { Badge, Card } from "@/components/ui/primitives";
+import { RemoverPessoa } from "@/components/clientes/RemoverPessoa";
 import { cn } from "@/lib/cn";
 import { formatData } from "@/lib/mock-data";
 import {
@@ -130,14 +131,17 @@ export function LeadsFiltro({ leads }: { leads: Lead[] }) {
                         {formatData(lead.criadoEm)}
                       </td>
                       <td className="px-4 py-3 text-right">
-                        <a
-                          href={`https://wa.me/55${fone}`}
-                          target="_blank"
-                          rel="noreferrer"
-                          className="text-xs font-medium text-red-bright hover:underline"
-                        >
-                          WhatsApp →
-                        </a>
+                        <span className="inline-flex items-center gap-3">
+                          <a
+                            href={`https://wa.me/55${fone}`}
+                            target="_blank"
+                            rel="noreferrer"
+                            className="text-xs font-medium text-red-bright hover:underline"
+                          >
+                            WhatsApp →
+                          </a>
+                          <RemoverPessoa id={lead.id} nome={lead.nome} />
+                        </span>
                       </td>
                     </tr>
                   );
