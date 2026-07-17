@@ -42,3 +42,6 @@ yarn-error.log*
 next-env.d.ts
 
 /src/generated/prisma
+
+# exports da migração CloudGym/iDFace — contém biometria (fotos) e dados pessoais. LGPD: nunca commitar.
+/usuarios/

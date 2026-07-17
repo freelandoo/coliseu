@@ -44,13 +44,24 @@ export async function provisionarAcessoDePessoa(
   return { mappingsCriados, comandos };
 }
 
-/** Próximo externalUserId global: max numérico + 1 (piso 1000 → primeiro id real 1001). */
-async function proximoExternalUserId(): Promise<string> {
+/**
+ * Piso de alocação: ids abaixo dele nunca são alocados, mesmo que a tabela de
+ * mappings esteja vazia. DEVE ser maior que o maior user_id já existente no
+ * aparelho físico — usuários legados (CloudGym) não adotados são invisíveis ao
+ * allocator, e alocar um id deles entregaria a face do legado ao aluno novo.
+ */
+function pisoDeAlocacao(): number {
+  const n = Number(process.env.ACCESS_EXTERNAL_ID_FLOOR);
+  return Number.isFinite(n) && n > 0 ? n : 1000;
+}
+
+/** Próximo externalUserId global: max numérico + 1 (piso → primeiro id real = piso + 1). */
+export async function proximoExternalUserId(): Promise<string> {
   const todos = await prisma.deviceUserMapping.findMany({ select: { externalUserId: true } });
   const max = todos.reduce((m, r) => {
     const n = Number(r.externalUserId);
     return Number.isFinite(n) ? Math.max(m, n) : m;
-  }, 1000);
+  }, pisoDeAlocacao());
   return String(max + 1);
 }
 

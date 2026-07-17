@@ -60,6 +60,20 @@ test("alocação sequencial: dois alunos novos recebem ids diferentes", async ()
   expect(ma.externalUserId).not.toBe(mb.externalUserId);
 });
 
+test("nunca aloca id abaixo do piso configurado (evita sequestro de órfão do device)", async () => {
+  const anterior = process.env.ACCESS_EXTERNAL_ID_FLOOR;
+  process.env.ACCESS_EXTERNAL_ID_FLOOR = "11097953";
+  try {
+    // Piso acima de todo mapping existente: o próximo id deve nascer do piso,
+    // nunca do max da tabela (que não enxerga os usuários legados do aparelho).
+    const { proximoExternalUserId } = await import("@/lib/access/provision");
+    expect(Number(await proximoExternalUserId())).toBe(11097954);
+  } finally {
+    if (anterior === undefined) delete process.env.ACCESS_EXTERNAL_ID_FLOOR;
+    else process.env.ACCESS_EXTERNAL_ID_FLOOR = anterior;
+  }
+});
+
 test("não-aluno (lead) não é provisionado", async () => {
   const p = await prisma.person.create({
     data: { codigo: "TPRO5", nome: "Lead TPRO5", origem: "balcao", fase: "lead", estagio: "novo", unitId },
