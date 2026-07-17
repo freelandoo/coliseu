@@ -135,6 +135,27 @@ test("pessoa reusada com mapping antigo no device: id do aparelho vence e PENDIN
   expect(face.status).toBe("ENROLLED");
 });
 
+test("mesmo CPF com nomes diferentes NÃO reusa: são pessoas distintas (dependente)", async () => {
+  const r = await adotarConciliacao(
+    [
+      itemAdotar(-91007, "Migrada Responsavel Prado", { cpf: "16899535009" }),
+      itemAdotar(-91008, "Migrado Dependente Prado", { cpf: "16899535009" }),
+    ],
+    { deviceId, apply: true },
+  );
+  expect(r.adotados).toBe(2);
+  expect(r.pessoasCriadas).toBe(2);
+  expect(r.pessoasReusadas).toBe(0);
+
+  const m1 = await prisma.deviceUserMapping.findUniqueOrThrow({
+    where: { deviceId_externalUserId: { deviceId, externalUserId: "-91007" } },
+  });
+  const m2 = await prisma.deviceUserMapping.findUniqueOrThrow({
+    where: { deviceId_externalUserId: { deviceId, externalUserId: "-91008" } },
+  });
+  expect(m1.personId).not.toBe(m2.personId);
+});
+
 test("reusa Person existente por CPF em vez de duplicar", async () => {
   const existente = await prisma.person.create({
     data: {

@@ -15,7 +15,7 @@
 
 import { prisma } from "@/lib/db";
 import type { ItemConciliacao } from "./conciliar";
-import { normalizarCpf } from "./normalizar";
+import { normalizarCpf, normalizarNome } from "./normalizar";
 
 export interface OpcoesAdocao {
   /** AccessDevice.id da catraca real (iDFace) no banco do Coliseu. */
@@ -65,11 +65,16 @@ export async function adotarConciliacao(itens: ItemConciliacao[], opts: OpcoesAd
   const planosDaUnidade = await prisma.plan.findMany({ where: { unitId: device.unitId } });
   const planoPorNome = new Map(planosDaUnidade.map((p) => [p.nome.trim().toUpperCase(), p.id]));
 
-  const pessoasComCpf = await prisma.person.findMany({ where: { cpf: { not: null } }, select: { id: true, cpf: true } });
-  const pessoaPorCpf = new Map<string, string>();
+  // Reuso por CPF exige o NOME batendo também: no CloudGym existem alunos
+  // distintos (dependente/responsável) compartilhando CPF — reusar só pelo CPF
+  // faria o segundo sequestrar o mapping do primeiro.
+  const pessoasComCpf = await prisma.person.findMany({
+    where: { cpf: { not: null } }, select: { id: true, cpf: true, nome: true },
+  });
+  const pessoaPorCpf = new Map<string, { id: string; nomeNorm: string }>();
   for (const p of pessoasComCpf) {
     const cpf = normalizarCpf(p.cpf);
-    if (cpf) pessoaPorCpf.set(cpf, p.id);
+    if (cpf) pessoaPorCpf.set(cpf, { id: p.id, nomeNorm: normalizarNome(p.nome) });
   }
 
   for (const item of fila) {
@@ -98,7 +103,8 @@ export async function adotarConciliacao(itens: ItemConciliacao[], opts: OpcoesAd
       planoPorNome.set(chavePlano, planId);
     }
 
-    const personIdExistente = item.personIdExistente ?? (aluno.cpf ? pessoaPorCpf.get(aluno.cpf) ?? null : null);
+    const candidata = aluno.cpf ? pessoaPorCpf.get(aluno.cpf) ?? null : null;
+    const personIdExistente = candidata && candidata.nomeNorm === aluno.nomeNorm ? candidata.id : null;
     if (personIdExistente) resumo.pessoasReusadas++;
     else resumo.pessoasCriadas++;
 
@@ -172,7 +178,9 @@ export async function adotarConciliacao(itens: ItemConciliacao[], opts: OpcoesAd
       return person;
     });
 
-    if (adotado.cpf) pessoaPorCpf.set(normalizarCpf(adotado.cpf), adotado.id);
+    if (adotado.cpf) {
+      pessoaPorCpf.set(normalizarCpf(adotado.cpf), { id: adotado.id, nomeNorm: normalizarNome(adotado.nome) });
+    }
     jaMapeados.add(externalUserId);
     resumo.adotados++;
   }
