@@ -39,6 +39,15 @@ test("parseCloudGym: formato dos inativos (sem Status/CPF) usa statusPadrao e av
   expect(avisos).toContain("coluna ausente: cpf");
 });
 
+test("parseCloudGym: plano composto com | fica com a última compra que não é taxa", () => {
+  const csv = `"Nome","Status","CPF","Plano","Final"
+"A","Ativo","","0 FIGHT MENSAL|00 TAXA MATRICULA","30/12/2026"
+"B","Ativo","","00 TAXA MATRICULA|0 FIGHT MENSAL","30/12/2026"
+"C","Ativo","","0 FIGHT SEMESTRAL|0 CLUBE+ FULL ANUAL","30/12/2026"`;
+  const { alunos } = parseCloudGym(csv);
+  expect(alunos.map((a) => a.plano)).toEqual(["0 FIGHT MENSAL", "0 FIGHT MENSAL", "0 CLUBE+ FULL ANUAL"]);
+});
+
 test("parseCloudGym: linha sem nome é ignorada com aviso, dados ruins não estouram", () => {
   const csv = `"Nome","Status","CPF","Final"
 "","Ativo","123","31/02/2026"

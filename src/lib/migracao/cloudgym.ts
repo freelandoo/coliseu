@@ -68,6 +68,15 @@ function chaveDeCabecalho(nome: string): string {
   return nome.normalize("NFD").replace(/\p{Mn}/gu, "").trim().toLowerCase();
 }
 
+/**
+ * O CloudGym concatena compras com "|" ("PLANO X|TAXA MATRICULA", ou dois planos
+ * quando o aluno trocou). Fica a ÚLTIMA parte que não é taxa (compra mais recente).
+ */
+function limparPlano(bruto: string): string {
+  const partes = bruto.split("|").map((p) => p.trim()).filter((p) => p && !/TAXA/i.test(p));
+  return partes.length ? partes[partes.length - 1] : bruto.trim();
+}
+
 function paraStatus(valor: string, padrao: StatusCloudGym): StatusCloudGym {
   const v = chaveDeCabecalho(valor);
   if (v === "ativo") return "ATIVO";
@@ -117,7 +126,7 @@ export function parseCloudGym(csv: string, statusPadrao: StatusCloudGym = "ATIVO
       cpf,
       email: col(l, "email"),
       celular: col(l, "celular"),
-      plano: col(l, "plano"),
+      plano: limparPlano(col(l, "plano")),
       inicioISO: lerData("inicio"),
       fimISO: lerData("final"),
       nascimentoISO: lerData("nascimento"),
