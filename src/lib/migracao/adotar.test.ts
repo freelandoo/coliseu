@@ -96,6 +96,45 @@ test("BLOQUEADO vira membership SUSPENDED; REVISAR só entra com incluirRevisar"
   expect(comFlag.adotados).toBe(1);
 });
 
+test("pessoa reusada com mapping antigo no device: id do aparelho vence e PENDING morre", async () => {
+  const unitId = (await prisma.unit.findFirstOrThrow()).id;
+  const pessoa = await prisma.person.create({
+    data: { codigo: "TMIG2", nome: "Migrada Piloto", cpf: "11144477735", origem: "balcao", fase: "aluno", unitId },
+  });
+  // estado do piloto: mapping PENDING com id alocado 100x + comando na fila + face antiga
+  await prisma.deviceUserMapping.create({
+    data: { deviceId, personId: pessoa.id, externalUserId: "1099", syncStatus: "PENDING" },
+  });
+  await prisma.deviceCommand.create({
+    data: {
+      deviceId, personId: pessoa.id, type: "UPSERT_USER", status: "PENDING",
+      payload: { externalUserId: "1099" }, dedupeKey: `tmig2-upsert-1099`,
+    },
+  });
+  await prisma.accessCredential.create({
+    data: { personId: pessoa.id, type: "FACE", status: "IN_PROGRESS", deviceRef: "1099" },
+  });
+
+  const r = await adotarConciliacao(
+    [itemAdotar(8676357, "Migrada Piloto", { cpf: "11144477735" })],
+    { deviceId, apply: true },
+  );
+  expect(r.adotados).toBe(1);
+  expect(r.pessoasReusadas).toBe(1);
+
+  const mapping = await prisma.deviceUserMapping.findUniqueOrThrow({
+    where: { deviceId_personId: { deviceId, personId: pessoa.id } },
+  });
+  expect(mapping.externalUserId).toBe("8676357");
+  expect(mapping.syncStatus).toBe("IN_SYNC");
+  expect(await prisma.deviceUserMapping.count({ where: { deviceId, personId: pessoa.id } })).toBe(1);
+  expect(await prisma.deviceCommand.count({ where: { deviceId, personId: pessoa.id, status: "PENDING" } })).toBe(0);
+
+  const face = await prisma.accessCredential.findFirstOrThrow({ where: { personId: pessoa.id, type: "FACE" } });
+  expect(face.deviceRef).toBe("8676357");
+  expect(face.status).toBe("ENROLLED");
+});
+
 test("reusa Person existente por CPF em vez de duplicar", async () => {
   const existente = await prisma.person.create({
     data: {

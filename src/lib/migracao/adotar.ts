@@ -135,17 +135,38 @@ export async function adotarConciliacao(itens: ItemConciliacao[], opts: OpcoesAd
         });
       }
 
-      await tx.deviceUserMapping.create({
-        data: { deviceId: device.id, personId: person.id, externalUserId, syncStatus: "IN_SYNC", lastSyncAt: new Date() },
+      // Pessoa reusada pode já ter mapping neste device (ex.: piloto/smoke com id
+      // alocado 100x). O id do APARELHO vence — é onde a face real mora — e os
+      // comandos PENDING do id antigo morrem junto (evita criar usuário fantasma).
+      const mapExistente = await tx.deviceUserMapping.findUnique({
+        where: { deviceId_personId: { deviceId: device.id, personId: person.id } },
       });
+      if (mapExistente) {
+        if (mapExistente.externalUserId !== externalUserId) {
+          await tx.deviceCommand.deleteMany({
+            where: { deviceId: device.id, personId: person.id, status: "PENDING" },
+          });
+        }
+        await tx.deviceUserMapping.update({
+          where: { id: mapExistente.id },
+          data: { externalUserId, syncStatus: "IN_SYNC", lastSyncAt: new Date() },
+        });
+      } else {
+        await tx.deviceUserMapping.create({
+          data: { deviceId: device.id, personId: person.id, externalUserId, syncStatus: "IN_SYNC", lastSyncAt: new Date() },
+        });
+      }
 
-      const temFace = await tx.accessCredential.findFirst({ where: { personId: person.id, type: "FACE" } });
-      if (!temFace) {
+      const enrolledAt = item.device.imageTimestamp ? new Date(item.device.imageTimestamp * 1000) : new Date();
+      const faceExistente = await tx.accessCredential.findFirst({ where: { personId: person.id, type: "FACE" } });
+      if (faceExistente) {
+        await tx.accessCredential.update({
+          where: { id: faceExistente.id },
+          data: { status: "ENROLLED", deviceRef: externalUserId, enrolledAt, revokedAt: null },
+        });
+      } else {
         await tx.accessCredential.create({
-          data: {
-            personId: person.id, type: "FACE", status: "ENROLLED", deviceRef: externalUserId,
-            enrolledAt: item.device.imageTimestamp ? new Date(item.device.imageTimestamp * 1000) : new Date(),
-          },
+          data: { personId: person.id, type: "FACE", status: "ENROLLED", deviceRef: externalUserId, enrolledAt },
         });
       }
       return person;
