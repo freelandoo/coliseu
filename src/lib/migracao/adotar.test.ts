@@ -22,7 +22,7 @@ function itemAdotar(idDevice: number, nome: string, extra: Partial<AlunoCloudGym
     imageTimestamp: 1_719_000_000, lastAccess: 1_784_000_000,
   };
   const aluno: AlunoCloudGym = {
-    nome, nomeNorm: normalizarNome(nome), status: "ATIVO", cpf: "", email: "", celular: "",
+    nome, nomeNorm: normalizarNome(nome), status: "ATIVO", cpf: "", rg: "", vendedor: "", email: "", celular: "",
     plano: "MIGR PLANO TESTE", inicioISO: "2026-01-10", fimISO: "2027-01-10",
     nascimentoISO: null, estado: "SP", cidade: "SBC", cep: "", ...extra,
   };

@@ -19,6 +19,8 @@ export interface AlunoCloudGym {
   nomeNorm: string;
   status: StatusCloudGym;
   cpf: string; // só dígitos; "" quando ausente/inválido
+  rg: string;
+  vendedor: string;
   email: string;
   celular: string;
   plano: string;
@@ -124,6 +126,8 @@ export function parseCloudGym(csv: string, statusPadrao: StatusCloudGym = "ATIVO
       nomeNorm: normalizarNome(nome),
       status: paraStatus(col(l, "status"), statusPadrao),
       cpf,
+      rg: col(l, "rg"),
+      vendedor: col(l, "vendedor"),
       email: col(l, "email"),
       celular: col(l, "celular"),
       plano: limparPlano(col(l, "plano")),

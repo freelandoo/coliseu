@@ -38,6 +38,8 @@ export function toPessoa(p: PPerson & { memberships: PMembership[] }): Pessoa {
     telefone: p.telefone ?? undefined,
     email: p.email ?? undefined,
     cpf: p.cpf ?? undefined,
+    rg: p.rg ?? undefined,
+    vendedor: p.vendedor ?? undefined,
     origem: p.origem as Origem,
     fase: p.fase as PessoaFase,
     criadoEm: p.criadoEm.toISOString(),

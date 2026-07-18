@@ -11,7 +11,7 @@ function dev(id: number, name: string, lastAccess = DESDE_2026 + 1000): UsuarioD
 
 function aluno(nome: string, extra: Partial<AlunoCloudGym> = {}): AlunoCloudGym {
   return {
-    nome, nomeNorm: normalizarNome(nome), status: "ATIVO", cpf: "", email: "", celular: "",
+    nome, nomeNorm: normalizarNome(nome), status: "ATIVO", cpf: "", rg: "", vendedor: "", email: "", celular: "",
     plano: "MUSCULAÇÃO ANUAL", inicioISO: "2026-01-01", fimISO: "2027-01-01",
     nascimentoISO: null, estado: "SP", cidade: "SBC", cep: "", ...extra,
   };

@@ -124,7 +124,8 @@ export async function adotarConciliacao(itens: ItemConciliacao[], opts: OpcoesAd
         : await tx.person.create({
             data: {
               codigo, nome: aluno.nome.trim(), origem: "balcao", fase: "aluno",
-              cpf: aluno.cpf || null, email: aluno.email || null, telefone: aluno.celular || null,
+              cpf: aluno.cpf || null, rg: aluno.rg || null, vendedor: aluno.vendedor || null,
+              email: aluno.email || null, telefone: aluno.celular || null,
               dataNascimento: aluno.nascimentoISO, estado: aluno.estado || null,
               cidade: aluno.cidade || null, cep: aluno.cep || null, unitId: device.unitId,
             },

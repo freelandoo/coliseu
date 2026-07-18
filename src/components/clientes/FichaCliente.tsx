@@ -37,6 +37,8 @@ export function FichaCliente({
     telefone: pessoa.telefone ?? "",
     email: pessoa.email ?? "",
     cpf: pessoa.cpf ?? "",
+    rg: pessoa.rg ?? "",
+    vendedor: pessoa.vendedor ?? "",
     dataNascimento: pessoa.dataNascimento ?? "",
     cep: pessoa.endereco?.cep ?? "",
     estado: pessoa.endereco?.estado ?? "",
@@ -72,6 +74,8 @@ export function FichaCliente({
       telefone: form.telefone,
       email: form.email,
       cpf: form.cpf,
+      rg: form.rg,
+      vendedor: form.vendedor,
       dataNascimento: form.dataNascimento,
       endereco: {
         cep: form.cep,
@@ -133,8 +137,11 @@ export function FichaCliente({
               <div className="grid grid-cols-2 gap-2">
                 <Campo label="Celular" value={form.telefone} onChange={(v) => setForm((f) => ({ ...f, telefone: v }))} />
                 <Campo label="CPF" value={form.cpf} onChange={(v) => setForm((f) => ({ ...f, cpf: v }))} />
+                <Campo label="RG" value={form.rg} onChange={(v) => setForm((f) => ({ ...f, rg: v }))} />
+                <Campo label="Nascimento" type="date" value={form.dataNascimento} onChange={(v) => setForm((f) => ({ ...f, dataNascimento: v }))} />
               </div>
               <Campo label="E-mail" value={form.email} onChange={(v) => setForm((f) => ({ ...f, email: v }))} />
+              <Campo label="Vendedor / consultor" value={form.vendedor} onChange={(v) => setForm((f) => ({ ...f, vendedor: v }))} />
               <div className="grid grid-cols-2 gap-2">
                 <Campo label="CEP" value={form.cep} onChange={(v) => setForm((f) => ({ ...f, cep: v }))} />
                 <Campo label="Estado" value={form.estado} onChange={(v) => setForm((f) => ({ ...f, estado: v }))} />
@@ -142,14 +149,15 @@ export function FichaCliente({
                 <Campo label="Número" value={form.numero} onChange={(v) => setForm((f) => ({ ...f, numero: v }))} />
               </div>
               <Campo label="Rua" value={form.rua} onChange={(v) => setForm((f) => ({ ...f, rua: v }))} />
-              <Campo label="Nascimento" type="date" value={form.dataNascimento} onChange={(v) => setForm((f) => ({ ...f, dataNascimento: v }))} />
             </div>
           ) : (
             <dl className="grid grid-cols-2 gap-x-4 gap-y-3 text-sm">
               <Info rotulo="Telefone" valor={pessoa.telefone} />
               <Info rotulo="E-mail" valor={pessoa.email} />
               <Info rotulo="CPF" valor={pessoa.cpf} />
+              <Info rotulo="RG" valor={pessoa.rg} />
               <Info rotulo="Nascimento" valor={pessoa.dataNascimento ? formatData(pessoa.dataNascimento) : undefined} />
+              <Info rotulo="Vendedor" valor={pessoa.vendedor} />
               <Info
                 rotulo="Endereço"
                 valor={enderecoResumo(pessoa)}

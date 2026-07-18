@@ -146,6 +146,8 @@ export interface Pessoa {
   telefone?: string;
   email?: string;
   cpf?: string;
+  rg?: string;
+  vendedor?: string;
   origem: Origem;
   fase: PessoaFase;
   criadoEm: string; // ISO
@@ -169,6 +171,8 @@ export interface NovaPessoa {
   telefone?: string;
   email?: string;
   cpf?: string;
+  rg?: string;
+  vendedor?: string;
   origem: Origem;
   dataNascimento?: string;
   endereco?: Endereco;

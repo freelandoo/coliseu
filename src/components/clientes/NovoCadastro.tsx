@@ -21,6 +21,8 @@ interface FormState {
   telefone: string;
   email: string;
   cpf: string;
+  rg: string;
+  vendedor: string;
   dataNascimento: string;
   cep: string;
   estado: string;
@@ -35,6 +37,8 @@ const VAZIO: FormState = {
   telefone: "",
   email: "",
   cpf: "",
+  rg: "",
+  vendedor: "",
   dataNascimento: "",
   cep: "",
   estado: "",
@@ -159,6 +163,8 @@ function ModalCadastro({
           telefone: form.telefone,
           email: form.email,
           cpf: form.cpf,
+          rg: form.rg,
+          vendedor: form.vendedor,
           dataNascimento: form.dataNascimento,
           endereco,
         }),
@@ -291,12 +297,32 @@ function ModalCadastro({
             placeholder="nome@email.com"
             onChange={(v) => set("email", v)}
           />
+          <div className="grid grid-cols-2 gap-2">
+            <Campo
+              label={matriculaDireta ? "CPF *" : "CPF"}
+              value={form.cpf}
+              erro={erros.cpf}
+              placeholder="000.000.000-00"
+              onChange={(v) => set("cpf", v)}
+            />
+            <Campo
+              label="RG"
+              value={form.rg}
+              placeholder="00.000.000-0"
+              onChange={(v) => set("rg", v)}
+            />
+          </div>
           <Campo
-            label={matriculaDireta ? "CPF *" : "CPF"}
-            value={form.cpf}
-            erro={erros.cpf}
-            placeholder="000.000.000-00"
-            onChange={(v) => set("cpf", v)}
+            label="Data de nascimento"
+            type="date"
+            value={form.dataNascimento}
+            onChange={(v) => set("dataNascimento", v)}
+          />
+          <Campo
+            label="Vendedor / consultor"
+            value={form.vendedor}
+            placeholder="Quem fez a venda"
+            onChange={(v) => set("vendedor", v)}
           />
 
           <span className="mt-1 text-xs font-semibold uppercase tracking-widest text-faint">
@@ -317,12 +343,6 @@ function ModalCadastro({
             <Campo label="Número" value={form.numero} onChange={(v) => set("numero", v)} />
           </div>
           <Campo label="Rua" value={form.rua} onChange={(v) => set("rua", v)} />
-          <Campo
-            label="Data de nascimento"
-            type="date"
-            value={form.dataNascimento}
-            onChange={(v) => set("dataNascimento", v)}
-          />
 
           {matriculaDireta && (
             <>

@@ -97,6 +97,8 @@ model Person {
   telefone       String?
   email          String?
   cpf            String?
+  rg             String?
+  vendedor       String? // consultor que fez a venda (herdado do CloudGym)
   origem         Origem
   fase           PessoaFase   @default(lead)
   estagio        LeadEstagio?
