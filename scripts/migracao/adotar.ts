@@ -8,6 +8,8 @@
  *       → grava também os REVISAR (só depois da revisão com a recepção!)
  *   npx tsx scripts/migracao/adotar.ts --device <AccessDevice.id>
  *       → escolhe a catraca quando houver mais de uma
+ *   npx tsx scripts/migracao/adotar.ts --arquivo <path.json>
+ *       → lê outro fragmento de conciliação (ex.: conciliacao-19.json da revisita)
  *
  * Lê usuarios/migracao/conciliacao.json (gerado pela Task 5). Nunca escreve no
  * aparelho — só no Postgres do Coliseu.
@@ -18,13 +20,15 @@ import { prisma } from "../../src/lib/db";
 import { adotarConciliacao } from "../../src/lib/migracao/adotar";
 import type { ItemConciliacao } from "../../src/lib/migracao/conciliar";
 
-const ARQ_CONCILIACAO = resolve(__dirname, "../../usuarios/migracao/conciliacao.json");
+const ARQ_PADRAO = resolve(__dirname, "../../usuarios/migracao/conciliacao.json");
 
 async function main() {
   const args = process.argv.slice(2);
   const apply = args.includes("--apply");
   const incluirRevisar = args.includes("--incluir-revisar");
   const deviceArg = args.includes("--device") ? args[args.indexOf("--device") + 1] : null;
+  const arquivoArg = args.includes("--arquivo") ? args[args.indexOf("--arquivo") + 1] : null;
+  const ARQ_CONCILIACAO = arquivoArg ? resolve(process.cwd(), arquivoArg) : ARQ_PADRAO;
 
   const conciliacao = JSON.parse(readFileSync(ARQ_CONCILIACAO, "utf8")) as {
     geradoEm: string;
