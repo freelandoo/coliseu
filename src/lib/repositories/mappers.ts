@@ -23,7 +23,7 @@ export function toPlano(p: PPlan): Plano {
     id: p.id,
     nome: p.nome,
     valorMensal: p.valorMensal,
-    duracaoMeses: p.duracaoMeses,
+    duracaoDias: p.duracaoDias,
     ativo: p.ativo,
     descricao: p.descricao ?? undefined,
   };

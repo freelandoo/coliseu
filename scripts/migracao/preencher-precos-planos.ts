@@ -2,7 +2,8 @@
  * One-off (2026-07-20): preenche valorMensal dos planos importados do CloudGym
  * usando os preços de tabela derivados das vendas de julho
  * (usuarios/migracao/planos-precos.csv). O CSV traz o TOTAL do contrato; a coluna
- * da tela é VALOR/MÊS, então valorMensal = round(total / duracaoMeses).
+ * da tela é VALOR/MÊS, então valorMensal = round(total / meses do contrato),
+ * com os meses saindo da duração em dias (30 dias = 1 mês).
  *
  * Ativa os planos recorrentes preenchidos; deixa "TAXA MATRICULA" arquivada
  * (é taxa avulsa, não mensalidade). Dry-run por padrão; --apply grava.
@@ -43,12 +44,13 @@ async function main() {
   for (const p of planos) {
     const total = precoDe.get(p.nome.trim().toUpperCase());
     if (total == null) continue;
-    const dur = p.duracaoMeses && p.duracaoMeses > 0 ? p.duracaoMeses : 1;
+    const dias = p.duracaoDias && p.duracaoDias > 0 ? p.duracaoDias : 30;
+    const dur = Math.max(1, Math.round(dias / 30.44));
     const valorMensal = Math.round((total / dur) * 100) / 100;
     const ehTaxa = /TAXA/i.test(p.nome);
     const ativar = !ehTaxa; // taxa avulsa fica arquivada
     const acao = `R$${valorMensal.toFixed(2)}/mês` + (ativar ? " +ATIVAR" : " (mantém arquivado)");
-    console.log(linha(p.nome, 44), String(dur).padStart(3), ("R$" + total.toFixed(2)).padStart(9), "→", valorMensal.toFixed(2).padStart(9), " " + acao);
+    console.log(linha(p.nome, 44), String(dias).padStart(3), ("R$" + total.toFixed(2)).padStart(9), "→", valorMensal.toFixed(2).padStart(9), " " + acao);
 
     if (apply) {
       await prisma.plan.update({

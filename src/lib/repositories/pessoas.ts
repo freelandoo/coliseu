@@ -112,7 +112,7 @@ export async function matricularPessoaRepo(
 
   const agora = new Date();
   const venc = new Date(agora);
-  venc.setMonth(venc.getMonth() + plano.duracaoMeses);
+  venc.setDate(venc.getDate() + plano.duracaoDias);
 
   await prisma.$transaction([
     prisma.person.update({ where: { id }, data: { fase: "aluno", estagio: null } }),

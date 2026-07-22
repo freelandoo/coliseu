@@ -18,7 +18,7 @@ export async function criarPlanoRepo(input: NovoPlano): Promise<Plano> {
     data: {
       nome: input.nome.trim(),
       valorMensal: input.valorMensal,
-      duracaoMeses: input.duracaoMeses,
+      duracaoDias: input.duracaoDias,
       descricao: input.descricao?.trim() || null,
       ativo: true,
       unitId: await unitIdAtual(),
@@ -38,7 +38,7 @@ export async function atualizarPlanoRepo(
     data: {
       nome: patch.nome,
       valorMensal: patch.valorMensal,
-      duracaoMeses: patch.duracaoMeses,
+      duracaoDias: patch.duracaoDias,
       ativo: patch.ativo,
       descricao: patch.descricao,
     },

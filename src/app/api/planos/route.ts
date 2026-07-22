@@ -22,15 +22,15 @@ export async function POST(req: Request) {
   if (!Number.isFinite(valorMensal) || valorMensal <= 0) {
     return NextResponse.json({ erro: "Valor mensal inválido" }, { status: 400 });
   }
-  const duracaoMeses = Number(body.duracaoMeses);
-  if (!Number.isInteger(duracaoMeses) || duracaoMeses < 1) {
+  const duracaoDias = Number(body.duracaoDias);
+  if (!Number.isInteger(duracaoDias) || duracaoDias < 1) {
     return NextResponse.json({ erro: "Duração inválida" }, { status: 400 });
   }
 
   const plano = await criarPlano({
     nome: body.nome,
     valorMensal,
-    duracaoMeses,
+    duracaoDias,
     descricao: body.descricao,
   });
   return NextResponse.json(plano, { status: 201 });

@@ -150,10 +150,12 @@ model Person {
 }
 
 model Plan {
-  id           String  @id @default(cuid())
-  nome         String
-  valorMensal  Float
-  duracaoMeses Int
+  id          String @id @default(cuid())
+  nome        String
+  valorMensal Float
+  /// Vigência do contrato em dias — o balcão pensa em dias (30, 90, 365),
+  /// e o vencimento sai de soma de dias, sem a ambiguidade de "mês".
+  duracaoDias Int
   ativo        Boolean @default(true)
   descricao    String?
 

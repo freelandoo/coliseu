@@ -30,7 +30,7 @@ function comparar(a: PlanoComContagem, b: PlanoComContagem, coluna: Coluna) {
     case "nome":
       return colator.compare(a.nome, b.nome);
     case "duracao":
-      return a.duracaoMeses - b.duracaoMeses;
+      return a.duracaoDias - b.duracaoDias;
     case "alunos":
       return a.alunos - b.alunos;
     case "valor":
@@ -41,6 +41,15 @@ function comparar(a: PlanoComContagem, b: PlanoComContagem, coluna: Coluna) {
 const inputCls =
   "w-full rounded-lg border border-border bg-surface px-3 py-2 text-sm text-ink " +
   "placeholder:text-faint outline-none transition-colors focus:border-red/60";
+
+/**
+ * Leitura aproximada em meses ao lado dos dias — o contrato é vendido como
+ * "semestral", mas vale em dias; mostrar os dois evita conferência de cabeça.
+ */
+function equivalenteEmMeses(dias: number): string | null {
+  const meses = Math.round(dias / 30.44);
+  return meses >= 2 ? `≈ ${meses} meses` : null;
+}
 
 export function GestaoPlanos({ planos }: { planos: PlanoComContagem[] }) {
   const router = useRouter();
@@ -187,7 +196,12 @@ export function GestaoPlanos({ planos }: { planos: PlanoComContagem[] }) {
                         )}
                       </td>
                       <td className="px-4 py-3 text-muted">
-                        {p.duracaoMeses} {p.duracaoMeses === 1 ? "mês" : "meses"}
+                        {p.duracaoDias} {p.duracaoDias === 1 ? "dia" : "dias"}
+                        {equivalenteEmMeses(p.duracaoDias) && (
+                          <span className="block text-xs text-faint">
+                            {equivalenteEmMeses(p.duracaoDias)}
+                          </span>
+                        )}
                       </td>
                       <td className="px-4 py-3 text-muted">{p.alunos}</td>
                       <td
@@ -260,7 +274,7 @@ function ModalPlano({
   const [valor, setValor] = useState(
     plano ? String(plano.valorMensal).replace(".", ",") : "",
   );
-  const [duracao, setDuracao] = useState(String(plano?.duracaoMeses ?? 1));
+  const [duracao, setDuracao] = useState(String(plano?.duracaoDias ?? 30));
   const [descricao, setDescricao] = useState(plano?.descricao ?? "");
   const [erro, setErro] = useState("");
   const [enviando, setEnviando] = useState(false);
@@ -283,7 +297,7 @@ function ModalPlano({
         body: JSON.stringify({
           nome,
           valorMensal: v,
-          duracaoMeses: d,
+          duracaoDias: d,
           descricao,
         }),
       });
@@ -340,15 +354,18 @@ function ModalPlano({
           </div>
           <div>
             <label className="mb-1 block text-xs font-medium text-muted">
-              Duração (meses)
+              Duração (dias)
             </label>
             <input
               value={duracao}
               onChange={(e) => setDuracao(e.target.value)}
               inputMode="numeric"
-              placeholder="1"
+              placeholder="30"
               className={inputCls}
             />
+            <p className="mt-1 text-xs text-faint">
+              30 = mensal · 90 = trimestral · 180 = semestral · 365 = anual
+            </p>
           </div>
           <div>
             <label className="mb-1 block text-xs font-medium text-muted">

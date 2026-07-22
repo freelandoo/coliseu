@@ -71,7 +71,8 @@ export interface Plano {
   id: string;
   nome: string;
   valorMensal: number;
-  duracaoMeses: number;
+  /** Vigência do contrato em dias (30 = mensal, 90 = trimestral, 365 = anual). */
+  duracaoDias: number;
   ativo?: boolean; // false = arquivado (não oferecido em novas matrículas). undefined = ativo.
   descricao?: string;
 }
@@ -80,7 +81,7 @@ export interface Plano {
 export interface NovoPlano {
   nome: string;
   valorMensal: number;
-  duracaoMeses: number;
+  duracaoDias: number;
   descricao?: string;
 }
 

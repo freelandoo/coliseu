@@ -92,7 +92,7 @@ export async function adotarConciliacao(itens: ItemConciliacao[], opts: OpcoesAd
         const plano = await prisma.plan.create({
           data: {
             unitId: device.unitId, nome: chavePlano, valorMensal: 0, ativo: false,
-            duracaoMeses: mesesEntre(aluno.inicioISO, aluno.fimISO),
+            duracaoDias: diasEntreContrato(aluno.inicioISO, aluno.fimISO),
             descricao: "Importado do CloudGym na migração — revisar valor e duração",
           },
         });
@@ -189,10 +189,9 @@ export async function adotarConciliacao(itens: ItemConciliacao[], opts: OpcoesAd
   return resumo;
 }
 
-function mesesEntre(inicioISO: string | null, fimISO: string | null): number {
-  if (!inicioISO || !fimISO) return 1;
-  const inicio = new Date(inicioISO);
-  const fim = new Date(fimISO);
-  const meses = (fim.getUTCFullYear() - inicio.getUTCFullYear()) * 12 + (fim.getUTCMonth() - inicio.getUTCMonth());
-  return Math.max(1, meses);
+/** Vigência real do contrato importado, em dias (o CloudGym dá Início → Final). */
+function diasEntreContrato(inicioISO: string | null, fimISO: string | null): number {
+  if (!inicioISO || !fimISO) return 30;
+  const dias = Math.round((Date.parse(fimISO) - Date.parse(inicioISO)) / 86_400_000);
+  return Math.max(1, dias);
 }

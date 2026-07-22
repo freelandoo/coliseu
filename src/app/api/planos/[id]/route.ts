@@ -25,12 +25,12 @@ export async function PATCH(req: Request, { params }: Ctx) {
     }
     patch.valorMensal = v;
   }
-  if (body.duracaoMeses !== undefined) {
-    const d = Number(body.duracaoMeses);
+  if (body.duracaoDias !== undefined) {
+    const d = Number(body.duracaoDias);
     if (!Number.isInteger(d) || d < 1) {
       return NextResponse.json({ erro: "Duração inválida" }, { status: 400 });
     }
-    patch.duracaoMeses = d;
+    patch.duracaoDias = d;
   }
   if (typeof body.ativo === "boolean") patch.ativo = body.ativo;
   if (typeof body.descricao === "string") {

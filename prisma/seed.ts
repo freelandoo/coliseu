@@ -65,10 +65,10 @@ async function main() {
   }
 
   const planosSeed = [
-    { id: "p-mensal", nome: "Mensal", valorMensal: 129.9, duracaoMeses: 1 },
-    { id: "p-tri", nome: "Trimestral", valorMensal: 109.9, duracaoMeses: 3 },
-    { id: "p-semestral", nome: "Semestral", valorMensal: 94.9, duracaoMeses: 6 },
-    { id: "p-anual", nome: "Anual", valorMensal: 79.9, duracaoMeses: 12 },
+    { id: "p-mensal", nome: "Mensal", valorMensal: 129.9, duracaoDias: 30 },
+    { id: "p-tri", nome: "Trimestral", valorMensal: 109.9, duracaoDias: 90 },
+    { id: "p-semestral", nome: "Semestral", valorMensal: 94.9, duracaoDias: 180 },
+    { id: "p-anual", nome: "Anual", valorMensal: 79.9, duracaoDias: 365 },
   ];
   for (const p of planosSeed) {
     await prisma.plan.upsert({
