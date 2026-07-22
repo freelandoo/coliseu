@@ -3,18 +3,18 @@ import { Reveal } from "@/components/ui/Reveal";
 import { Badge, Card, Stat } from "@/components/ui/primitives";
 import { diasSemPresenca, faixaAusencia, formatBRL } from "@/lib/mock-data";
 import { listarAlunos, listarCobrancas, listarLeads } from "@/lib/store";
-import { usuarioAtual } from "@/lib/auth/session";
+import { requireModulo } from "@/lib/auth/rbac";
 import { statusTokenFreelandoo } from "@/lib/freelandoo/token";
 import { FreelandooTokenCard } from "@/components/painel/FreelandooTokenCard";
 
 export const dynamic = "force-dynamic";
 
 export default async function PainelPage() {
-  const [alunos, cobrancas, leads, user] = await Promise.all([
+  const user = await requireModulo("painel");
+  const [alunos, cobrancas, leads] = await Promise.all([
     listarAlunos(),
     listarCobrancas(),
     listarLeads(),
-    usuarioAtual(),
   ]);
 
   const leadsAtivos = leads.filter(
@@ -140,7 +140,7 @@ export default async function PainelPage() {
         </Reveal>
       )}
 
-      {user?.role === "ADMIN" && (
+      {user.role === "ADMIN" && (
         <Reveal delay={0.2}>
           <section className="mt-10">
             <h2 className="mb-4 font-display text-sm font-semibold uppercase tracking-widest text-faint">

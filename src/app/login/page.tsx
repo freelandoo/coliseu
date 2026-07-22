@@ -43,7 +43,9 @@ export default function LoginPage() {
       const d = await r.json().catch(() => ({}));
       setErro(d?.erro ?? "Falha na operação"); setEnviando(false); return;
     }
-    window.location.assign("/painel");
+    // A raiz decide o destino conforme o papel (admin → painel, colaborador →
+    // matriculados), então não fixamos a tela aqui.
+    window.location.assign("/");
   }
 
   function trocarModo() {

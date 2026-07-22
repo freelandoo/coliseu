@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { criarPlano, listarPlanos } from "@/lib/store";
 import type { NovoPlano } from "@/lib/types";
-import { exigirSessaoApi } from "@/lib/auth/api-guard";
+import { exigirAdminApi, exigirSessaoApi } from "@/lib/auth/api-guard";
 
 export async function GET() {
   const g = await exigirSessaoApi();
@@ -10,7 +10,8 @@ export async function GET() {
 }
 
 export async function POST(req: Request) {
-  const g = await exigirSessaoApi();
+  // Ler plano faz parte da matrícula; criar/editar é gestão (tela de Cobrança).
+  const g = await exigirAdminApi();
   if (g.erro) return g.erro;
   const body = (await req.json()) as Partial<NovoPlano>;
 

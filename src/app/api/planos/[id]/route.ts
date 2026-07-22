@@ -1,12 +1,12 @@
 import { NextResponse } from "next/server";
 import { atualizarPlano } from "@/lib/store";
 import type { Plano } from "@/lib/types";
-import { exigirSessaoApi } from "@/lib/auth/api-guard";
+import { exigirAdminApi } from "@/lib/auth/api-guard";
 
 type Ctx = { params: Promise<{ id: string }> };
 
 export async function PATCH(req: Request, { params }: Ctx) {
-  const g = await exigirSessaoApi();
+  const g = await exigirAdminApi();
   if (g.erro) return g.erro;
   const { id } = await params;
   const body = (await req.json()) as Partial<Plano>;

@@ -1,16 +1,17 @@
 import { NextResponse } from "next/server";
 import { criarDespesa, listarDespesas } from "@/lib/store";
 import type { NovaDespesa } from "@/lib/types";
-import { exigirSessaoApi } from "@/lib/auth/api-guard";
+// Custos (despesas e lucro) é módulo do admin — colaborador não lê nem lança.
+import { exigirAdminApi } from "@/lib/auth/api-guard";
 
 export async function GET() {
-  const g = await exigirSessaoApi();
+  const g = await exigirAdminApi();
   if (g.erro) return g.erro;
   return NextResponse.json(await listarDespesas());
 }
 
 export async function POST(req: Request) {
-  const g = await exigirSessaoApi();
+  const g = await exigirAdminApi();
   if (g.erro) return g.erro;
   const body = (await req.json()) as Partial<NovaDespesa>;
 

@@ -17,10 +17,12 @@ import {
   LEAD_ESTAGIO_LABEL,
   type LeadEstagio,
 } from "@/lib/types";
+import { requireModulo } from "@/lib/auth/rbac";
 
 export const dynamic = "force-dynamic";
 
 export default async function RelatoriosPage() {
+  await requireModulo("relatorios");
   const [alunos, cobrancas, leads, planos, despesas] = await Promise.all([
     listarAlunos(),
     listarCobrancas(),

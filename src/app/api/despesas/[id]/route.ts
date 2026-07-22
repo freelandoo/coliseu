@@ -1,12 +1,12 @@
 import { NextResponse } from "next/server";
 import { removerDespesa } from "@/lib/store";
-import { exigirSessaoApi } from "@/lib/auth/api-guard";
+import { exigirAdminApi } from "@/lib/auth/api-guard";
 
 export async function DELETE(
   _req: Request,
   { params }: { params: Promise<{ id: string }> },
 ) {
-  const g = await exigirSessaoApi();
+  const g = await exigirAdminApi();
   if (g.erro) return g.erro;
   const { id } = await params;
   const ok = await removerDespesa(id);

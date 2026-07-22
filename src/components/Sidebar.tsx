@@ -4,6 +4,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useState, type ReactNode } from "react";
 import { cn } from "@/lib/cn";
+import { podeModulo, type Modulo, type Papel } from "@/lib/auth/modulos";
 
 const IconBarras = (
   <svg width="14" height="14" viewBox="0 0 14 14" fill="none" aria-hidden>
@@ -42,22 +43,26 @@ const IconAcesso = (
 
 const NAV: {
   href: string;
+  modulo: Modulo;
   step?: number;
   icon?: ReactNode;
   label: string;
   hint: string;
 }[] = [
-  { href: "/painel", label: "Painel", hint: "Visão geral" },
-  { href: "/matriculados", icon: IconPessoas, label: "Matriculados", hint: "Alunos, renovação, retenção e fidelidade" },
-  { href: "/captacao", step: 1, label: "Captação", hint: "Leads e atendimento" },
-  { href: "/cobranca", step: 3, label: "Cobrança", hint: "Renovação e inadimplência" },
-  { href: "/custos", icon: IconCustos, label: "Custos", hint: "Despesas e lucro" },
-  { href: "/acesso", icon: IconAcesso, label: "Acesso", hint: "Catracas e credenciais" },
-  { href: "/relatorios", icon: IconBarras, label: "Relatórios", hint: "Indicadores do negócio" },
+  { href: "/painel", modulo: "painel", label: "Painel", hint: "Visão geral" },
+  { href: "/matriculados", modulo: "matriculados", icon: IconPessoas, label: "Matriculados", hint: "Alunos, renovação, retenção e fidelidade" },
+  { href: "/captacao", modulo: "captacao", step: 1, label: "Captação", hint: "Leads e atendimento" },
+  { href: "/cobranca", modulo: "cobranca", step: 3, label: "Cobrança", hint: "Renovação e inadimplência" },
+  { href: "/custos", modulo: "custos", icon: IconCustos, label: "Custos", hint: "Despesas e lucro" },
+  { href: "/acesso", modulo: "acesso", icon: IconAcesso, label: "Acesso", hint: "Catracas e credenciais" },
+  { href: "/relatorios", modulo: "relatorios", icon: IconBarras, label: "Relatórios", hint: "Indicadores do negócio" },
 ];
 
-export function Sidebar() {
+export function Sidebar({ papel }: { papel: Papel }) {
   const pathname = usePathname();
+  // O menu mostra só o que o papel abre — o guard de cada página é quem
+  // realmente barra o acesso; aqui é para não oferecer porta fechada.
+  const itens = NAV.filter((item) => podeModulo(papel, item.modulo));
   const [aberto, setAberto] = useState(false);
   // O drawer fecha ao clicar num link, no backdrop ou no X (mobile).
 
@@ -118,7 +123,7 @@ export function Sidebar() {
         </div>
 
         <nav className="flex flex-1 flex-col gap-1 p-3">
-          {NAV.map((item) => {
+          {itens.map((item) => {
             const active = pathname === item.href || pathname.startsWith(item.href + "/");
             return (
               <Link

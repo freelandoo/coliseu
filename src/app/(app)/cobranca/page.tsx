@@ -9,10 +9,12 @@ import {
   listarCobrancas,
   listarPlanos,
 } from "@/lib/store";
+import { requireModulo } from "@/lib/auth/rbac";
 
 export const dynamic = "force-dynamic";
 
 export default async function CobrancaPage() {
+  await requireModulo("cobranca");
   const [alunos, cobrancas, planos] = await Promise.all([
     listarAlunos(),
     listarCobrancas(),
