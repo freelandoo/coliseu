@@ -3,7 +3,6 @@ import { PageHeader } from "@/components/ui/primitives";
 import { CaptacaoTabs } from "@/components/captacao/CaptacaoTabs";
 import { ConectarWhatsapp } from "@/components/captacao/ConectarWhatsapp";
 import { LeadsFiltro } from "@/components/captacao/LeadsFiltro";
-import { NovoCadastro } from "@/components/clientes/NovoCadastro";
 import { listarLeads } from "@/lib/store";
 import { contarNaoLidasRepo } from "@/lib/repositories/whatsapp";
 import { statusWhatsappLocal } from "@/lib/whatsapp/status";
@@ -26,10 +25,7 @@ export default async function CaptacaoPage() {
             title="Captação e Atendimento"
             subtitle="Leads de WhatsApp, redes, balcão e indicação entram no CRM, são qualificados pela recepção e avançam para matrícula ou lista de reativação."
           />
-          <div className="flex flex-wrap items-center gap-3">
-            <ConectarWhatsapp inicial={whatsapp} />
-            <NovoCadastro variante="secundaria" />
-          </div>
+          <ConectarWhatsapp inicial={whatsapp} />
         </div>
       </Reveal>
 

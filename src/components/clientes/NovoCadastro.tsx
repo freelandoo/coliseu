@@ -53,14 +53,7 @@ const VAZIO: FormState = {
  * dispara a mesma ação `matricular` do fluxo de matrícula (Asaas + cobrança
  * pendente + provisionamento nas catracas).
  */
-export function NovoCadastro({
-  planos,
-  variante = "primaria",
-}: {
-  planos?: Plano[];
-  /** `secundaria` cede o destaque a outro botão ao lado (ex.: conectar WhatsApp). */
-  variante?: "primaria" | "secundaria";
-}) {
+export function NovoCadastro({ planos }: { planos?: Plano[] }) {
   const router = useRouter();
   const [aberto, setAberto] = useState(false);
 
@@ -69,12 +62,7 @@ export function NovoCadastro({
       <button
         type="button"
         onClick={() => setAberto(true)}
-        className={cn(
-          "rounded-lg px-4 py-2.5 font-display text-sm font-semibold uppercase tracking-widest transition-colors",
-          variante === "primaria"
-            ? "bg-red text-white hover:bg-red-bright"
-            : "border border-border-strong text-muted hover:text-ink",
-        )}
+        className="rounded-lg bg-red px-4 py-2.5 font-display text-sm font-semibold uppercase tracking-widest text-white transition-colors hover:bg-red-bright"
       >
         + Novo cadastro
       </button>
@@ -220,15 +208,17 @@ function ModalCadastro({
   }
 
   return (
+    // Backdrop rolável + `m-auto`: `items-center` com formulário mais alto que a
+    // tela joga o topo para fora da viewport, sem como rolar até ele.
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4"
+      className="fixed inset-0 z-50 flex overflow-y-auto bg-black/70 p-4"
       onClick={onFechar}
     >
       <div
         role="dialog"
         aria-modal="true"
         onClick={(e) => e.stopPropagation()}
-        className="max-h-[90dvh] w-full max-w-md overflow-y-auto rounded-xl border border-border bg-surface p-6 shadow-[var(--shadow-plate)]"
+        className="m-auto w-full max-w-md rounded-xl border border-border bg-surface p-6 shadow-[var(--shadow-plate)]"
       >
         {sucesso ? (
           <div className="text-center">

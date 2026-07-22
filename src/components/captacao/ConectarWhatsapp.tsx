@@ -213,12 +213,16 @@ function ModalConexao({
   }
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4" onClick={onFechar}>
+    // Quem rola é o backdrop, e o diálogo centraliza com `m-auto` em vez de
+    // `items-center`: com conteúdo mais alto que a tela, `items-center` empurra o
+    // topo para fora da viewport e ele fica inalcançável (não dá nem para rolar
+    // até ele). Com margem automática o excedente vira scroll normal.
+    <div className="fixed inset-0 z-50 flex overflow-y-auto bg-black/70 p-4" onClick={onFechar}>
       <div
         role="dialog"
         aria-modal="true"
         onClick={(e) => e.stopPropagation()}
-        className="max-h-[90dvh] w-full max-w-md overflow-y-auto rounded-xl border border-border bg-surface p-6 text-center shadow-[var(--shadow-plate)]"
+        className="m-auto w-full max-w-md rounded-xl border border-border bg-surface p-6 text-center shadow-[var(--shadow-plate)]"
       >
         <h3 className="font-display text-xl font-semibold uppercase tracking-wide text-ink">
           {pareado ? "WhatsApp conectado" : "Conectar WhatsApp"}
