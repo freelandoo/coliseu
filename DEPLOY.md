@@ -28,6 +28,64 @@ Ver `.env.example`. Obrigatórias em produção:
 - `AGENT_TOKEN` — **obrigatório**: sem ele as rotas `/api/agent/*` respondem 503 em produção; o mesmo valor vai no `.env` do agente na academia
 - `ASAAS_ENV=production` + `ASAAS_API_KEY` + `ASAAS_WEBHOOK_TOKEN` — sem elas o billing fica em modo demonstração
 - `FREELANDOO_API_TOKEN` — fallback opcional; o token da integração Freelandoo agora é gerado/rotacionado pelo ADMIN no card "Integração Freelandoo" do painel (tabela `ApiToken` tem precedência sobre esta env). A env só é usada enquanto nenhum token tiver sido gerado pelo painel.
+- `EVOLUTION_URL` + `EVOLUTION_API_KEY` + `WHATSAPP_WEBHOOK_SECRET` + `PUBLIC_APP_URL` — atendimento no WhatsApp; sem elas a Captação mostra "WhatsApp não configurado" e o resto do app segue normal
+
+## Atendimento WhatsApp (Evolution API)
+
+Design: `docs/superpowers/specs/2026-07-22-whatsapp-atendimento-design.md`.
+
+Dois serviços novos **no mesmo projeto Railway** do Coliseu:
+
+### 1. `redis`
+
+Template Redis do Railway (com volume). Serve de cache de sessão do Baileys — é o
+que segura a reconexão sem repareamento. O app Next **não** usa Redis.
+
+### 2. `evolution-api`
+
+- Imagem: `evoapicloud/evolution-api:v2.3.7`
+- Volume: `/evolution/instances` (a sessão do WhatsApp vive aqui — sem volume, todo
+  restart pede QR de novo)
+- **Sem domínio público.** Só rede interna; quem fala com ela é o Coliseu.
+- Variáveis:
+
+```
+DATABASE_ENABLED=true
+DATABASE_PROVIDER=postgresql
+DATABASE_CONNECTION_URI=${{Postgres.DATABASE_URL}}?schema=evolution
+DATABASE_CONNECTION_CLIENT_NAME=evolution
+AUTHENTICATION_API_KEY=<gere: openssl rand -hex 32>
+CACHE_REDIS_ENABLED=true
+CACHE_REDIS_URI=${{Redis.REDIS_URL}}
+CACHE_REDIS_PREFIX_KEY=evolution
+```
+
+O schema `evolution` isola as tabelas da Evolution das do Prisma (`public`) no
+mesmo Postgres — não precisa de um segundo banco.
+
+### 3. No serviço `coliseu`
+
+```
+EVOLUTION_URL=http://evolution-api.railway.internal:8080
+EVOLUTION_API_KEY=<mesmo AUTHENTICATION_API_KEY acima>
+EVOLUTION_INSTANCE=coliseu
+WHATSAPP_WEBHOOK_SECRET=<gere: openssl rand -hex 32>
+PUBLIC_APP_URL=https://coliseu-production.up.railway.app
+```
+
+O webhook é registrado sozinho na Evolution quando a recepção clica em
+**Conectar WhatsApp** — nada para configurar na mão.
+
+### Operação
+
+- Conectar: Captação → **Conectar WhatsApp** → ler o QR no celular **da academia**
+  (não use número pessoal: a sessão fica no servidor).
+- O QR expira em ~20s e se renova sozinho no modal.
+- Perder o volume `/evolution/instances` = repareamento por QR. Não perde
+  histórico: conversas e mensagens ficam no Postgres do Coliseu.
+- Nenhuma mensagem sai sem clique da recepção. Há teste de arquitetura
+  (`src/lib/whatsapp/sem-automacao.test.ts`) que falha se alguém ligar a ingestão
+  ao envio.
 
 ## Agente da catraca (recepção da academia)
 
@@ -59,6 +117,7 @@ O agente só faz requisições de SAÍDA (polling) — não precisa de porta abe
 - [ ] Heartbeat do agente chega (device ONLINE no dashboard `/acesso`)
 - [ ] Webhook Asaas de teste processado sem duplicar cobrança
 - [ ] Sem comando DEAD_LETTER inesperado no `/acesso`
+- [ ] WhatsApp conectado em `/captacao` e mensagem de teste aparecendo em `/captacao/atendimento`
 
 ## Rollback
 

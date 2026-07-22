@@ -65,6 +65,9 @@ model Unit {
 
   devices    AccessDevice[]
   policies   AccessPolicy[]
+
+  whatsappInstances WhatsappInstance[]
+  conversas         Conversa[]
 }
 
 model User {
@@ -78,6 +81,10 @@ model User {
   createdAt    DateTime @default(now())
   sessions     Session[]
   apiTokens    ApiToken[]
+
+  conversasAtendidas Conversa[]
+  mensagensEnviadas  Mensagem[]
+  atendimentos       AtendimentoRegistro[]
 }
 
 model Session {
@@ -123,6 +130,8 @@ model Person {
   accessEvents     AccessEvent[]
   enrollments      EnrollmentSession[]
   overrides        ManualAccessOverride[]
+
+  conversas        Conversa[]
 
   @@index([unitId, fase])
   @@index([nome])
@@ -477,4 +486,109 @@ model ApiToken {
   createdBy   User      @relation(fields: [createdById], references: [id])
   createdById String
   lastUsedAt  DateTime?
+}
+
+// ─── Atendimento WhatsApp (Evolution API) ────────────────────────────────────
+// Ver docs/superpowers/specs/2026-07-22-whatsapp-atendimento-design.md.
+// Regra do subsistema: nada aqui responde sozinho. O webhook só grava; enviar
+// exige clique humano na Captação.
+
+enum WhatsappStatus {
+  DISCONNECTED
+  CONNECTING
+  CONNECTED
+}
+
+enum ConversaInteresse {
+  nao_classificado
+  com_interesse
+  sem_interesse
+  perdido
+  convertido
+}
+
+enum MensagemDirecao {
+  IN
+  OUT
+}
+
+enum MensagemAutor {
+  LEAD
+  ATENDENTE
+}
+
+model WhatsappInstance {
+  id                String         @id @default(cuid())
+  unit              Unit           @relation(fields: [unitId], references: [id])
+  unitId            String
+  evolutionInstance String         @unique // nome técnico na Evolution
+  nome              String
+  status            WhatsappStatus @default(DISCONNECTED)
+  numeroConectado   String?
+  ultimoEstadoEm    DateTime?
+  criadoEm          DateTime       @default(now())
+
+  conversas Conversa[]
+
+  @@index([unitId, status])
+}
+
+model Conversa {
+  id         String           @id @default(cuid())
+  unit       Unit             @relation(fields: [unitId], references: [id])
+  unitId     String
+  instance   WhatsappInstance @relation(fields: [instanceId], references: [id], onDelete: Cascade)
+  instanceId String
+  remoteJid  String
+  telefone   String // só dígitos; vazio quando o JID não expõe o número (@lid)
+  pushName   String?
+
+  person      Person? @relation(fields: [personId], references: [id], onDelete: SetNull)
+  personId    String?
+  atendente   User?   @relation(fields: [atendenteId], references: [id], onDelete: SetNull)
+  atendenteId String?
+
+  interesse             ConversaInteresse @default(nao_classificado)
+  naoLidas              Int               @default(0)
+  ultimaMensagemEm      DateTime          @default(now())
+  ultimaMensagemPreview String            @default("")
+  criadoEm              DateTime          @default(now())
+
+  mensagens    Mensagem[]
+  atendimentos AtendimentoRegistro[]
+
+  @@unique([instanceId, remoteJid])
+  @@index([unitId, ultimaMensagemEm])
+  @@index([personId])
+}
+
+model Mensagem {
+  id          String          @id @default(cuid())
+  conversa    Conversa        @relation(fields: [conversaId], references: [id], onDelete: Cascade)
+  conversaId  String
+  waMessageId String          @unique // key.id do WhatsApp — dedupe de reentrega
+  direcao     MensagemDirecao
+  autor       MensagemAutor
+  autorUser   User?           @relation(fields: [autorUserId], references: [id], onDelete: SetNull)
+  autorUserId String? // nulo em OUT enviado pelo celular do dono
+  texto       String
+  tipoMidia   String          @default("texto") // texto | imagem | audio | video | documento | outro
+  enviadaEm   DateTime        @default(now())
+  erro        String?
+
+  @@index([conversaId, enviadaEm])
+}
+
+/// Cadastro de atendimento: log append-only de quem classificou o quê.
+model AtendimentoRegistro {
+  id         String            @id @default(cuid())
+  conversa   Conversa          @relation(fields: [conversaId], references: [id], onDelete: Cascade)
+  conversaId String
+  user       User              @relation(fields: [userId], references: [id])
+  userId     String
+  interesse  ConversaInteresse
+  observacao String?
+  criadoEm   DateTime          @default(now())
+
+  @@index([conversaId, criadoEm])
 }

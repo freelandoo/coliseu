@@ -13,6 +13,34 @@ services:
     volumes:
       - db_data:/var/lib/postgresql/data
 
+  # Cache de sessão do Baileys — é o que evita repareamento a cada reconexão.
+  # O app Next não usa Redis; quem usa é a Evolution.
+  redis:
+    image: redis:7-alpine
+    restart: unless-stopped
+
+  # Espelha o serviço de produção no Railway (ver DEPLOY.md).
+  # Sessão do WhatsApp vive no volume; sem ele, todo restart pede QR de novo.
+  evolution-api:
+    image: evoapicloud/evolution-api:v2.3.7
+    restart: unless-stopped
+    depends_on:
+      - db
+      - redis
+    ports:
+      - "8080:8080"
+    volumes:
+      - evolution_instances:/evolution/instances
+    environment:
+      DATABASE_ENABLED: "true"
+      DATABASE_PROVIDER: "postgresql"
+      DATABASE_CONNECTION_URI: "postgresql://coliseu:coliseu_dev@db:5432/coliseu?schema=evolution"
+      DATABASE_CONNECTION_CLIENT_NAME: "evolution"
+      AUTHENTICATION_API_KEY: "${EVOLUTION_API_KEY:-coliseu_dev_key}"
+      CACHE_REDIS_ENABLED: "true"
+      CACHE_REDIS_URI: "redis://redis:6379"
+      CACHE_REDIS_PREFIX_KEY: "evolution"
+
   web:
     build:
       context: .
@@ -29,8 +57,12 @@ services:
       - WATCHPACK_POLLING=true
       - NEXT_TELEMETRY_DISABLED=1
       - DATABASE_URL=postgresql://coliseu:coliseu_dev@db:5432/coliseu?schema=public
+      - EVOLUTION_URL=http://evolution-api:8080
+      - EVOLUTION_API_KEY=${EVOLUTION_API_KEY:-coliseu_dev_key}
+      - EVOLUTION_INSTANCE=coliseu
     # env_file:
     #   - .env.local
 
 volumes:
   db_data:
+  evolution_instances:

@@ -53,7 +53,14 @@ const VAZIO: FormState = {
  * dispara a mesma ação `matricular` do fluxo de matrícula (Asaas + cobrança
  * pendente + provisionamento nas catracas).
  */
-export function NovoCadastro({ planos }: { planos?: Plano[] }) {
+export function NovoCadastro({
+  planos,
+  variante = "primaria",
+}: {
+  planos?: Plano[];
+  /** `secundaria` cede o destaque a outro botão ao lado (ex.: conectar WhatsApp). */
+  variante?: "primaria" | "secundaria";
+}) {
   const router = useRouter();
   const [aberto, setAberto] = useState(false);
 
@@ -62,7 +69,12 @@ export function NovoCadastro({ planos }: { planos?: Plano[] }) {
       <button
         type="button"
         onClick={() => setAberto(true)}
-        className="rounded-lg bg-red px-4 py-2.5 font-display text-sm font-semibold uppercase tracking-widest text-white transition-colors hover:bg-red-bright"
+        className={cn(
+          "rounded-lg px-4 py-2.5 font-display text-sm font-semibold uppercase tracking-widest transition-colors",
+          variante === "primaria"
+            ? "bg-red text-white hover:bg-red-bright"
+            : "border border-border-strong text-muted hover:text-ink",
+        )}
       >
         + Novo cadastro
       </button>

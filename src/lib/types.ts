@@ -199,3 +199,65 @@ export interface Cobranca {
   assinaturaId?: string; // id da assinatura Asaas (subscription), quando recorrente
   linkPagamento?: string;
 }
+
+// Atendimento WhatsApp (Estágio 1) — conversas que chegam pela Evolution API
+export type WhatsappStatus = "DISCONNECTED" | "CONNECTING" | "CONNECTED";
+
+export type ConversaInteresse =
+  | "nao_classificado"
+  | "com_interesse"
+  | "sem_interesse"
+  | "perdido"
+  | "convertido";
+
+export const INTERESSE_LABEL: Record<ConversaInteresse, string> = {
+  nao_classificado: "Não classificado",
+  com_interesse: "Com interesse",
+  sem_interesse: "Sem interesse",
+  perdido: "Perdido",
+  convertido: "Convertido",
+};
+
+/**
+ * Classificar o atendimento move o lead no funil. "Sem interesse" cai em
+ * `qualificado` de propósito: a pessoa conversou e foi qualificada, mas não quer
+ * agora — é a lista de reativação. `perdido` é o descarte definitivo, com motivo.
+ */
+export const INTERESSE_ESTAGIO: Record<ConversaInteresse, LeadEstagio | null> = {
+  nao_classificado: null,
+  com_interesse: "interesse",
+  sem_interesse: "qualificado",
+  perdido: "perdido",
+  convertido: "convertido",
+};
+
+export interface ConversaResumo {
+  id: string;
+  nome: string; // pushName, nome do cadastro ou telefone formatado
+  telefone: string;
+  personId: string | null;
+  atendente: string | null;
+  interesse: ConversaInteresse;
+  naoLidas: number;
+  ultimaMensagemEm: string; // ISO
+  preview: string;
+}
+
+export interface MensagemItem {
+  id: string;
+  direcao: "IN" | "OUT";
+  autor: "LEAD" | "ATENDENTE";
+  autorNome: string | null; // null em OUT respondido pelo celular do dono
+  texto: string;
+  tipoMidia: string;
+  enviadaEm: string; // ISO
+  erro: string | null;
+}
+
+export interface AtendimentoItem {
+  id: string;
+  usuario: string;
+  interesse: ConversaInteresse;
+  observacao: string | null;
+  criadoEm: string; // ISO
+}
