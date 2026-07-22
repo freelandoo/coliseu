@@ -34,12 +34,22 @@ Ver `.env.example`. Obrigatórias em produção:
 
 Design: `docs/superpowers/specs/2026-07-22-whatsapp-atendimento-design.md`.
 
-Dois serviços novos **no mesmo projeto Railway** do Coliseu:
+Dois serviços novos **no mesmo projeto Railway** do Coliseu. Já estão
+provisionados em produção; o que segue documenta a configuração para recriar em
+outro ambiente ou auditar a existente.
 
 ### 1. `redis`
 
-Template Redis do Railway (com volume). Serve de cache de sessão do Baileys — é o
-que segura a reconexão sem repareamento. O app Next **não** usa Redis.
+Cache de sessão do Baileys — é o que segura a reconexão sem repareamento. O app
+Next **não** usa Redis. Sem volume: é cache, e se esvaziar a Evolution recompõe
+a partir dos arquivos em `/evolution/instances`.
+
+- Imagem: `redis:7-alpine`
+- Start command: `redis-server --bind :: --requirepass <senha> --appendonly no`
+
+O `--bind ::` **não é opcional**: a rede privada da Railway é IPv6-only, e o
+Redis por padrão só escuta em IPv4. Sem isso a Evolution não conecta no cache e
+a sessão do WhatsApp cai a cada restart.
 
 ### 2. `evolution-api`
 
@@ -56,12 +66,16 @@ DATABASE_CONNECTION_URI=${{Postgres.DATABASE_URL}}?schema=evolution
 DATABASE_CONNECTION_CLIENT_NAME=evolution
 AUTHENTICATION_API_KEY=<gere: openssl rand -hex 32>
 CACHE_REDIS_ENABLED=true
-CACHE_REDIS_URI=${{Redis.REDIS_URL}}
+CACHE_REDIS_URI=redis://default:<senha do redis>@redis.railway.internal:6379
 CACHE_REDIS_PREFIX_KEY=evolution
+CACHE_LOCAL_ENABLED=false
+DEL_INSTANCE=false
+SERVER_URL=http://evolution-api.railway.internal:8080
 ```
 
 O schema `evolution` isola as tabelas da Evolution das do Prisma (`public`) no
-mesmo Postgres — não precisa de um segundo banco.
+mesmo Postgres — não precisa de um segundo banco. A `DATABASE_URL` da Railway não
+tem query string, por isso o `?schema=` pode ser anexado direto.
 
 ### 3. No serviço `coliseu`
 
