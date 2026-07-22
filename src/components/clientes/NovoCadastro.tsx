@@ -2,6 +2,7 @@
 
 import { useRouter } from "next/navigation";
 import { useState } from "react";
+import { Modal } from "@/components/ui/Modal";
 import { cn } from "@/lib/cn";
 import { formatBRL } from "@/lib/mock-data";
 import { ORIGEM_LABEL, type Endereco, type Origem, type Plano } from "@/lib/types";
@@ -208,18 +209,7 @@ function ModalCadastro({
   }
 
   return (
-    // Backdrop rolável + `m-auto`: `items-center` com formulário mais alto que a
-    // tela joga o topo para fora da viewport, sem como rolar até ele.
-    <div
-      className="fixed inset-0 z-50 flex overflow-y-auto bg-black/70 p-4"
-      onClick={onFechar}
-    >
-      <div
-        role="dialog"
-        aria-modal="true"
-        onClick={(e) => e.stopPropagation()}
-        className="m-auto w-full max-w-md rounded-xl border border-border bg-surface p-6 shadow-[var(--shadow-plate)]"
-      >
+    <Modal onFechar={onFechar}>
         {sucesso ? (
           <div className="text-center">
             <span className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-ok/15 text-2xl text-ok">✓</span>
@@ -404,8 +394,7 @@ function ModalCadastro({
         </div>
         </>
         )}
-      </div>
-    </div>
+    </Modal>
   );
 }
 

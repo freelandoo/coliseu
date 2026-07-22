@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
+import { Modal } from "@/components/ui/Modal";
 import { cn } from "@/lib/cn";
 import type { WhatsappStatus } from "@/lib/types";
 
@@ -205,6 +206,28 @@ function ModalConexao({
     return () => clearInterval(t);
   }, [pareado, onStatus]);
 
+  /**
+   * Confirmação manual: consulta o estado na hora, em vez de esperar a próxima
+   * volta do polling. Também cobre o caso de o `connection.update` da Evolution
+   * não chegar — a recepção não fica olhando para um QR já escaneado.
+   */
+  async function confirmar() {
+    setCarregando(true);
+    setErro("");
+    try {
+      const r = await fetch("/api/whatsapp/instancia", { cache: "no-store" });
+      const d = (await r.json()) as StatusResposta;
+      if (!vivo.current) return;
+      onStatus(d);
+      if (d.status === "CONNECTED") setPareado(true);
+      else setErro("Ainda não conectou. Escaneie o QR Code no celular e confirme de novo.");
+    } catch {
+      if (vivo.current) setErro("Falha de conexão com o servidor.");
+    } finally {
+      if (vivo.current) setCarregando(false);
+    }
+  }
+
   async function desconectar() {
     setCarregando(true);
     await fetch("/api/whatsapp/instancia", { method: "DELETE" }).catch(() => undefined);
@@ -213,17 +236,7 @@ function ModalConexao({
   }
 
   return (
-    // Quem rola é o backdrop, e o diálogo centraliza com `m-auto` em vez de
-    // `items-center`: com conteúdo mais alto que a tela, `items-center` empurra o
-    // topo para fora da viewport e ele fica inalcançável (não dá nem para rolar
-    // até ele). Com margem automática o excedente vira scroll normal.
-    <div className="fixed inset-0 z-50 flex overflow-y-auto bg-black/70 p-4" onClick={onFechar}>
-      <div
-        role="dialog"
-        aria-modal="true"
-        onClick={(e) => e.stopPropagation()}
-        className="m-auto w-full max-w-md rounded-xl border border-border bg-surface p-6 text-center shadow-[var(--shadow-plate)]"
-      >
+    <Modal onFechar={onFechar} className="text-center">
         <h3 className="font-display text-xl font-semibold uppercase tracking-wide text-ink">
           {pareado ? "WhatsApp conectado" : "Conectar WhatsApp"}
         </h3>
@@ -287,7 +300,18 @@ function ModalConexao({
 
             {erro && <p className="mt-3 text-xs text-red-bright">{erro}</p>}
 
-            <div className="mt-5 flex gap-3">
+            <button
+              onClick={confirmar}
+              disabled={carregando}
+              className={cn(
+                "mt-5 w-full rounded-lg px-4 py-3 font-display text-sm font-semibold uppercase tracking-widest transition-colors",
+                carregando ? "cursor-not-allowed bg-surface-2 text-faint" : "bg-red text-white hover:bg-red-bright",
+              )}
+            >
+              {carregando ? "Verificando…" : "Já escaneei — confirmar"}
+            </button>
+
+            <div className="mt-3 flex gap-3">
               <button
                 onClick={async () => {
                   setCarregando(true);
@@ -295,23 +319,19 @@ function ModalConexao({
                   aplicar(await pedirQr());
                 }}
                 disabled={carregando}
-                className={cn(
-                  "flex-1 rounded-lg px-4 py-3 font-display text-sm font-semibold uppercase tracking-widest transition-colors",
-                  carregando ? "cursor-not-allowed bg-surface-2 text-faint" : "bg-red text-white hover:bg-red-bright",
-                )}
+                className="flex-1 rounded-lg border border-border-strong px-4 py-2.5 text-sm font-medium text-muted transition-colors hover:text-ink"
               >
-                {carregando ? "Aguarde…" : "Atualizar QR Code"}
+                Atualizar QR Code
               </button>
               <button
                 onClick={onFechar}
-                className="rounded-lg border border-border-strong px-4 py-3 text-sm font-medium text-muted transition-colors hover:text-ink"
+                className="rounded-lg border border-border-strong px-4 py-2.5 text-sm font-medium text-muted transition-colors hover:text-ink"
               >
                 Fechar
               </button>
             </div>
           </>
         )}
-      </div>
-    </div>
+    </Modal>
   );
 }
