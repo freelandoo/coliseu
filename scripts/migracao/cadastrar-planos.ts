@@ -77,7 +77,7 @@ async function main() {
 
   console.log(linhas.join("\n"));
   console.log(`\n${apply ? ">>> APLICADO <<<" : ">>> DRY-RUN — use --apply para gravar <<<"}`);
-  console.log(`unidade: ${unit.name ?? unit.id} | planos no export: ${porPlano.size} | criados: ${criados} | já existiam: ${pulados}`);
+  console.log(`unidade: ${unit.nome ?? unit.id} | planos no export: ${porPlano.size} | criados: ${criados} | já existiam: ${pulados}`);
   if (apply && criados) console.log(`\nAgora é só preencher o valor mensal de cada um no admin e ativar.`);
   await prisma.$disconnect();
 }
