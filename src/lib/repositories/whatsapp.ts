@@ -254,6 +254,33 @@ export async function registrarMensagemRepo(input: {
   }
 }
 
+/**
+ * Apaga só as mensagens, preservando a conversa, o vínculo com o lead e o
+ * histórico de atendimento. Serve para limpar teste sem perder a classificação.
+ */
+export async function limparMensagensRepo(conversaId: string): Promise<number> {
+  const { count } = await prisma.mensagem.deleteMany({ where: { conversaId } });
+  await prisma.conversa.update({
+    where: { id: conversaId },
+    data: { ultimaMensagemPreview: "", naoLidas: 0 },
+  });
+  return count;
+}
+
+/**
+ * Remove a conversa inteira (mensagens e registros de atendimento vão junto por
+ * cascade). O lead **não** é apagado: ele é cadastro do CRM e continua no funil.
+ * Se a pessoa escrever de novo, uma conversa nova nasce e revincula no mesmo lead.
+ */
+export async function removerConversaRepo(conversaId: string): Promise<boolean> {
+  try {
+    await prisma.conversa.delete({ where: { id: conversaId } });
+    return true;
+  } catch {
+    return false; // já removida
+  }
+}
+
 export async function assumirConversaRepo(conversaId: string, userId: string) {
   return prisma.conversa.update({ where: { id: conversaId }, data: { atendenteId: userId } });
 }

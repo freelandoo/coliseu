@@ -41,6 +41,7 @@ export default async function AtendimentoPage() {
           inicial={conversas}
           conectado={whatsapp.status === "CONNECTED"}
           podeResponder={user.role === "ADMIN" || user.role === "RECEPCAO"}
+          podeApagar={user.role === "ADMIN"}
         />
       </Reveal>
     </>

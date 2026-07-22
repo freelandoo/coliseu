@@ -1,10 +1,11 @@
 import { randomUUID } from "node:crypto";
 import { NextResponse } from "next/server";
-import { exigirSessaoApi } from "@/lib/auth/api-guard";
+import { exigirAdminApi, exigirSessaoApi } from "@/lib/auth/api-guard";
 import { podePapel, type Papel } from "@/lib/auth/rbac";
 import {
   assumirConversaRepo,
   dadosEnvioConversaRepo,
+  limparMensagensRepo,
   listarMensagensRepo,
   registrarMensagemRepo,
 } from "@/lib/repositories/whatsapp";
@@ -34,6 +35,19 @@ export async function GET(req: Request, { params }: { params: Promise<{ id: stri
   const valido = depois && !Number.isNaN(depois.getTime()) ? depois : undefined;
 
   return NextResponse.json({ mensagens: await listarMensagensRepo(id, valido) });
+}
+
+/**
+ * DELETE — limpa o histórico de mensagens, mantendo a conversa, o vínculo com o
+ * lead e os registros de atendimento. Só ADMIN.
+ */
+export async function DELETE(_req: Request, { params }: { params: Promise<{ id: string }> }) {
+  const g = await exigirAdminApi();
+  if (g.erro) return g.erro;
+
+  const { id } = await params;
+  const apagadas = await limparMensagensRepo(id);
+  return NextResponse.json({ ok: true, apagadas });
 }
 
 /**

@@ -2,7 +2,12 @@ import { afterAll, beforeEach, expect, test } from "vitest";
 import { prisma } from "@/lib/db";
 import { unitIdAtual } from "@/lib/repositories/unit";
 import { proximoCodigoRepo } from "@/lib/repositories/pessoas";
-import { classificarConversaRepo, listarMensagensRepo } from "@/lib/repositories/whatsapp";
+import {
+  classificarConversaRepo,
+  limparMensagensRepo,
+  listarMensagensRepo,
+  removerConversaRepo,
+} from "@/lib/repositories/whatsapp";
 import { processarEventoWhatsapp } from "@/lib/whatsapp/ingest";
 
 const INSTANCIA = "teste-ingestao";
@@ -159,6 +164,57 @@ test("classificar registra o atendimento e move o lead no funil", async () => {
   });
   expect(registros).toHaveLength(1);
   expect(registros[0]).toMatchObject({ userId: user!.id, observacao: "Quer visitar sábado" });
+});
+
+test("limpar apaga as mensagens e preserva conversa, lead e atendimentos", async () => {
+  await processarEventoWhatsapp(evento({ id: "MSG-10" }));
+  const conversa = await prisma.conversa.findFirst({ where: { remoteJid: JID } });
+  const user = await prisma.user.findFirst();
+  await classificarConversaRepo({
+    conversaId: conversa!.id,
+    userId: user!.id,
+    interesse: "com_interesse",
+  });
+
+  const apagadas = await limparMensagensRepo(conversa!.id);
+
+  expect(apagadas).toBe(1);
+  expect(await prisma.mensagem.count({ where: { conversaId: conversa!.id } })).toBe(0);
+  const depois = await prisma.conversa.findUnique({ where: { id: conversa!.id } });
+  expect(depois).toMatchObject({ ultimaMensagemPreview: "", naoLidas: 0, interesse: "com_interesse" });
+  expect(depois?.personId).toBe(conversa!.personId);
+  expect(await prisma.atendimentoRegistro.count({ where: { conversaId: conversa!.id } })).toBe(1);
+});
+
+test("remover apaga conversa e mensagens, mas nunca o cadastro do lead", async () => {
+  await processarEventoWhatsapp(evento({ id: "MSG-11" }));
+  const conversa = await prisma.conversa.findFirst({ where: { remoteJid: JID } });
+  const personId = conversa!.personId!;
+
+  expect(await removerConversaRepo(conversa!.id)).toBe(true);
+
+  expect(await prisma.conversa.count({ where: { id: conversa!.id } })).toBe(0);
+  expect(await prisma.mensagem.count({ where: { conversaId: conversa!.id } })).toBe(0);
+  // O lead é cadastro do CRM: sobrevive à remoção da conversa.
+  expect(await prisma.person.count({ where: { id: personId } })).toBe(1);
+});
+
+test("remover conversa inexistente devolve false em vez de estourar", async () => {
+  expect(await removerConversaRepo("nao-existe")).toBe(false);
+});
+
+test("connection.update 'connecting' nao derruba uma instancia conectada", async () => {
+  const base = { event: "connection.update", instance: INSTANCIA };
+  await processarEventoWhatsapp({ ...base, data: { state: "open", wuid: "5511999000111@s.whatsapp.net" } });
+  expect((await prisma.whatsappInstance.findFirst())?.status).toBe("CONNECTED");
+
+  // Handshake/reconexão: estado de passagem, não queda.
+  await processarEventoWhatsapp({ ...base, data: { state: "connecting" } });
+  expect((await prisma.whatsappInstance.findFirst())?.status).toBe("CONNECTED");
+
+  // 'close' e queda de verdade.
+  await processarEventoWhatsapp({ ...base, data: { state: "close" } });
+  expect((await prisma.whatsappInstance.findFirst())?.status).toBe("DISCONNECTED");
 });
 
 test("perdido guarda o motivo no cadastro", async () => {

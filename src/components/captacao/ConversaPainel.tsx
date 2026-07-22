@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { Badge } from "@/components/ui/primitives";
+import { Modal } from "@/components/ui/Modal";
 import { cn } from "@/lib/cn";
 import {
   INTERESSE_LABEL,
@@ -34,11 +35,16 @@ function hora(iso: string) {
 export function ConversaPainel({
   conversa,
   podeResponder,
+  podeApagar,
   onConversaAtualizada,
+  onConversaRemovida,
 }: {
   conversa: ConversaResumo;
   podeResponder: boolean;
+  /** Limpar/remover apagam trilha de atendimento — só ADMIN. */
+  podeApagar: boolean;
   onConversaAtualizada: (c: ConversaResumo) => void;
+  onConversaRemovida: (id: string) => void;
 }) {
   const [mensagens, setMensagens] = useState<MensagemItem[]>([]);
   const [atendimentos, setAtendimentos] = useState<AtendimentoItem[]>([]);
@@ -46,6 +52,7 @@ export function ConversaPainel({
   const [enviando, setEnviando] = useState(false);
   const [erro, setErro] = useState("");
   const [carregando, setCarregando] = useState(true);
+  const [confirmando, setConfirmando] = useState<"limpar" | "remover" | null>(null);
   const fim = useRef<HTMLDivElement>(null);
 
   // Carrega o histórico ao montar. Trocar de conversa remonta o componente
@@ -125,6 +132,28 @@ export function ConversaPainel({
     }
   }
 
+  async function limpar() {
+    setConfirmando(null);
+    const r = await fetch(`/api/whatsapp/conversas/${conversa.id}/mensagens`, { method: "DELETE" });
+    if (!r.ok) {
+      const d = await r.json().catch(() => ({}));
+      setErro(d?.erro ?? "Não foi possível limpar a conversa.");
+      return;
+    }
+    setMensagens([]);
+  }
+
+  async function remover() {
+    setConfirmando(null);
+    const r = await fetch(`/api/whatsapp/conversas/${conversa.id}`, { method: "DELETE" });
+    if (!r.ok) {
+      const d = await r.json().catch(() => ({}));
+      setErro(d?.erro ?? "Não foi possível remover a conversa.");
+      return;
+    }
+    onConversaRemovida(conversa.id);
+  }
+
   async function classificar(interesse: ConversaInteresse, observacao: string, motivo: string) {
     const r = await fetch(`/api/whatsapp/conversas/${conversa.id}`, {
       method: "PATCH",
@@ -163,8 +192,33 @@ export function ConversaPainel({
               Ver cadastro →
             </Link>
           )}
+          {podeApagar && (
+            <>
+              <button
+                onClick={() => setConfirmando("limpar")}
+                className="text-xs font-medium text-faint transition-colors hover:text-ink"
+              >
+                Limpar
+              </button>
+              <button
+                onClick={() => setConfirmando("remover")}
+                className="text-xs font-medium text-faint transition-colors hover:text-red-bright"
+              >
+                Remover
+              </button>
+            </>
+          )}
         </div>
       </header>
+
+      {confirmando && (
+        <ConfirmarExclusao
+          tipo={confirmando}
+          nome={conversa.nome}
+          onCancelar={() => setConfirmando(null)}
+          onConfirmar={confirmando === "limpar" ? limpar : remover}
+        />
+      )}
 
       <div className="flex-1 overflow-y-auto px-5 py-4">
         {carregando ? (
@@ -226,6 +280,64 @@ export function ConversaPainel({
         )}
       </div>
     </div>
+  );
+}
+
+/**
+ * Confirmação de ação destrutiva. Deixa explícito o que sobrevive a cada uma —
+ * "limpar" e "remover" soam parecidos e têm consequências bem diferentes.
+ */
+function ConfirmarExclusao({
+  tipo,
+  nome,
+  onCancelar,
+  onConfirmar,
+}: {
+  tipo: "limpar" | "remover";
+  nome: string;
+  onCancelar: () => void;
+  onConfirmar: () => void;
+}) {
+  const limpando = tipo === "limpar";
+  return (
+    <Modal onFechar={onCancelar}>
+      <h3 className="font-display text-lg font-semibold uppercase tracking-wide text-ink">
+        {limpando ? "Limpar conversa" : "Remover conversa"}
+      </h3>
+      <p className="mt-2 text-sm text-muted">
+        {limpando ? (
+          <>
+            Apaga as mensagens de <strong className="text-ink">{nome}</strong>. A conversa continua
+            na lista, com o lead e o histórico de atendimento intactos.
+          </>
+        ) : (
+          <>
+            Remove a conversa de <strong className="text-ink">{nome}</strong> com as mensagens e os
+            registros de atendimento. O cadastro do lead <strong className="text-ink">não</strong> é
+            apagado e continua no funil.
+          </>
+        )}
+      </p>
+      <p className="mt-2 text-xs text-faint">
+        {limpando
+          ? "Não dá para desfazer."
+          : "Não dá para desfazer. Se a pessoa escrever de novo, uma conversa nova aparece."}
+      </p>
+      <div className="mt-5 flex gap-3">
+        <button
+          onClick={onConfirmar}
+          className="flex-1 rounded-lg bg-red px-4 py-2.5 font-display text-sm font-semibold uppercase tracking-widest text-white transition-colors hover:bg-red-bright"
+        >
+          {limpando ? "Limpar" : "Remover"}
+        </button>
+        <button
+          onClick={onCancelar}
+          className="rounded-lg border border-border-strong px-4 py-2.5 text-sm font-medium text-muted transition-colors hover:text-ink"
+        >
+          Cancelar
+        </button>
+      </div>
+    </Modal>
   );
 }
 

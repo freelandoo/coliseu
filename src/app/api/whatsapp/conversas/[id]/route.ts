@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { exigirSessaoApi } from "@/lib/auth/api-guard";
+import { exigirAdminApi, exigirSessaoApi } from "@/lib/auth/api-guard";
 import { podePapel, type Papel } from "@/lib/auth/rbac";
 import {
   classificarConversaRepo,
@@ -7,6 +7,7 @@ import {
   listarMensagensRepo,
   marcarConversaLidaRepo,
   obterConversaRepo,
+  removerConversaRepo,
 } from "@/lib/repositories/whatsapp";
 import { INTERESSE_LABEL, type ConversaInteresse } from "@/lib/types";
 
@@ -37,6 +38,21 @@ export async function GET(_req: Request, ctx: { params: Promise<{ id: string }> 
   await marcarConversaLidaRepo(id).catch(() => undefined);
 
   return NextResponse.json({ conversa: { ...conversa, naoLidas: 0 }, mensagens, atendimentos });
+}
+
+/**
+ * DELETE — remove a conversa e todo o histórico dela. Só ADMIN: apaga registro
+ * de atendimento, que é trilha de auditoria. O lead continua no funil.
+ */
+export async function DELETE(_req: Request, ctx: { params: Promise<{ id: string }> }) {
+  const g = await exigirAdminApi();
+  if (g.erro) return g.erro;
+
+  const { id } = await ctx.params;
+  const removida = await removerConversaRepo(id);
+  if (!removida) return NextResponse.json({ erro: "conversa não encontrada" }, { status: 404 });
+
+  return NextResponse.json({ ok: true });
 }
 
 /** PATCH — classifica o atendimento e move o lead no funil. */

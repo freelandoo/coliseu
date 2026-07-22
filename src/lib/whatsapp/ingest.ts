@@ -27,12 +27,22 @@ export type ResultadoIngestao =
   | { tipo: "conexao"; conectado: boolean }
   | { tipo: "mensagens"; gravadas: number; duplicadas: number };
 
-/** `connection.update` — mantém o status da instância em dia sem polling. */
+/**
+ * `connection.update` — mantém o status da instância em dia sem polling.
+ *
+ * A Evolution emite este evento também com `connecting` durante o handshake e a
+ * reconexão. Tratar tudo que não é `open` como DISCONNECTED marcava a instância
+ * como caída no meio de uma sessão saudável, e o status ficava grudado assim —
+ * o botão voltava para "Conectar WhatsApp" com o WhatsApp funcionando. Só
+ * `close` derruba de fato; `connecting` é estado de passagem.
+ */
 async function tratarConexao(evento: EventoWebhook): Promise<ResultadoIngestao> {
   const d = (evento.data ?? {}) as { state?: unknown; statusReason?: unknown; wuid?: unknown };
   const conectado = conexaoAberta(d.state);
+  const estado = String(d.state ?? "").toLowerCase();
   const instancia = evento.instance;
-  if (instancia) {
+
+  if (instancia && (conectado || estado === "close")) {
     const numero = typeof d.wuid === "string" ? d.wuid.split("@")[0] : undefined;
     await atualizarStatusInstanciaRepo(
       instancia,

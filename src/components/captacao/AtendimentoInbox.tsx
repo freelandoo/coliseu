@@ -33,10 +33,12 @@ export function AtendimentoInbox({
   inicial,
   conectado,
   podeResponder,
+  podeApagar,
 }: {
   inicial: ConversaResumo[];
   conectado: boolean;
   podeResponder: boolean;
+  podeApagar: boolean;
 }) {
   const [conversas, setConversas] = useState(inicial);
   const [selecionada, setSelecionada] = useState<string | null>(inicial[0]?.id ?? null);
@@ -60,6 +62,12 @@ export function AtendimentoInbox({
 
   function atualizarConversa(c: ConversaResumo) {
     setConversas((antigas) => antigas.map((a) => (a.id === c.id ? { ...a, ...c } : a)));
+  }
+
+  function removerConversa(id: string) {
+    const restantes = conversas.filter((a) => a.id !== id);
+    setConversas(restantes);
+    setSelecionada((atual) => (atual === id ? (restantes[0]?.id ?? null) : atual));
   }
 
   if (conversas.length === 0) {
@@ -125,8 +133,10 @@ export function AtendimentoInbox({
           <ConversaPainel
             key={atual.id}
             conversa={atual}
-            podeResponder={podeResponder && conectado}
+            podeResponder={podeResponder}
+            podeApagar={podeApagar}
             onConversaAtualizada={atualizarConversa}
+            onConversaRemovida={removerConversa}
           />
         ) : (
           <p className="flex h-full items-center justify-center text-sm text-faint">
