@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { Badge } from "@/components/ui/primitives";
 import { Modal } from "@/components/ui/Modal";
 import { cn } from "@/lib/cn";
@@ -54,6 +55,7 @@ export function ConversaPainel({
   const [carregando, setCarregando] = useState(true);
   const [confirmando, setConfirmando] = useState<"limpar" | "remover" | null>(null);
   const fim = useRef<HTMLDivElement>(null);
+  const router = useRouter();
 
   // Carrega o histórico ao montar. Trocar de conversa remonta o componente
   // (a lista passa `key={id}`), então não há estado antigo para limpar aqui.
@@ -167,6 +169,9 @@ export function ConversaPainel({
     }
     setAtendimentos(d.atendimentos ?? []);
     onConversaAtualizada(d.conversa);
+    // A classificação move o lead no funil; sem isso a aba Leads continuaria
+    // servindo o RSC em cache com o estágio antigo.
+    router.refresh();
     return true;
   }
 

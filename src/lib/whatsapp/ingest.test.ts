@@ -217,6 +217,51 @@ test("connection.update 'connecting' nao derruba uma instancia conectada", async
   expect((await prisma.whatsappInstance.findFirst())?.status).toBe("DISCONNECTED");
 });
 
+test("reclassificar move o lead no funil nos dois sentidos", async () => {
+  await processarEventoWhatsapp(evento({ id: "MSG-12" }));
+  const conversa = await prisma.conversa.findFirst({ where: { remoteJid: JID } });
+  const user = await prisma.user.findFirst();
+  const estagioDoLead = async () =>
+    (await prisma.person.findUnique({ where: { id: conversa!.personId! } }))?.estagio;
+
+  const classificar = (interesse: Parameters<typeof classificarConversaRepo>[0]["interesse"]) =>
+    classificarConversaRepo({ conversaId: conversa!.id, userId: user!.id, interesse });
+
+  await classificar("com_interesse");
+  expect(await estagioDoLead()).toBe("interesse");
+
+  // A recepção volta atrás: o funil precisa acompanhar, nao ficar preso.
+  await classificar("nao_classificado");
+  expect(await estagioDoLead()).toBe("novo");
+
+  await classificar("sem_interesse");
+  expect(await estagioDoLead()).toBe("qualificado");
+
+  await classificar("convertido");
+  expect(await estagioDoLead()).toBe("convertido");
+});
+
+test("sair de perdido limpa o motivo", async () => {
+  await processarEventoWhatsapp(evento({ id: "MSG-13" }));
+  const conversa = await prisma.conversa.findFirst({ where: { remoteJid: JID } });
+  const user = await prisma.user.findFirst();
+
+  await classificarConversaRepo({
+    conversaId: conversa!.id,
+    userId: user!.id,
+    interesse: "perdido",
+    motivoPerdido: "Achou caro",
+  });
+  await classificarConversaRepo({
+    conversaId: conversa!.id,
+    userId: user!.id,
+    interesse: "com_interesse",
+  });
+
+  const pessoa = await prisma.person.findUnique({ where: { id: conversa!.personId! } });
+  expect(pessoa).toMatchObject({ estagio: "interesse", motivoPerdido: null });
+});
+
 test("perdido guarda o motivo no cadastro", async () => {
   await processarEventoWhatsapp(evento({ id: "MSG-9" }));
   const conversa = await prisma.conversa.findFirst({ where: { remoteJid: JID } });

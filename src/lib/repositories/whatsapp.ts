@@ -334,7 +334,9 @@ export async function classificarConversaRepo(input: {
         observacao: input.observacao?.trim() || null,
       },
     }),
-    ...(conversa.personId && estagio
+    // Sempre reflete no funil: o estágio do lead acompanha a conversa, inclusive
+    // quando a recepção volta atrás na classificação.
+    ...(conversa.personId
       ? [
           prisma.person.update({
             where: { id: conversa.personId },

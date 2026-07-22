@@ -221,12 +221,19 @@ export const INTERESSE_LABEL: Record<ConversaInteresse, string> = {
 };
 
 /**
- * Classificar o atendimento move o lead no funil. "Sem interesse" cai em
- * `qualificado` de propósito: a pessoa conversou e foi qualificada, mas não quer
- * agora — é a lista de reativação. `perdido` é o descarte definitivo, com motivo.
+ * Classificar o atendimento move o lead no funil.
+ *
+ * O mapa é TOTAL de propósito: a classificação da conversa é a fonte da verdade
+ * do estágio, e o lead muda de estágio conforme a conversa evolui — inclusive
+ * voltando. Se `nao_classificado` não apontasse para nada, desfazer uma
+ * classificação deixaria o funil preso no valor antigo.
+ *
+ * "Sem interesse" cai em `qualificado`: a pessoa conversou e foi qualificada,
+ * mas não quer agora — é a lista de reativação. `perdido` é o descarte
+ * definitivo, com motivo.
  */
-export const INTERESSE_ESTAGIO: Record<ConversaInteresse, LeadEstagio | null> = {
-  nao_classificado: null,
+export const INTERESSE_ESTAGIO: Record<ConversaInteresse, LeadEstagio> = {
+  nao_classificado: "novo",
   com_interesse: "interesse",
   sem_interesse: "qualificado",
   perdido: "perdido",
