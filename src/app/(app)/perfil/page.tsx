@@ -6,6 +6,7 @@ import { Reveal } from "@/components/ui/Reveal";
 import { AlterarSenhaCard } from "@/components/perfil/AlterarSenhaCard";
 import { AgentKitCard } from "@/components/perfil/AgentKitCard";
 import { ColaboradoresCard } from "@/components/perfil/ColaboradoresCard";
+import { BotaoSair } from "@/components/perfil/BotaoSair";
 import { listarColaboradoresRepo } from "@/lib/repositories/colaboradores";
 
 export const dynamic = "force-dynamic";
@@ -58,6 +59,12 @@ export default async function PerfilPage() {
             </div>
             <p className="mt-1.5 text-sm text-muted">{user.email ?? `login: ${user.login}`}</p>
             {unit && <p className="mt-1 text-xs text-faint">Unidade: {unit.nome}</p>}
+
+            {/* Sair fica aqui, no cartão da conta: é a única saída do sistema —
+                o balcão é compartilhado e a troca de turno precisa dela. */}
+            <div className="mt-4 border-t border-border pt-4">
+              <BotaoSair />
+            </div>
           </Card>
         </Reveal>
 

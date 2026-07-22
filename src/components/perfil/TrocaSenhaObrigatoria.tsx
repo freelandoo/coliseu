@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { Modal } from "@/components/ui/Modal";
+import { BotaoSair } from "@/components/perfil/BotaoSair";
 import { cn } from "@/lib/cn";
 
 const inputCls =
@@ -93,6 +94,12 @@ export function TrocaSenhaObrigatoria({ nome }: { nome: string }) {
       >
         {salvando ? "Salvando…" : "Salvar e entrar"}
       </button>
+
+      {/* Sem isto a tela vira armadilha: quem entrou na conta errada não tem
+          como voltar ao login, já que o modal cobre o sistema inteiro. */}
+      <div className="mt-3 flex justify-center">
+        <BotaoSair className="border-transparent px-2 py-1 text-[11px]" rotulo="Sair" />
+      </div>
     </Modal>
   );
 }
