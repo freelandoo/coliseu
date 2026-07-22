@@ -315,14 +315,12 @@ function ModalPlano({
   }
 
   return (
-    <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4"
-      onClick={onFechar}
-    >
+    // Sem fechar no clique do fundo: o formulário está preenchido e o clique
+    // fora do campo apagava tudo. Sai por Cancelar.
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4">
       <div
         role="dialog"
         aria-modal="true"
-        onClick={(e) => e.stopPropagation()}
         className="w-full max-w-md rounded-xl border border-border bg-surface p-6 shadow-[var(--shadow-plate)]"
       >
         <h3 className="font-display text-xl font-semibold uppercase tracking-wide text-ink">

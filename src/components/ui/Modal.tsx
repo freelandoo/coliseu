@@ -17,6 +17,10 @@ import { cn } from "@/lib/cn";
  * viewport, `items-center` empurra o topo para fora da tela e ele fica
  * inalcançável — não dá nem para rolar até ele. Com margem automática o
  * excedente vira scroll normal do backdrop.
+ *
+ * Clique no fundo NÃO fecha: são quase todos formulários, e o clique perdido
+ * ao lado do campo apagava tudo que já tinha sido digitado. Fecha por Esc ou
+ * pelos botões do próprio diálogo.
  */
 export function Modal({
   children,
@@ -45,11 +49,10 @@ export function Modal({
   if (typeof document === "undefined") return null;
 
   return createPortal(
-    <div className="fixed inset-0 z-50 flex overflow-y-auto bg-black/70 p-4" onClick={onFechar}>
+    <div className="fixed inset-0 z-50 flex overflow-y-auto bg-black/70 p-4">
       <div
         role="dialog"
         aria-modal="true"
-        onClick={(e) => e.stopPropagation()}
         className={cn(
           "m-auto w-full max-w-md rounded-xl border border-border bg-surface p-6",
           "shadow-[var(--shadow-plate)]",

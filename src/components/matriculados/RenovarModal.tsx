@@ -164,17 +164,15 @@ export function RenovarModal({
     }
   }
 
-  const podeFechar = fase !== "processando" || Boolean(erro);
-
+  // A regra de "só fecha quando não está processando (ou deu erro)" agora vive
+  // nos próprios botões: durante o processamento nenhum deles é renderizado.
   return (
-    <div
-      className="fixed inset-0 z-[60] flex items-center justify-center bg-black/70 p-4"
-      onClick={() => podeFechar && onFechar()}
-    >
+    // Clique no fundo não fecha: a renovação em andamento não pode sumir com um
+    // clique torto — sai pelos botões do próprio diálogo.
+    <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/70 p-4">
       <div
         role="dialog"
         aria-modal="true"
-        onClick={(e) => e.stopPropagation()}
         className="max-h-[90vh] w-full max-w-md overflow-y-auto rounded-xl border border-border bg-surface p-6 shadow-[var(--shadow-plate)]"
       >
         {fase === "processando" && (
