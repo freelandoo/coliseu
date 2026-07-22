@@ -13,6 +13,7 @@ import {
 import {
   listarDespesasRepo, criarDespesaRepo, removerDespesaRepo, totalDespesasRepo,
 } from "@/lib/repositories/despesas";
+import { mapaConversaPorPessoaRepo } from "@/lib/repositories/whatsapp";
 import {
   LEAD_ESTAGIO_LABEL, ORIGEM_LABEL,
   type Aluno, type Candidato, type Cobranca, type Despesa, type Lead,
@@ -70,13 +71,17 @@ export async function listarAlunos(): Promise<Aluno[]> {
 }
 
 export async function listarLeads(): Promise<Lead[]> {
-  const pessoas = await listarPessoasRepo();
+  const [pessoas, conversas] = await Promise.all([
+    listarPessoasRepo(),
+    mapaConversaPorPessoaRepo(),
+  ]);
   return pessoas
     .filter((p) => p.fase === "lead")
     .map((p) => ({
       id: p.id, nome: p.nome, telefone: p.telefone ?? "",
       origem: p.origem, estagio: p.estagio ?? "novo",
       motivoPerdido: p.motivoPerdido, criadoEm: p.criadoEm,
+      conversaId: conversas.get(p.id),
     }));
 }
 

@@ -36,6 +36,8 @@ export interface Lead {
   estagio: LeadEstagio;
   motivoPerdido?: string;
   criadoEm: string; // ISO
+  /** Conversa do WhatsApp deste lead, quando existe — habilita "Responder". */
+  conversaId?: string;
 }
 
 // Despesas / custos operacionais

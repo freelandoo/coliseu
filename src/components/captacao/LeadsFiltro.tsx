@@ -1,6 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
+import Link from "next/link";
 import { Badge, Card } from "@/components/ui/primitives";
 import { NovoCadastro } from "@/components/clientes/NovoCadastro";
 import { RemoverPessoa } from "@/components/clientes/RemoverPessoa";
@@ -134,14 +135,26 @@ export function LeadsFiltro({ leads, planos }: { leads: Lead[]; planos: Plano[] 
                       </td>
                       <td className="px-4 py-3 text-right">
                         <span className="inline-flex items-center gap-3">
-                          <a
-                            href={`https://wa.me/55${fone}`}
-                            target="_blank"
-                            rel="noreferrer"
-                            className="text-xs font-medium text-red-bright hover:underline"
-                          >
-                            WhatsApp →
-                          </a>
+                          {/* Com conversa no CRM, responder é por dentro (histórico
+                              fica registrado). Sem conversa — lead de balcão ou
+                              indicação — só resta abrir o WhatsApp por fora. */}
+                          {lead.conversaId ? (
+                            <Link
+                              href={`/captacao/atendimento?c=${lead.conversaId}`}
+                              className="text-xs font-medium text-red-bright hover:underline"
+                            >
+                              Responder →
+                            </Link>
+                          ) : (
+                            <a
+                              href={`https://wa.me/55${fone}`}
+                              target="_blank"
+                              rel="noreferrer"
+                              className="text-xs font-medium text-faint hover:text-ink hover:underline"
+                            >
+                              WhatsApp →
+                            </a>
+                          )}
                           <NovoCadastro
                             planos={planos}
                             compacto

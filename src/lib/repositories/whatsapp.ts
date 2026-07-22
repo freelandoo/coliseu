@@ -152,6 +152,21 @@ export async function listarConversasRepo(): Promise<ConversaResumo[]> {
   return rows.map(toResumo);
 }
 
+/**
+ * personId → conversaId, para a tabela de leads oferecer "Responder" em vez de
+ * mandar a recepção para o WhatsApp Web. Uma pessoa pode ter mais de uma
+ * conversa (números diferentes); vale a mais recente.
+ */
+export async function mapaConversaPorPessoaRepo(): Promise<Map<string, string>> {
+  const rows = await prisma.conversa.findMany({
+    where: { personId: { not: null } },
+    select: { id: true, personId: true },
+    orderBy: { ultimaMensagemEm: "asc" },
+  });
+  // asc + set: a última gravada vence, que é a conversa mais recente.
+  return new Map(rows.map((r) => [r.personId!, r.id]));
+}
+
 /** Badge da aba Atendimento. */
 export async function contarNaoLidasRepo(): Promise<number> {
   const r = await prisma.conversa.aggregate({ _sum: { naoLidas: true } });

@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { useSearchParams } from "next/navigation";
 import { Card } from "@/components/ui/primitives";
 import { ConversaPainel } from "@/components/captacao/ConversaPainel";
 import { cn } from "@/lib/cn";
@@ -40,8 +41,12 @@ export function AtendimentoInbox({
   podeResponder: boolean;
   podeApagar: boolean;
 }) {
+  // `?c=<id>` vem do link "Responder" da tabela de leads e do aviso de login.
+  const alvo = useSearchParams().get("c");
   const [conversas, setConversas] = useState(inicial);
-  const [selecionada, setSelecionada] = useState<string | null>(inicial[0]?.id ?? null);
+  const [selecionada, setSelecionada] = useState<string | null>(
+    (alvo && inicial.some((c) => c.id === alvo) ? alvo : inicial[0]?.id) ?? null,
+  );
 
   useEffect(() => {
     const t = setInterval(async () => {
