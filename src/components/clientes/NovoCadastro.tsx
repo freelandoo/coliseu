@@ -54,7 +54,28 @@ const VAZIO: FormState = {
  * dispara a mesma ação `matricular` do fluxo de matrícula (Asaas + cobrança
  * pendente + provisionamento nas catracas).
  */
-export function NovoCadastro({ planos }: { planos?: Plano[] }) {
+/** Lead já cadastrado que vai ser matriculado — o formulário abre preenchido. */
+export interface LeadParaMatricular {
+  id: string;
+  nome: string;
+  telefone: string;
+}
+
+export function NovoCadastro({
+  planos,
+  lead,
+  compacto = false,
+}: {
+  planos?: Plano[];
+  /**
+   * Sem `lead`, cria uma pessoa nova. Com `lead`, completa o cadastro que já
+   * existe e matricula — é o mesmo formulário, porque matricular exige os mesmos
+   * dados (CPF para o Asaas, contato para o link de pagamento).
+   */
+  lead?: LeadParaMatricular;
+  /** Botão de linha de tabela em vez de ação de cabeçalho. */
+  compacto?: boolean;
+}) {
   const router = useRouter();
   const [aberto, setAberto] = useState(false);
 
@@ -63,13 +84,19 @@ export function NovoCadastro({ planos }: { planos?: Plano[] }) {
       <button
         type="button"
         onClick={() => setAberto(true)}
-        className="rounded-lg bg-red px-4 py-2.5 font-display text-sm font-semibold uppercase tracking-widest text-white transition-colors hover:bg-red-bright"
+        className={cn(
+          "font-display font-semibold uppercase tracking-wide transition-colors",
+          compacto
+            ? "rounded-md bg-red px-3 py-1.5 text-xs text-white hover:bg-red-bright"
+            : "rounded-lg bg-red px-4 py-2.5 text-sm tracking-widest text-white hover:bg-red-bright",
+        )}
       >
-        + Novo cadastro
+        {lead ? "Matricular" : "+ Novo cadastro"}
       </button>
       {aberto && (
         <ModalCadastro
           planos={planos}
+          lead={lead}
           onFechar={() => setAberto(false)}
           onCriado={() => {
             setAberto(false);
@@ -83,15 +110,19 @@ export function NovoCadastro({ planos }: { planos?: Plano[] }) {
 
 function ModalCadastro({
   planos,
+  lead,
   onFechar,
   onCriado,
 }: {
   planos?: Plano[];
+  lead?: LeadParaMatricular;
   onFechar: () => void;
   onCriado: () => void;
 }) {
   const matriculaDireta = !!planos && planos.length > 0;
-  const [form, setForm] = useState<FormState>(VAZIO);
+  const [form, setForm] = useState<FormState>(
+    lead ? { ...VAZIO, nome: lead.nome, telefone: lead.telefone } : VAZIO,
+  );
   const [erros, setErros] = useState<Partial<Record<keyof FormState, string>>>({});
   const [planoId, setPlanoId] = useState(planos?.[0]?.id ?? "");
   const [enviando, setEnviando] = useState(false);
@@ -154,47 +185,57 @@ function ModalCadastro({
           }
         : undefined;
 
+    const camposCadastro = {
+      nome: form.nome,
+      origem: form.origem,
+      telefone: form.telefone,
+      email: form.email,
+      cpf: form.cpf,
+      rg: form.rg,
+      vendedor: form.vendedor,
+      dataNascimento: form.dataNascimento,
+      endereco,
+    };
+
     try {
-      const r = await fetch("/api/pessoas", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          nome: form.nome,
-          origem: form.origem,
-          telefone: form.telefone,
-          email: form.email,
-          cpf: form.cpf,
-          rg: form.rg,
-          vendedor: form.vendedor,
-          dataNascimento: form.dataNascimento,
-          endereco,
-        }),
-      });
-      if (!r.ok) {
-        const d = await r.json().catch(() => ({}));
-        setErroApi(d?.erro ?? "Não foi possível cadastrar.");
-        setEnviando(false);
-        return;
+      // Lead existente já tem id; só cria pessoa quando o cadastro é novo.
+      let pessoaId = lead?.id;
+
+      if (!pessoaId) {
+        const r = await fetch("/api/pessoas", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(camposCadastro),
+        });
+        if (!r.ok) {
+          const d = await r.json().catch(() => ({}));
+          setErroApi(d?.erro ?? "Não foi possível cadastrar.");
+          setEnviando(false);
+          return;
+        }
+
+        if (!matriculaDireta) {
+          onCriado();
+          return;
+        }
+        pessoaId = ((await r.json()) as { id: string }).id;
       }
 
-      if (!matriculaDireta) {
-        onCriado();
-        return;
-      }
-
-      // Matrícula direta: mesma ação do fluxo de matrícula (lead → aluno +
-      // assinatura Asaas + cobrança pendente + provisionamento nas catracas).
-      const pessoa = (await r.json()) as { id: string };
+      // Mesma ação do fluxo de matrícula (lead → aluno + assinatura Asaas +
+      // cobrança pendente + provisionamento nas catracas). Os campos do
+      // formulário vão junto: a rota aplica o cadastro antes de matricular.
       const plano = planos!.find((p) => p.id === planoId) ?? planos![0];
-      const rm = await fetch(`/api/pessoas/${pessoa.id}`, {
+      const rm = await fetch(`/api/pessoas/${pessoaId}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ acao: "matricular", planoId: plano.id }),
+        body: JSON.stringify({ acao: "matricular", planoId: plano.id, ...camposCadastro }),
       });
       if (!rm.ok) {
         const d = await rm.json().catch(() => ({}));
         setErroApi(
-          `${d?.erro ?? "Falha ao matricular"} — o cadastro foi criado como lead; matricule pela Captação.`,
+          lead
+            ? `${d?.erro ?? "Falha ao matricular"} — o lead continua no funil, sem cobrança gerada.`
+            : `${d?.erro ?? "Falha ao matricular"} — o cadastro foi criado como lead; matricule pela Captação.`,
         );
         setEnviando(false);
         return;
@@ -242,10 +283,12 @@ function ModalCadastro({
         ) : (
         <>
         <h3 className="font-display text-xl font-semibold uppercase tracking-wide text-ink">
-          Novo cadastro
+          {lead ? "Matricular lead" : "Novo cadastro"}
         </h3>
         <p className="mt-0.5 text-xs text-faint">
-          {matriculaDireta ? (
+          {lead ? (
+            <>Complete o cadastro de <strong className="text-muted">{lead.nome}</strong> e escolha o plano. O CPF é exigido para gerar a cobrança.</>
+          ) : matriculaDireta ? (
             <>Já entra <strong className="text-muted">matriculado</strong> no plano escolhido, com pagamento pendente.</>
           ) : (
             <>Entra como <strong className="text-muted">lead novo</strong> no funil.</>

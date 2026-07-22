@@ -2,6 +2,7 @@
 
 import { useMemo, useState } from "react";
 import { Badge, Card } from "@/components/ui/primitives";
+import { NovoCadastro } from "@/components/clientes/NovoCadastro";
 import { RemoverPessoa } from "@/components/clientes/RemoverPessoa";
 import { cn } from "@/lib/cn";
 import { formatData } from "@/lib/mock-data";
@@ -10,6 +11,7 @@ import {
   ORIGEM_LABEL,
   type Lead,
   type LeadEstagio,
+  type Plano,
 } from "@/lib/types";
 
 type Filtro = "todos" | LeadEstagio;
@@ -30,7 +32,7 @@ const TONE: Record<LeadEstagio, "neutral" | "red" | "ok" | "warn"> = {
   perdido: "neutral",
 };
 
-export function LeadsFiltro({ leads }: { leads: Lead[] }) {
+export function LeadsFiltro({ leads, planos }: { leads: Lead[]; planos: Plano[] }) {
   const [filtro, setFiltro] = useState<Filtro>("todos");
 
   const contagem = useMemo(() => {
@@ -140,6 +142,11 @@ export function LeadsFiltro({ leads }: { leads: Lead[] }) {
                           >
                             WhatsApp →
                           </a>
+                          <NovoCadastro
+                            planos={planos}
+                            compacto
+                            lead={{ id: lead.id, nome: lead.nome, telefone: lead.telefone }}
+                          />
                           <RemoverPessoa id={lead.id} nome={lead.nome} />
                         </span>
                       </td>
