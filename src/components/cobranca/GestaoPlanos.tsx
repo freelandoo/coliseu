@@ -1,14 +1,41 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useState } from "react";
-import { Badge, Card } from "@/components/ui/primitives";
+import { useMemo, useState } from "react";
+import { Card } from "@/components/ui/primitives";
 import { cn } from "@/lib/cn";
 import { formatBRL } from "@/lib/mock-data";
 import type { Plano } from "@/lib/types";
 
 export interface PlanoComContagem extends Plano {
   alunos: number;
+}
+
+type Situacao = "ativos" | "arquivados";
+type Coluna = "nome" | "duracao" | "alunos" | "valor";
+type Direcao = "asc" | "desc";
+
+/** Direção de partida ao clicar numa coluna nova: texto sobe, número desce. */
+const DIRECAO_INICIAL: Record<Coluna, Direcao> = {
+  nome: "asc",
+  duracao: "desc",
+  alunos: "desc",
+  valor: "desc",
+};
+
+const colator = new Intl.Collator("pt-BR", { numeric: true, sensitivity: "base" });
+
+function comparar(a: PlanoComContagem, b: PlanoComContagem, coluna: Coluna) {
+  switch (coluna) {
+    case "nome":
+      return colator.compare(a.nome, b.nome);
+    case "duracao":
+      return a.duracaoMeses - b.duracaoMeses;
+    case "alunos":
+      return a.alunos - b.alunos;
+    case "valor":
+      return a.valorMensal - b.valorMensal;
+  }
 }
 
 const inputCls =
@@ -19,6 +46,35 @@ export function GestaoPlanos({ planos }: { planos: PlanoComContagem[] }) {
   const router = useRouter();
   const [modalNovo, setModalNovo] = useState(false);
   const [editando, setEditando] = useState<Plano | null>(null);
+  const [situacao, setSituacao] = useState<Situacao>("ativos");
+  // Espelha a ordem que o servidor devolve (valorMensal desc).
+  const [coluna, setColuna] = useState<Coluna>("valor");
+  const [direcao, setDirecao] = useState<Direcao>("desc");
+
+  const contagem = useMemo(
+    () => ({
+      ativos: planos.filter((p) => p.ativo !== false).length,
+      arquivados: planos.filter((p) => p.ativo === false).length,
+    }),
+    [planos],
+  );
+
+  const visiveis = useMemo(() => {
+    const arquivado = situacao === "arquivados";
+    const sinal = direcao === "asc" ? 1 : -1;
+    return planos
+      .filter((p) => (p.ativo === false) === arquivado)
+      .sort((a, b) => sinal * comparar(a, b, coluna));
+  }, [planos, situacao, coluna, direcao]);
+
+  function ordenarPor(c: Coluna) {
+    if (c === coluna) {
+      setDirecao((d) => (d === "asc" ? "desc" : "asc"));
+      return;
+    }
+    setColuna(c);
+    setDirecao(DIRECAO_INICIAL[c]);
+  }
 
   async function arquivar(p: Plano, ativo: boolean) {
     await fetch(`/api/planos/${p.id}`, {
@@ -43,69 +99,128 @@ export function GestaoPlanos({ planos }: { planos: PlanoComContagem[] }) {
         </button>
       </div>
 
+      <div className="flex flex-wrap gap-2">
+        {(
+          [
+            { key: "ativos", label: "Ativos" },
+            { key: "arquivados", label: "Arquivados" },
+          ] as const
+        ).map((chip) => {
+          const ativo = situacao === chip.key;
+          return (
+            <button
+              key={chip.key}
+              onClick={() => setSituacao(chip.key)}
+              className={cn(
+                "flex items-center gap-2 rounded-lg border px-3.5 py-2 text-sm font-medium transition-colors",
+                ativo
+                  ? "border-red/60 bg-red-ghost text-ink"
+                  : "border-border bg-surface text-muted hover:border-border-strong hover:text-ink",
+              )}
+            >
+              <span className="uppercase tracking-wide">{chip.label}</span>
+              <span
+                className={cn(
+                  "flex h-5 min-w-5 items-center justify-center rounded-md px-1 text-xs font-semibold",
+                  ativo ? "bg-red text-white" : "bg-surface-2 text-faint",
+                )}
+              >
+                {contagem[chip.key]}
+              </span>
+            </button>
+          );
+        })}
+      </div>
+
       <Card className="overflow-hidden">
-        <div className="overflow-x-auto">
-          <table className="w-full min-w-[680px] border-collapse text-sm">
-            <thead>
-              <tr className="border-b border-border text-left">
-                <Th>Plano</Th>
-                <Th>Duração</Th>
-                <Th>Alunos</Th>
-                <Th className="text-right">Valor/mês</Th>
-                <Th className="text-right">Ações</Th>
-              </tr>
-            </thead>
-            <tbody>
-              {planos.map((p) => {
-                const inativo = p.ativo === false;
-                return (
-                  <tr
-                    key={p.id}
-                    className={cn(
-                      "border-b border-border last:border-0 transition-colors hover:bg-surface-2",
-                      inativo && "opacity-50",
-                    )}
+        {visiveis.length === 0 ? (
+          <p className="px-5 py-10 text-center text-sm text-faint">
+            {situacao === "ativos"
+              ? "Nenhum plano ativo."
+              : "Nenhum plano arquivado."}
+          </p>
+        ) : (
+          <div className="overflow-x-auto">
+            <table className="w-full min-w-[680px] border-collapse text-sm">
+              <thead>
+                <tr className="border-b border-border text-left">
+                  <Th coluna="nome" atual={coluna} direcao={direcao} onOrdenar={ordenarPor}>
+                    Plano
+                  </Th>
+                  <Th coluna="duracao" atual={coluna} direcao={direcao} onOrdenar={ordenarPor}>
+                    Duração
+                  </Th>
+                  <Th coluna="alunos" atual={coluna} direcao={direcao} onOrdenar={ordenarPor}>
+                    Alunos
+                  </Th>
+                  <Th
+                    coluna="valor"
+                    atual={coluna}
+                    direcao={direcao}
+                    onOrdenar={ordenarPor}
+                    className="text-right"
                   >
-                    <td className="px-4 py-3">
-                      <span className="font-medium text-ink">{p.nome}</span>
-                      {inativo && (
-                        <Badge tone="neutral" className="ml-2">
-                          Arquivado
-                        </Badge>
-                      )}
-                      {p.descricao && (
-                        <p className="text-xs text-faint">{p.descricao}</p>
-                      )}
-                    </td>
-                    <td className="px-4 py-3 text-muted">
-                      {p.duracaoMeses} {p.duracaoMeses === 1 ? "mês" : "meses"}
-                    </td>
-                    <td className="px-4 py-3 text-muted">{p.alunos}</td>
-                    <td className="px-4 py-3 text-right font-semibold text-ink">
-                      {formatBRL(p.valorMensal)}
-                    </td>
-                    <td className="px-4 py-3 text-right">
-                      <div className="flex justify-end gap-3">
-                        <button
-                          onClick={() => setEditando(p)}
-                          className="text-xs font-medium text-faint transition-colors hover:text-red-bright"
+                    Valor/mês
+                  </Th>
+                  <Th className="text-right">Ações</Th>
+                </tr>
+              </thead>
+              <tbody>
+                {visiveis.map((p) => {
+                  const inativo = p.ativo === false;
+                  return (
+                    <tr
+                      key={p.id}
+                      className="border-b border-border last:border-0 transition-colors hover:bg-surface-2"
+                    >
+                      <td className="px-4 py-3">
+                        <span
+                          className={cn(
+                            "font-medium",
+                            inativo ? "text-muted" : "text-ink",
+                          )}
                         >
-                          Editar
-                        </button>
-                        <button
-                          onClick={() => arquivar(p, inativo)}
-                          className="text-xs font-medium text-faint transition-colors hover:text-ink"
-                        >
-                          {inativo ? "Reativar" : "Arquivar"}
-                        </button>
-                      </div>
-                    </td>
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
-        </div>
+                          {p.nome}
+                        </span>
+                        {p.descricao && (
+                          <p className="text-xs text-faint">{p.descricao}</p>
+                        )}
+                      </td>
+                      <td className="px-4 py-3 text-muted">
+                        {p.duracaoMeses} {p.duracaoMeses === 1 ? "mês" : "meses"}
+                      </td>
+                      <td className="px-4 py-3 text-muted">{p.alunos}</td>
+                      <td
+                        className={cn(
+                          "px-4 py-3 text-right font-semibold",
+                          inativo ? "text-muted" : "text-ink",
+                        )}
+                      >
+                        {formatBRL(p.valorMensal)}
+                      </td>
+                      <td className="px-4 py-3 text-right">
+                        <div className="flex justify-end gap-3">
+                          <button
+                            onClick={() => setEditando(p)}
+                            className="text-xs font-medium text-faint transition-colors hover:text-red-bright"
+                          >
+                            Editar
+                          </button>
+                          <button
+                            onClick={() => arquivar(p, inativo)}
+                            className="text-xs font-medium text-faint transition-colors hover:text-ink"
+                          >
+                            {inativo ? "Reativar" : "Arquivar"}
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+        )}
       </Card>
 
       {modalNovo && (
@@ -274,21 +389,52 @@ function ModalPlano({
   );
 }
 
-function Th({
-  children,
-  className,
-}: {
+type ThProps = {
   children: React.ReactNode;
   className?: string;
-}) {
+} & (
+  | { coluna?: undefined; atual?: undefined; direcao?: undefined; onOrdenar?: undefined }
+  | {
+      coluna: Coluna;
+      atual: Coluna;
+      direcao: Direcao;
+      onOrdenar: (c: Coluna) => void;
+    }
+);
+
+function Th({ children, className, coluna, atual, direcao, onOrdenar }: ThProps) {
+  const base = cn(
+    "px-4 py-3 text-xs font-semibold uppercase tracking-widest text-faint",
+    className,
+  );
+
+  if (!coluna) return <th className={base}>{children}</th>;
+
+  const ordenada = atual === coluna;
   return (
     <th
-      className={cn(
-        "px-4 py-3 text-xs font-semibold uppercase tracking-widest text-faint",
-        className,
-      )}
+      className={base}
+      aria-sort={
+        ordenada
+          ? direcao === "asc"
+            ? "ascending"
+            : "descending"
+          : "none"
+      }
     >
-      {children}
+      <button
+        onClick={() => onOrdenar(coluna)}
+        className={cn(
+          "inline-flex items-center gap-1.5 uppercase tracking-widest transition-colors hover:text-ink",
+          ordenada && "text-ink",
+          className?.includes("text-right") && "flex-row-reverse",
+        )}
+      >
+        {children}
+        <span aria-hidden className={cn("text-[10px]", !ordenada && "opacity-25")}>
+          {ordenada && direcao === "desc" ? "▼" : "▲"}
+        </span>
+      </button>
     </th>
   );
 }
