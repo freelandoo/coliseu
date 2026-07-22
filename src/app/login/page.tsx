@@ -32,7 +32,9 @@ export default function LoginPage() {
   async function enviar() {
     setErro(""); setEnviando(true);
     const rota = cadastro ? "/api/auth/register" : "/api/auth/login";
-    const corpo = cadastro ? { nome, email, senha } : { email, senha };
+    // No login o campo aceita nome de acesso OU e-mail — colaborador criado
+    // pelo admin não tem e-mail.
+    const corpo = cadastro ? { nome, email, senha } : { login: email, senha };
     const r = await fetch(rota, {
       method: "POST", headers: { "Content-Type": "application/json" },
       body: JSON.stringify(corpo),
@@ -61,7 +63,8 @@ export default function LoginPage() {
             <input className={inputCls} placeholder="Nome" value={nome}
               onChange={(e) => setNome(e.target.value)} />
           )}
-          <input className={inputCls} placeholder="E-mail" value={email} onChange={(e) => setEmail(e.target.value)} />
+          <input className={inputCls} placeholder={cadastro ? "E-mail" : "Login ou e-mail"}
+            autoComplete="username" value={email} onChange={(e) => setEmail(e.target.value)} />
           <div className="relative">
             <input className={`${inputCls} pr-10`} type={verSenha ? "text" : "password"}
               placeholder={cadastro ? "Senha (mín. 8 caracteres)" : "Senha"} value={senha}

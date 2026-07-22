@@ -38,8 +38,8 @@ export const atualizarPessoa = (id: string, patch: Partial<Pessoa>): Promise<Pes
   atualizarPessoaRepo(id, patch);
 export const removerPessoa = (id: string): Promise<boolean> => removerPessoaRepo(id);
 export const matricularPessoa = (
-  id: string, planoId: string, asaas?: AsaasMatricula,
-): Promise<Pessoa | undefined> => matricularPessoaRepo(id, planoId, asaas);
+  id: string, planoId: string, asaas?: AsaasMatricula, matriculadoPorId?: string,
+): Promise<Pessoa | undefined> => matricularPessoaRepo(id, planoId, asaas, matriculadoPorId);
 
 /* ---------- cobranças ---------- */
 export const listarCobrancas = (): Promise<Cobranca[]> => listarCobrancasRepo();

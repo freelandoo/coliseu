@@ -160,6 +160,8 @@ export interface Pessoa {
   planoId?: string;
   status?: AlunoStatus;
   matriculadoEm?: string;
+  /** Nome de quem fez a matrícula. Vazio nas matrículas anteriores ao registro. */
+  matriculadoPor?: string;
   vencimentoPlano?: string;
   ultimaPresenca?: string;
   // ficha opcional

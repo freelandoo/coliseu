@@ -54,6 +54,7 @@ async function main() {
       where: { email: u.email },
       update: {},
       create: {
+        login: u.email.split("@")[0],
         email: u.email,
         nome: u.nome,
         passwordHash: await hash(u.senha),

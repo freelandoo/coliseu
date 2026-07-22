@@ -23,6 +23,8 @@ export async function usuarioAtual() {
   if (!id) return null;
   const s = await prisma.session.findUnique({ where: { id }, include: { user: true } });
   if (!s || s.expiresAt < new Date()) return null;
+  // Desativar o colaborador derruba o acesso na hora, sem esperar a sessão expirar.
+  if (!s.user.ativo) return null;
   return s.user;
 }
 

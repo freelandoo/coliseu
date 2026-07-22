@@ -32,6 +32,9 @@ export async function POST(req: Request) {
     const user = await prisma.user.create({
       data: {
         nome: nome.trim(),
+        // Primeiro admin entra pelo e-mail; o login sai dele para ele também
+        // poder usar o nome curto, igual aos colaboradores criados depois.
+        login: emailNorm.split("@")[0],
         email: emailNorm,
         passwordHash: await hashPassword(senha),
         role: "ADMIN", // app interno local: o cadastro cria um administrador

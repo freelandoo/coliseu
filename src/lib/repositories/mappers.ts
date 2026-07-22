@@ -29,7 +29,9 @@ export function toPlano(p: PPlan): Plano {
   };
 }
 
-export function toPessoa(p: PPerson & { memberships: PMembership[] }): Pessoa {
+type MembershipComAutor = PMembership & { matriculadoPor?: { nome: string } | null };
+
+export function toPessoa(p: PPerson & { memberships: MembershipComAutor[] }): Pessoa {
   const m = p.memberships[0];
   return {
     id: p.id,
@@ -48,6 +50,7 @@ export function toPessoa(p: PPerson & { memberships: PMembership[] }): Pessoa {
     planoId: m?.planId,
     status: m ? membershipToStatus(m.status) : undefined,
     matriculadoEm: m?.matriculadoEm.toISOString(),
+    matriculadoPor: m?.matriculadoPor?.nome ?? undefined,
     vencimentoPlano: m?.vencimentoPlano.toISOString(),
     ultimaPresenca: m?.ultimaPresenca.toISOString(),
     dataNascimento: p.dataNascimento ?? undefined,

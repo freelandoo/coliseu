@@ -5,7 +5,13 @@ import type { AsaasMatricula } from "@/lib/asaas";
 import { upsertBillingCustomerRepo, upsertBillingSubscriptionRepo, upsertPaymentRepo } from "@/lib/repositories/billing";
 import { unitIdAtual } from "@/lib/repositories/unit";
 
-const withMemberships = { memberships: { orderBy: { matriculadoEm: "desc" as const }, take: 1 } };
+const withMemberships = {
+  memberships: {
+    orderBy: { matriculadoEm: "desc" as const },
+    take: 1,
+    include: { matriculadoPor: { select: { nome: true } } },
+  },
+};
 
 export async function proximoCodigoRepo(): Promise<string> {
   const rows = await prisma.person.findMany({ select: { codigo: true } });
@@ -97,6 +103,8 @@ export async function matricularPessoaRepo(
   id: string,
   planoId: string,
   asaas?: AsaasMatricula,
+  /** Quem clicou em matricular — fica gravado na matrícula. */
+  matriculadoPorId?: string,
 ): Promise<Pessoa | undefined> {
   const person = await prisma.person.findUnique({ where: { id } });
   const plano = await prisma.plan.findUnique({ where: { id: planoId } });
@@ -112,6 +120,7 @@ export async function matricularPessoaRepo(
       data: {
         personId: id, planId: planoId, status: "PENDING_PAYMENT",
         matriculadoEm: agora, vencimentoPlano: venc, ultimaPresenca: agora,
+        matriculadoPorId: matriculadoPorId ?? null,
       },
     }),
     prisma.cobranca.create({

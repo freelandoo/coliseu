@@ -72,19 +72,30 @@ model Unit {
 
 model User {
   id           String   @id @default(cuid())
-  email        String   @unique
+  /// Nome de acesso. O admin cria colaborador sem exigir e-mail.
+  login        String   @unique
+  email        String?  @unique
   nome         String
   passwordHash String
   role         Role     @default(RECEPCAO)
+  /// Desativar em vez de apagar: preserva a trilha de quem fez o quê.
+  ativo        Boolean  @default(true)
+  /// Senha definida pelo admin — força a troca no primeiro acesso.
+  senhaProvisoria Boolean @default(false)
   unit         Unit     @relation(fields: [unitId], references: [id])
   unitId       String
   createdAt    DateTime @default(now())
   sessions     Session[]
   apiTokens    ApiToken[]
 
+  /// Colaborador que também é cadastro da academia (aluno virou recepcionista).
+  person   Person? @relation(fields: [personId], references: [id], onDelete: SetNull)
+  personId String? @unique
+
   conversasAtendidas Conversa[]
   mensagensEnviadas  Mensagem[]
   atendimentos       AtendimentoRegistro[]
+  matriculasFeitas   Membership[] @relation("MatriculadoPor")
 }
 
 model Session {
@@ -132,6 +143,7 @@ model Person {
   overrides        ManualAccessOverride[]
 
   conversas        Conversa[]
+  usuario          User?
 
   @@index([unitId, fase])
   @@index([nome])
@@ -167,7 +179,13 @@ model Membership {
   ultimaPresenca      DateTime         @default(now())
   courtesyEntriesLeft Int              @default(1)
 
+  /// Quem fez a matrícula. SetNull para o colaborador poder sair sem apagar
+  /// a matrícula — perde-se o nome, nunca o registro do aluno.
+  matriculadoPor   User?   @relation("MatriculadoPor", fields: [matriculadoPorId], references: [id], onDelete: SetNull)
+  matriculadoPorId String?
+
   @@index([personId, status])
+  @@index([matriculadoPorId])
 }
 
 model Cobranca {

@@ -72,7 +72,7 @@ export async function PATCH(req: Request, { params }: Ctx) {
       );
     }
 
-    const pessoa = await matricularPessoa(id, planoId, asaas);
+    const pessoa = await matricularPessoa(id, planoId, asaas, g.user?.id);
     if (!pessoa) {
       return NextResponse.json({ erro: "Pessoa não encontrada" }, { status: 404 });
     }

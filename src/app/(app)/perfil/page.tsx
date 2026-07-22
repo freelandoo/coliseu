@@ -5,6 +5,8 @@ import { Badge, Card } from "@/components/ui/primitives";
 import { Reveal } from "@/components/ui/Reveal";
 import { AlterarSenhaCard } from "@/components/perfil/AlterarSenhaCard";
 import { AgentKitCard } from "@/components/perfil/AgentKitCard";
+import { ColaboradoresCard } from "@/components/perfil/ColaboradoresCard";
+import { listarColaboradoresRepo } from "@/lib/repositories/colaboradores";
 
 export const dynamic = "force-dynamic";
 
@@ -18,7 +20,7 @@ export default async function PerfilPage() {
   const user = await requireUser();
   const isAdmin = podePapel(user.role as Papel, ["ADMIN"]);
 
-  const [unit, devices] = await Promise.all([
+  const [unit, devices, colaboradores] = await Promise.all([
     prisma.unit.findUnique({ where: { id: user.unitId }, select: { nome: true } }),
     isAdmin
       ? prisma.accessDevice.findMany({
@@ -26,6 +28,7 @@ export default async function PerfilPage() {
           orderBy: { createdAt: "asc" },
         })
       : Promise.resolve([]),
+    isAdmin ? listarColaboradoresRepo() : Promise.resolve([]),
   ]);
 
   return (
@@ -53,7 +56,7 @@ export default async function PerfilPage() {
               </h3>
               <Badge tone="red">{PAPEL_LABEL[user.role] ?? user.role}</Badge>
             </div>
-            <p className="mt-1.5 text-sm text-muted">{user.email}</p>
+            <p className="mt-1.5 text-sm text-muted">{user.email ?? `login: ${user.login}`}</p>
             {unit && <p className="mt-1 text-xs text-faint">Unidade: {unit.nome}</p>}
           </Card>
         </Reveal>
@@ -61,6 +64,12 @@ export default async function PerfilPage() {
         <Reveal delay={0.1}>
           <AlterarSenhaCard />
         </Reveal>
+
+        {isAdmin && (
+          <Reveal delay={0.12}>
+            <ColaboradoresCard iniciais={colaboradores} meuId={user.id} />
+          </Reveal>
+        )}
 
         {isAdmin && (
           <Reveal delay={0.15}>

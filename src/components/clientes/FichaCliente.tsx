@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { Badge, Card } from "@/components/ui/primitives";
 import { situacaoDe } from "@/components/clientes/ClientesView";
+import { AcessoDoCadastro, type AcessoDaPessoa } from "@/components/clientes/AcessoDoCadastro";
 import { cn } from "@/lib/cn";
 import { formatBRL, formatData } from "@/lib/mock-data";
 import {
@@ -24,9 +25,15 @@ const ESTAGIOS: LeadEstagio[] = ["novo", "qualificado", "interesse", "perdido"];
 export function FichaCliente({
   pessoa,
   plano,
+  podeGerirAcesso = false,
+  acesso,
 }: {
   pessoa: Pessoa;
   plano?: Plano;
+  /** Só ADMIN cria/edita acesso ao sistema. */
+  podeGerirAcesso?: boolean;
+  /** Acesso já existente desta pessoa, quando ela é colaboradora. */
+  acesso?: AcessoDaPessoa;
 }) {
   const router = useRouter();
   const [editando, setEditando] = useState(false);
@@ -210,9 +217,18 @@ export function FichaCliente({
                 <Info rotulo="Valor" valor={plano ? `${formatBRL(plano.valorMensal)}/mês` : undefined} />
                 <Info rotulo="Matriculado" valor={pessoa.matriculadoEm ? formatData(pessoa.matriculadoEm) : undefined} />
                 <Info rotulo="Vence" valor={pessoa.vencimentoPlano ? formatData(pessoa.vencimentoPlano) : undefined} />
+                <Info rotulo="Matriculado por" valor={pessoa.matriculadoPor} span />
               </dl>
             )}
           </Card>
+
+          {podeGerirAcesso && (
+            <AcessoDoCadastro
+              personId={pessoa.id}
+              nome={pessoa.nome}
+              acessoInicial={acesso}
+            />
+          )}
         </div>
       </div>
 
