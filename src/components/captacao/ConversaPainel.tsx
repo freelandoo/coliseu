@@ -29,6 +29,11 @@ const inputCls =
   "w-full rounded-lg border border-border bg-surface px-3 py-2 text-sm text-ink " +
   "placeholder:text-faint outline-none transition-colors focus:border-red/60";
 
+/** Variante compacta (fonte pequena) usada na barra de classificação. */
+const campoCls =
+  "w-full rounded-lg border border-border bg-surface px-2.5 py-1.5 text-xs text-ink " +
+  "placeholder:text-faint outline-none transition-colors focus:border-red/60";
+
 function hora(iso: string) {
   return new Date(iso).toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" });
 }
@@ -477,6 +482,8 @@ function ClassificarAtendimento({
   const [motivo, setMotivo] = useState("");
   const [salvando, setSalvando] = useState(false);
   const [ok, setOk] = useState(false);
+  // Gaveta fechada por padrão: em cima da caixa de texto fica só a observação.
+  const [aberto, setAberto] = useState(false);
 
   async function salvar() {
     setSalvando(true);
@@ -494,50 +501,88 @@ function ClassificarAtendimento({
   const ultimo = atendimentos[0];
 
   return (
-    <div className="border-t border-border bg-surface-2/40 px-4 py-2.5">
-      <div className="flex flex-wrap items-end gap-3">
-        <div className="min-w-[180px]">
-          <label className="mb-1 block text-xs font-medium text-muted">Interesse</label>
-          <select
-            value={interesse}
-            onChange={(e) => setInteresse(e.target.value as ConversaInteresse)}
-            className={inputCls}
-          >
-            {OPCOES.map(([valor, label]) => (
-              <option key={valor} value={valor}>
-                {label}
-              </option>
-            ))}
-          </select>
-        </div>
-
-        {interesse === "perdido" && (
-          <div className="min-w-[180px] flex-1">
-            <label className="mb-1 block text-xs font-medium text-muted">Motivo</label>
-            <input
-              value={motivo}
-              onChange={(e) => setMotivo(e.target.value)}
-              placeholder="Preço, distância, foi pra outra academia…"
-              className={inputCls}
-            />
-          </div>
+    <div className="border-t border-border bg-surface-2/40 text-xs">
+      {/* Gaveta retrátil: Interesse, Motivo e o último registro. Fechada, some;
+          aberta, empurra pra cima acima da linha do Registrar. */}
+      <div
+        className={cn(
+          "grid transition-[grid-template-rows] duration-200 ease-out",
+          aberto ? "grid-rows-[1fr]" : "grid-rows-[0fr]",
         )}
+      >
+        <div className="overflow-hidden">
+          <div className="flex flex-wrap items-end gap-3 px-4 pt-3">
+            <div className="min-w-[160px] flex-1">
+              <label className="mb-1 block text-xs font-medium text-muted">Interesse</label>
+              <select
+                value={interesse}
+                onChange={(e) => setInteresse(e.target.value as ConversaInteresse)}
+                className={campoCls}
+              >
+                {OPCOES.map(([valor, label]) => (
+                  <option key={valor} value={valor}>
+                    {label}
+                  </option>
+                ))}
+              </select>
+            </div>
 
-        <div className="min-w-[200px] flex-1">
-          <label className="mb-1 block text-xs font-medium text-muted">Observação do atendimento</label>
+            {interesse === "perdido" && (
+              <div className="min-w-[160px] flex-1">
+                <label className="mb-1 block text-xs font-medium text-muted">Motivo</label>
+                <input
+                  value={motivo}
+                  onChange={(e) => setMotivo(e.target.value)}
+                  placeholder="Preço, distância, foi pra outra academia…"
+                  className={campoCls}
+                />
+              </div>
+            )}
+          </div>
+
+          {ultimo && (
+            <p className="px-4 pt-2 text-xs text-faint">
+              Último registro: {INTERESSE_LABEL[ultimo.interesse]} por {ultimo.usuario} em{" "}
+              {new Date(ultimo.criadoEm).toLocaleString("pt-BR")}
+              {ultimo.observacao && ` — ${ultimo.observacao}`}
+            </p>
+          )}
+        </div>
+      </div>
+
+      {/* Linha do Registrar (sempre visível): clicar nela abre/fecha a gaveta.
+          A observação e o botão têm clique próprio e não disparam a gaveta. */}
+      <div
+        role="button"
+        tabIndex={0}
+        aria-expanded={aberto}
+        onClick={() => setAberto((a) => !a)}
+        onKeyDown={(e) => {
+          if (e.key === "Enter" || e.key === " ") {
+            e.preventDefault();
+            setAberto((a) => !a);
+          }
+        }}
+        className="flex cursor-pointer flex-wrap items-end gap-3 px-4 py-2.5"
+      >
+        <div className="min-w-[200px] flex-1" onClick={(e) => e.stopPropagation()}>
+          <label className="mb-1 block text-xs font-medium text-muted">Observação</label>
           <input
             value={observacao}
             onChange={(e) => setObservacao(e.target.value)}
             placeholder="O que ficou combinado"
-            className={inputCls}
+            className={campoCls}
           />
         </div>
 
         <button
-          onClick={() => void salvar()}
+          onClick={(e) => {
+            e.stopPropagation();
+            void salvar();
+          }}
           disabled={salvando}
           className={cn(
-            "rounded-lg border px-4 py-2 text-sm font-semibold uppercase tracking-widest transition-colors",
+            "rounded-lg border px-3 py-1.5 text-xs font-semibold uppercase tracking-widest transition-colors",
             salvando
               ? "cursor-not-allowed border-border text-faint"
               : "border-border-strong text-muted hover:text-ink",
@@ -545,15 +590,14 @@ function ClassificarAtendimento({
         >
           {salvando ? "Salvando…" : ok ? "Registrado ✓" : "Registrar"}
         </button>
-      </div>
 
-      {ultimo && (
-        <p className="mt-2 text-xs text-faint">
-          Último registro: {INTERESSE_LABEL[ultimo.interesse]} por {ultimo.usuario} em{" "}
-          {new Date(ultimo.criadoEm).toLocaleString("pt-BR")}
-          {ultimo.observacao && ` — ${ultimo.observacao}`}
-        </p>
-      )}
+        <span
+          aria-hidden
+          className={cn("self-center text-[11px] text-faint transition-transform", aberto && "rotate-180")}
+        >
+          ▲
+        </span>
+      </div>
     </div>
   );
 }
