@@ -468,8 +468,8 @@ function ClassificarAtendimento({
 
   return (
     <div className="border-t border-border bg-surface-2/40 text-xs">
-      {/* Gaveta retrátil: Interesse, Motivo e o último registro. Fechada, some;
-          aberta, empurra pra cima acima da linha do Registrar. */}
+      {/* Gaveta retrátil: classificação, observação, botão e último registro.
+          Fechada, some; aberta, empurra tudo pra cima acima do rótulo. */}
       <div
         className={cn(
           "grid transition-[grid-template-rows] duration-200 ease-out",
@@ -504,6 +504,29 @@ function ClassificarAtendimento({
                 />
               </div>
             )}
+
+            <div className="min-w-[200px] flex-1">
+              <label className="mb-1 block text-xs font-medium text-muted">Observação</label>
+              <input
+                value={observacao}
+                onChange={(e) => setObservacao(e.target.value)}
+                placeholder="O que ficou combinado"
+                className={campoCls}
+              />
+            </div>
+
+            <button
+              onClick={() => void salvar()}
+              disabled={salvando}
+              className={cn(
+                "rounded-lg border px-3 py-1.5 text-xs font-semibold uppercase tracking-widest transition-colors",
+                salvando
+                  ? "cursor-not-allowed border-border text-faint"
+                  : "border-border-strong text-muted hover:text-ink",
+              )}
+            >
+              {salvando ? "Salvando…" : ok ? "Registrado ✓" : "Registrar"}
+            </button>
           </div>
 
           {ultimo && (
@@ -516,8 +539,7 @@ function ClassificarAtendimento({
         </div>
       </div>
 
-      {/* Linha do Registrar (sempre visível): clicar nela abre/fecha a gaveta.
-          A observação e o botão têm clique próprio e não disparam a gaveta. */}
+      {/* Handle sempre visível: só o rótulo "Observação" e a setinha. */}
       <div
         role="button"
         tabIndex={0}
@@ -529,37 +551,12 @@ function ClassificarAtendimento({
             setAberto((a) => !a);
           }
         }}
-        className="flex cursor-pointer flex-wrap items-end gap-3 px-4 py-2.5"
+        className="flex cursor-pointer items-center justify-between px-4 py-2.5"
       >
-        <div className="min-w-[200px] flex-1" onClick={(e) => e.stopPropagation()}>
-          <label className="mb-1 block text-xs font-medium text-muted">Observação</label>
-          <input
-            value={observacao}
-            onChange={(e) => setObservacao(e.target.value)}
-            placeholder="O que ficou combinado"
-            className={campoCls}
-          />
-        </div>
-
-        <button
-          onClick={(e) => {
-            e.stopPropagation();
-            void salvar();
-          }}
-          disabled={salvando}
-          className={cn(
-            "rounded-lg border px-3 py-1.5 text-xs font-semibold uppercase tracking-widest transition-colors",
-            salvando
-              ? "cursor-not-allowed border-border text-faint"
-              : "border-border-strong text-muted hover:text-ink",
-          )}
-        >
-          {salvando ? "Salvando…" : ok ? "Registrado ✓" : "Registrar"}
-        </button>
-
+        <span className="text-xs font-medium text-muted">Observação</span>
         <span
           aria-hidden
-          className={cn("self-center text-[11px] text-faint transition-transform", aberto && "rotate-180")}
+          className={cn("text-[11px] text-faint transition-transform", aberto && "rotate-180")}
         >
           ▲
         </span>
