@@ -51,8 +51,12 @@ function textoDe(valor: unknown): string {
   return "";
 }
 
-/** Rótulo do histórico quando a mensagem é mídia — não baixamos o binário (v1). */
-const ROTULO: Record<Exclude<TipoMidia, "texto">, string> = {
+/**
+ * Rótulo do histórico quando a mídia não tem legenda. O binário não é gravado:
+ * a recepção vê a foto ou ouve o áudio sob demanda, direto da Evolution.
+ * O painel usa esta mesma tabela para saber que o texto é rótulo, não legenda.
+ */
+export const ROTULO_MIDIA: Record<Exclude<TipoMidia, "texto">, string> = {
   imagem: "📷 Imagem",
   audio: "🎤 Áudio",
   video: "🎬 Vídeo",
@@ -99,7 +103,7 @@ export function lerMensagem(bruta: unknown): MensagemRecebida | null {
     textoDe((message.listResponseMessage as { title?: string } | undefined)?.title);
 
   const { tipo, legenda } = classificar(message);
-  const texto = tipo === "texto" ? textoDireto : legenda || textoDireto || ROTULO[tipo];
+  const texto = tipo === "texto" ? textoDireto : legenda || textoDireto || ROTULO_MIDIA[tipo];
 
   // Mídia sem legenda ainda vale registro; texto vazio sem mídia, não.
   if (!texto) return null;

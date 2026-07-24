@@ -217,6 +217,45 @@ export async function listarGrupos(
   return assuntos;
 }
 
+export interface MidiaBaixada {
+  bytes: Buffer;
+  mimetype: string;
+  nomeArquivo: string;
+}
+
+/**
+ * Baixa a mídia de uma mensagem recebida, pelo `key.id` que já guardamos.
+ *
+ * A Evolution mantém o histórico de mídia da instância, então nada precisa ser
+ * armazenado do nosso lado: a recepção vê a foto ou ouve o áudio na hora e o
+ * arquivo não fica em repouso no Coliseu. Vídeo não é convertido — `convertToMp4`
+ * recodifica no servidor e o navegador toca o original.
+ */
+export async function baixarMidia(
+  cfg: ConfigEvolution,
+  nome: string,
+  waMessageId: string,
+): Promise<MidiaBaixada> {
+  const instancia = encodeURIComponent(validarNomeInstancia(nome));
+  const data = garantirOk(
+    await chamar(cfg, "POST", `/chat/getBase64FromMediaMessage/${instancia}`, {
+      message: { key: { id: waMessageId } },
+      convertToMp4: false,
+    }),
+  );
+
+  const base64 = String(data.base64 ?? "");
+  if (!base64) {
+    // Mídia velha demais expira no WhatsApp e a Evolution não recupera.
+    throw new EvolutionError("Mídia não está mais disponível no WhatsApp.", 404);
+  }
+  return {
+    bytes: Buffer.from(base64, "base64"),
+    mimetype: String(data.mimetype ?? "application/octet-stream"),
+    nomeArquivo: String(data.fileName ?? "midia"),
+  };
+}
+
 export async function desconectar(cfg: ConfigEvolution, nome: string): Promise<void> {
   const instancia = encodeURIComponent(validarNomeInstancia(nome));
   const r = await chamar(cfg, "DELETE", `/instance/logout/${instancia}`);

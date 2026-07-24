@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation";
 import { Badge } from "@/components/ui/primitives";
 import { Modal } from "@/components/ui/Modal";
 import { cn } from "@/lib/cn";
+import { ROTULO_MIDIA } from "@/lib/whatsapp/payload";
 import {
   INTERESSE_LABEL,
   type AtendimentoItem,
@@ -353,8 +354,82 @@ function ConfirmarExclusao({
   );
 }
 
+const ROTULOS = new Set(Object.values(ROTULO_MIDIA));
+
+/**
+ * Mídia buscada sob demanda: o Coliseu não guarda foto nem áudio de conversa,
+ * pede à Evolution na hora de exibir. Imagem carrega quando entra na tela
+ * (`lazy`); áudio e vídeo só ao dar play (`preload="none"`) — abrir uma conversa
+ * cheia de mídia não vira uma enxurrada de download.
+ *
+ * Mídia antiga expira no WhatsApp; quando o download falha, a bolha volta a ser
+ * o rótulo, em vez de um ícone quebrado.
+ */
+function Midia({ mensagem }: { mensagem: MensagemItem }) {
+  const [falhou, setFalhou] = useState(false);
+  const url = `/api/whatsapp/mensagens/${mensagem.id}/midia`;
+
+  if (falhou) {
+    return (
+      <p className="text-xs text-faint">
+        {mensagem.texto} · não foi possível carregar; veja pelo aparelho
+      </p>
+    );
+  }
+
+  if (mensagem.tipoMidia === "imagem") {
+    return (
+      <a href={url} target="_blank" rel="noreferrer">
+        {/* Binário servido pela nossa API; otimização do Next não se aplica. */}
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img
+          src={url}
+          alt={mensagem.texto}
+          loading="lazy"
+          onError={() => setFalhou(true)}
+          className="max-h-64 rounded-lg"
+        />
+      </a>
+    );
+  }
+
+  if (mensagem.tipoMidia === "audio") {
+    return (
+      <audio controls preload="none" src={url} onError={() => setFalhou(true)} className="w-60 max-w-full" />
+    );
+  }
+
+  if (mensagem.tipoMidia === "video") {
+    return (
+      <video
+        controls
+        preload="none"
+        src={url}
+        onError={() => setFalhou(true)}
+        className="max-h-64 rounded-lg"
+      />
+    );
+  }
+
+  return (
+    <a
+      href={url}
+      target="_blank"
+      rel="noreferrer"
+      className="text-sm font-medium text-red-bright hover:underline"
+    >
+      📎 Abrir documento
+    </a>
+  );
+}
+
 function Bolha({ mensagem }: { mensagem: MensagemItem }) {
   const saida = mensagem.direcao === "OUT";
+  const temMidia = mensagem.tipoMidia !== "texto" && !mensagem.erro;
+  // Mídia com legenda mostra as duas coisas; sem legenda, o texto é só o
+  // rótulo que a mídia já substitui.
+  const legenda = temMidia && ROTULOS.has(mensagem.texto) ? "" : mensagem.texto;
+
   return (
     <div className={cn("flex", saida ? "justify-end" : "justify-start")}>
       <div
@@ -368,7 +443,12 @@ function Bolha({ mensagem }: { mensagem: MensagemItem }) {
         {!saida && mensagem.remetente && (
           <p className="mb-0.5 text-[11px] font-semibold text-red-bright">{mensagem.remetente}</p>
         )}
-        <p className="whitespace-pre-wrap break-words text-sm text-ink">{mensagem.texto}</p>
+        {temMidia && (
+          <div className={cn(legenda && "mb-1.5")}>
+            <Midia mensagem={mensagem} />
+          </div>
+        )}
+        {legenda && <p className="whitespace-pre-wrap break-words text-sm text-ink">{legenda}</p>}
         <p className="mt-1 text-right text-[11px] text-faint">
           {saida && (mensagem.autorNome ?? "pelo aparelho")}
           {saida && " · "}

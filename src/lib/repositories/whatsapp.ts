@@ -254,6 +254,24 @@ export async function renomearGruposRepo(assuntos: Map<string, string>): Promise
   return renomeados;
 }
 
+/**
+ * O que é preciso para buscar a mídia de uma mensagem na Evolution: o id que o
+ * WhatsApp deu e a instância que recebeu. Mensagem nossa enviada sem eco do
+ * WhatsApp tem id `local:` e não tem mídia para buscar.
+ */
+export async function dadosMidiaMensagemRepo(id: string) {
+  const m = await prisma.mensagem.findUnique({
+    where: { id },
+    select: {
+      waMessageId: true,
+      tipoMidia: true,
+      conversa: { select: { instance: { select: { evolutionInstance: true } } } },
+    },
+  });
+  if (!m || m.tipoMidia === "texto" || m.waMessageId.startsWith("local:")) return null;
+  return { waMessageId: m.waMessageId, instancia: m.conversa.instance.evolutionInstance };
+}
+
 export async function marcarConversaLidaRepo(id: string) {
   return prisma.conversa.update({ where: { id }, data: { naoLidas: 0 } });
 }

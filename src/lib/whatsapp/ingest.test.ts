@@ -4,6 +4,7 @@ import { unitIdAtual } from "@/lib/repositories/unit";
 import { proximoCodigoRepo } from "@/lib/repositories/pessoas";
 import {
   classificarConversaRepo,
+  dadosMidiaMensagemRepo,
   limparMensagensRepo,
   listarMensagensRepo,
   removerConversaRepo,
@@ -152,6 +153,36 @@ test("grupo vira conversa para atender, mas não vira lead", async () => {
   // Em grupo, a bolha precisa dizer quem falou.
   const mensagens = await listarMensagensRepo(conversa!.id);
   expect(mensagens.at(-1)).toMatchObject({ remetente: "Vitor do Grupo", texto: "Qual o horário de sábado?" });
+});
+
+test("mídia recebida fica localizável para busca sob demanda", async () => {
+  await processarEventoWhatsapp({
+    event: "messages.upsert",
+    instance: INSTANCIA,
+    data: {
+      key: { id: "MSG-MIDIA", remoteJid: JID, fromMe: false },
+      pushName: "Cliente Teste",
+      messageTimestamp: Math.floor(Date.now() / 1000),
+      message: { imageMessage: {} },
+    },
+  });
+
+  const conversa = await prisma.conversa.findFirst({ where: { remoteJid: JID } });
+  const [mensagem] = await listarMensagensRepo(conversa!.id);
+  expect(mensagem).toMatchObject({ tipoMidia: "imagem", texto: "📷 Imagem" });
+
+  // O binário não é guardado: o que sobra é a chave para pedir à Evolution.
+  expect(await dadosMidiaMensagemRepo(mensagem.id)).toMatchObject({
+    waMessageId: "MSG-MIDIA",
+    instancia: INSTANCIA,
+  });
+});
+
+test("texto não tem mídia para buscar", async () => {
+  await processarEventoWhatsapp(evento({ id: "MSG-TEXTO" }));
+  const conversa = await prisma.conversa.findFirst({ where: { remoteJid: JID } });
+  const [mensagem] = await listarMensagensRepo(conversa!.id);
+  expect(await dadosMidiaMensagemRepo(mensagem.id)).toBeNull();
 });
 
 test("transmissão e status continuam fora do atendimento", async () => {
