@@ -56,7 +56,7 @@ function AbaBotao({
     <button
       onClick={onClick}
       className={cn(
-        "flex flex-1 items-center justify-center gap-2 px-4 py-3 font-display text-xs font-semibold uppercase tracking-widest transition-colors",
+        "flex flex-1 items-center justify-center gap-2 px-4 py-2.5 font-display text-[11px] font-semibold uppercase tracking-widest transition-colors",
         ativa ? "border-b-2 border-red bg-red-ghost text-ink" : "text-faint hover:text-muted",
       )}
     >
@@ -173,8 +173,8 @@ export function AtendimentoInbox({
   }
 
   return (
-    <div className="grid gap-4 lg:grid-cols-[320px_1fr]">
-      <Card className="flex max-h-[70dvh] flex-col overflow-hidden">
+    <div className="grid gap-4 lg:grid-cols-[300px_1fr]">
+      <Card className="flex h-[calc(100dvh-8rem)] flex-col overflow-hidden">
         <div className="flex shrink-0 border-b border-border">
           <AbaBotao
             ativa={aba === "pessoas"}
@@ -211,18 +211,18 @@ export function AtendimentoInbox({
                     setConversas((a) => a.map((x) => (x.id === c.id ? { ...x, naoLidas: 0 } : x)));
                   }}
                   className={cn(
-                    "flex w-full items-start gap-3 border-b border-border px-4 py-3 text-left transition-colors last:border-0",
+                    "flex w-full items-start gap-2.5 border-b border-border px-3 py-2.5 text-left transition-colors last:border-0",
                     ativo ? "bg-red-ghost" : "hover:bg-surface-2",
                   )}
                 >
                   <span className={cn("mt-1.5 h-2 w-2 shrink-0 rounded-full", PONTO[c.interesse])} />
                   <span className="min-w-0 flex-1">
                     <span className="flex items-baseline justify-between gap-2">
-                      <span className="truncate text-sm font-medium text-ink">{c.nome}</span>
+                      <span className="truncate text-[13px] font-medium text-ink">{c.nome}</span>
                       <span className="shrink-0 text-[11px] text-faint">{quando(c.ultimaMensagemEm)}</span>
                     </span>
                     <span className="mt-0.5 flex items-center justify-between gap-2">
-                      <span className="truncate text-xs text-muted">{c.preview || c.telefone}</span>
+                      <span className="truncate text-[11px] text-muted">{c.preview || c.telefone}</span>
                       {c.naoLidas > 0 && (
                         <span className="flex h-4 min-w-4 shrink-0 items-center justify-center rounded bg-red px-1 text-[10px] font-semibold text-white">
                           {c.naoLidas}
@@ -242,7 +242,7 @@ export function AtendimentoInbox({
         </ul>
       </Card>
 
-      <Card className="h-[70dvh] overflow-hidden">
+      <Card className="h-[calc(100dvh-8rem)] overflow-hidden">
         {atual ? (
           <ConversaPainel
             key={atual.id}

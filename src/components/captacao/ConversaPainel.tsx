@@ -178,12 +178,12 @@ export function ConversaPainel({
 
   return (
     <div className="flex h-full flex-col">
-      <header className="flex flex-wrap items-center justify-between gap-3 border-b border-border px-5 py-4">
+      <header className="flex flex-wrap items-center justify-between gap-3 border-b border-border px-4 py-2.5">
         <div>
-          <p className="font-display text-lg font-semibold uppercase tracking-wide text-ink">
+          <p className="font-display text-sm font-semibold uppercase tracking-wide text-ink">
             {conversa.nome}
           </p>
-          <p className="text-xs text-faint">
+          <p className="text-[11px] text-faint">
             {conversa.ehGrupo ? "grupo do WhatsApp" : conversa.telefone || "sem número"}
             {conversa.atendente && ` · atendido por ${conversa.atendente}`}
           </p>
@@ -230,7 +230,7 @@ export function ConversaPainel({
         />
       )}
 
-      <div className="flex-1 overflow-y-auto px-5 py-4">
+      <div className="flex-1 overflow-y-auto px-4 py-3">
         {carregando ? (
           <p className="py-10 text-center text-sm text-faint">Carregando conversa…</p>
         ) : mensagens.length === 0 ? (
@@ -254,7 +254,7 @@ export function ConversaPainel({
         />
       )}
 
-      <div className="border-t border-border px-5 py-4">
+      <div className="border-t border-border px-4 py-3">
         {podeResponder ? (
           <>
             <div className="flex gap-3">
@@ -494,7 +494,7 @@ function ClassificarAtendimento({
   const ultimo = atendimentos[0];
 
   return (
-    <div className="border-t border-border bg-surface-2/40 px-5 py-4">
+    <div className="border-t border-border bg-surface-2/40 px-4 py-2.5">
       <div className="flex flex-wrap items-end gap-3">
         <div className="min-w-[180px]">
           <label className="mb-1 block text-xs font-medium text-muted">Interesse</label>

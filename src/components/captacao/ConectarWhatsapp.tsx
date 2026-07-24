@@ -50,7 +50,14 @@ async function pedirQr(): Promise<ResultadoQr> {
   }
 }
 
-export function ConectarWhatsapp({ inicial }: { inicial: StatusResposta }) {
+export function ConectarWhatsapp({
+  inicial,
+  compacto = false,
+}: {
+  inicial: StatusResposta;
+  /** Versão pequena para ficar em cima da janela de conversa. */
+  compacto?: boolean;
+}) {
   const router = useRouter();
   const [status, setStatus] = useState<StatusResposta>(inicial);
   const [modal, setModal] = useState(false);
@@ -77,7 +84,10 @@ export function ConectarWhatsapp({ inicial }: { inicial: StatusResposta }) {
     return (
       <span
         title="Defina EVOLUTION_URL e EVOLUTION_API_KEY no ambiente."
-        className="rounded-lg border border-border px-4 py-2.5 font-display text-sm font-semibold uppercase tracking-widest text-faint"
+        className={cn(
+          "rounded-lg border border-border font-display font-semibold uppercase tracking-widest text-faint",
+          compacto ? "px-2.5 py-1 text-[11px]" : "px-4 py-2.5 text-sm",
+        )}
       >
         WhatsApp não configurado
       </span>
@@ -90,17 +100,34 @@ export function ConectarWhatsapp({ inicial }: { inicial: StatusResposta }) {
         <button
           type="button"
           onClick={() => setModal(true)}
-          className="flex items-center gap-2 rounded-lg border border-ok/40 bg-ok/10 px-4 py-2.5 font-display text-sm font-semibold uppercase tracking-widest text-ok transition-colors hover:bg-ok/15"
+          title="WhatsApp conectado"
+          className={cn(
+            "flex items-center gap-2 rounded-lg border border-ok/40 bg-ok/10 text-ok transition-colors hover:bg-ok/15",
+            compacto
+              ? "px-2.5 py-1 text-xs font-medium"
+              : "px-4 py-2.5 font-display text-sm font-semibold uppercase tracking-widest",
+          )}
         >
-          <span className="h-2 w-2 rounded-full bg-ok" />
-          WhatsApp conectado
-          {status.numero && <span className="font-sans text-xs normal-case tracking-normal opacity-80">{status.numero}</span>}
+          <span className={cn("shrink-0 rounded-full bg-ok", compacto ? "h-1.5 w-1.5" : "h-2 w-2")} />
+          {compacto ? (
+            <span className="tabular-nums">{status.numero || "Conectado"}</span>
+          ) : (
+            <>
+              WhatsApp conectado
+              {status.numero && (
+                <span className="font-sans text-xs normal-case tracking-normal opacity-80">{status.numero}</span>
+              )}
+            </>
+          )}
         </button>
       ) : (
         <button
           type="button"
           onClick={() => setModal(true)}
-          className="rounded-lg bg-red px-4 py-2.5 font-display text-sm font-semibold uppercase tracking-widest text-white transition-colors hover:bg-red-bright"
+          className={cn(
+            "rounded-lg bg-red font-display font-semibold uppercase tracking-widest text-white transition-colors hover:bg-red-bright",
+            compacto ? "px-2.5 py-1 text-[11px]" : "px-4 py-2.5 text-sm",
+          )}
         >
           Conectar WhatsApp
         </button>

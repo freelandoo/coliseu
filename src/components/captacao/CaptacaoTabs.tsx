@@ -22,7 +22,7 @@ export function CaptacaoTabs({ naoLidas = 0 }: { naoLidas?: number }) {
             key={aba.href}
             href={aba.href}
             className={cn(
-              "flex items-center gap-2 rounded-lg border px-4 py-2 text-sm font-medium transition-colors",
+              "flex items-center gap-2 rounded-lg border px-3 py-1.5 text-xs font-medium transition-colors",
               ativo
                 ? "border-red/60 bg-red-ghost text-ink"
                 : "border-border bg-surface text-muted hover:border-border-strong hover:text-ink",
@@ -30,7 +30,7 @@ export function CaptacaoTabs({ naoLidas = 0 }: { naoLidas?: number }) {
           >
             <span className="uppercase tracking-wide">{aba.label}</span>
             {aba.href === "/captacao/atendimento" && naoLidas > 0 && (
-              <span className="flex h-5 min-w-5 items-center justify-center rounded-md bg-red px-1 text-xs font-semibold text-white">
+              <span className="flex h-4 min-w-4 items-center justify-center rounded-md bg-red px-1 text-[10px] font-semibold text-white">
                 {naoLidas}
               </span>
             )}
