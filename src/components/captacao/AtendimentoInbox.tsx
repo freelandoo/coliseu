@@ -196,7 +196,7 @@ export function AtendimentoInbox({
           {visiveis.length === 0 && (
             <li className="px-4 py-10 text-center text-sm text-faint">
               {aba === "grupos"
-                ? "Nenhum grupo por aqui ainda. Quando alguém escrever num grupo seu, ele aparece nesta aba."
+                ? "Nenhum grupo por aqui ainda. O grupo entra nesta aba na primeira mensagem nova que chegar nele — conversa anterior não é importada."
                 : "Nenhuma conversa individual ainda."}
             </li>
           )}
