@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { Card } from "@/components/ui/primitives";
 import { ConversaPainel } from "@/components/captacao/ConversaPainel";
@@ -160,6 +161,12 @@ export function AtendimentoInbox({
     setSelecionada((atual) => (atual === id ? (restantes[0]?.id ?? null) : atual));
   }
 
+  function abrir(id: string) {
+    setSelecionada(id);
+    // abrir zera o badge; o servidor faz o mesmo no GET
+    setConversas((a) => a.map((x) => (x.id === id ? { ...x, naoLidas: 0 } : x)));
+  }
+
   if (conversas.length === 0) {
     return (
       <Card className="px-5 py-16 text-center">
@@ -204,21 +211,37 @@ export function AtendimentoInbox({
             const ativo = c.id === selecionada;
             return (
               <li key={c.id}>
-                <button
-                  onClick={() => {
-                    setSelecionada(c.id);
-                    // abrir zera o badge; o servidor faz o mesmo no GET
-                    setConversas((a) => a.map((x) => (x.id === c.id ? { ...x, naoLidas: 0 } : x)));
+                <div
+                  role="button"
+                  tabIndex={0}
+                  onClick={() => abrir(c.id)}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter" || e.key === " ") {
+                      e.preventDefault();
+                      abrir(c.id);
+                    }
                   }}
                   className={cn(
-                    "flex w-full items-start gap-2.5 border-b border-border px-3 py-2.5 text-left transition-colors last:border-0",
+                    "flex w-full cursor-pointer items-start gap-2.5 border-b border-border px-3 py-2.5 text-left transition-colors last:border-0",
                     ativo ? "bg-red-ghost" : "hover:bg-surface-2",
                   )}
                 >
                   <span className={cn("mt-1.5 h-2 w-2 shrink-0 rounded-full", PONTO[c.interesse])} />
                   <span className="min-w-0 flex-1">
                     <span className="flex items-baseline justify-between gap-2">
-                      <span className="truncate text-[13px] font-medium text-ink">{c.nome}</span>
+                      <span className="flex min-w-0 items-baseline gap-1.5">
+                        {c.personId && (
+                          // "ver" abre o cadastro do contato sem trocar a conversa aberta.
+                          <Link
+                            href={`/matriculados/${c.personId}`}
+                            onClick={(e) => e.stopPropagation()}
+                            className="shrink-0 text-[10px] font-bold uppercase tracking-wide text-red-bright hover:underline"
+                          >
+                            ver
+                          </Link>
+                        )}
+                        <span className="truncate text-[13px] font-medium text-ink">{c.nome}</span>
+                      </span>
                       <span className="shrink-0 text-[11px] text-faint">{quando(c.ultimaMensagemEm)}</span>
                     </span>
                     <span className="mt-0.5 flex items-center justify-between gap-2">
@@ -235,7 +258,7 @@ export function AtendimentoInbox({
                       </span>
                     )}
                   </span>
-                </button>
+                </div>
               </li>
             );
           })}

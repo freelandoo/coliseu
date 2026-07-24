@@ -1,9 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { Badge } from "@/components/ui/primitives";
 import { Modal } from "@/components/ui/Modal";
 import { cn } from "@/lib/cn";
 import { ROTULO_MIDIA } from "@/lib/whatsapp/payload";
@@ -16,14 +14,6 @@ import {
 } from "@/lib/types";
 
 const POLL_THREAD_MS = 3_000;
-
-const TOM: Record<ConversaInteresse, "neutral" | "red" | "ok" | "warn"> = {
-  nao_classificado: "neutral",
-  com_interesse: "red",
-  sem_interesse: "warn",
-  perdido: "neutral",
-  convertido: "ok",
-};
 
 const inputCls =
   "w-full rounded-lg border border-border bg-surface px-3 py-2 text-sm text-ink " +
@@ -183,48 +173,24 @@ export function ConversaPainel({
 
   return (
     <div className="flex h-full flex-col">
-      <header className="flex flex-wrap items-center justify-between gap-3 border-b border-border px-4 py-2.5">
-        <div>
-          <p className="font-display text-sm font-semibold uppercase tracking-wide text-ink">
-            {conversa.nome}
-          </p>
-          <p className="text-[11px] text-faint">
-            {conversa.ehGrupo ? "grupo do WhatsApp" : conversa.telefone || "sem número"}
-            {conversa.atendente && ` · atendido por ${conversa.atendente}`}
-          </p>
+      {/* Sem cabeçalho: nome e contato saem no "ver" da lista à esquerda.
+          Só sobra a barra fina de ações destrutivas, para ADMIN. */}
+      {podeApagar && (
+        <div className="flex shrink-0 items-center justify-end gap-3 border-b border-border px-4 py-1.5">
+          <button
+            onClick={() => setConfirmando("limpar")}
+            className="text-[11px] font-medium text-faint transition-colors hover:text-ink"
+          >
+            Limpar
+          </button>
+          <button
+            onClick={() => setConfirmando("remover")}
+            className="text-[11px] font-medium text-faint transition-colors hover:text-red-bright"
+          >
+            Remover
+          </button>
         </div>
-        <div className="flex items-center gap-3">
-          {conversa.ehGrupo ? (
-            <Badge tone="neutral">Grupo</Badge>
-          ) : (
-            <Badge tone={TOM[conversa.interesse]}>{INTERESSE_LABEL[conversa.interesse]}</Badge>
-          )}
-          {conversa.personId && (
-            <Link
-              href={`/matriculados/${conversa.personId}`}
-              className="text-xs font-medium text-red-bright hover:underline"
-            >
-              Ver cadastro →
-            </Link>
-          )}
-          {podeApagar && (
-            <>
-              <button
-                onClick={() => setConfirmando("limpar")}
-                className="text-xs font-medium text-faint transition-colors hover:text-ink"
-              >
-                Limpar
-              </button>
-              <button
-                onClick={() => setConfirmando("remover")}
-                className="text-xs font-medium text-faint transition-colors hover:text-red-bright"
-              >
-                Remover
-              </button>
-            </>
-          )}
-        </div>
-      </header>
+      )}
 
       {confirmando && (
         <ConfirmarExclusao
