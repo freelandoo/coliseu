@@ -184,6 +184,39 @@ export async function estadoConexao(cfg: ConfigEvolution, nome: string): Promise
   }
 }
 
+/**
+ * Assunto de cada grupo da instância — o webhook de mensagem não traz o nome do
+ * grupo, só o de quem escreveu. Sem participantes: a lista é grande e só o
+ * título interessa. Nunca lança: grupo sem nome é inconveniente, não é falha.
+ */
+export async function listarGrupos(
+  cfg: ConfigEvolution,
+  nome: string,
+): Promise<Map<string, string>> {
+  const assuntos = new Map<string, string>();
+  try {
+    const instancia = encodeURIComponent(validarNomeInstancia(nome));
+    const { status, data } = await chamar(
+      cfg,
+      "GET",
+      `/group/fetchAllGroups/${instancia}?getParticipants=false`,
+    );
+    if (status >= 400) return assuntos;
+
+    // A Evolution devolve ora o array direto, ora embrulhado em `groups`.
+    const bruto = Array.isArray(data) ? data : ((data as { groups?: unknown }).groups ?? []);
+    for (const g of Array.isArray(bruto) ? bruto : []) {
+      const { id, subject } = (g ?? {}) as { id?: unknown; subject?: unknown };
+      const jid = String(id ?? "").trim();
+      const assunto = String(subject ?? "").trim();
+      if (jid.endsWith("@g.us") && assunto) assuntos.set(jid, assunto);
+    }
+  } catch {
+    /* Evolution fora do ar: os grupos continuam na inbox sem o nome */
+  }
+  return assuntos;
+}
+
 export async function desconectar(cfg: ConfigEvolution, nome: string): Promise<void> {
   const instancia = encodeURIComponent(validarNomeInstancia(nome));
   const r = await chamar(cfg, "DELETE", `/instance/logout/${instancia}`);
@@ -195,15 +228,20 @@ export async function desconectar(cfg: ConfigEvolution, nome: string): Promise<v
 /**
  * Envia texto. Único ponto de saída de mensagem do sistema — sempre acionado por
  * um clique da recepção, nunca pelo webhook.
+ *
+ * `destino` é o telefone da pessoa ou o JID do grupo (`120363…@g.us`) — a
+ * Evolution aceita os dois no campo `number`, mas o JID de grupo tem que ir
+ * inteiro: reduzido a dígitos ele viraria um número de telefone inexistente.
+ *
  * Devolve o `key.id` do WhatsApp para deduplicar o eco que volta pelo webhook.
  */
 export async function enviarTexto(
   cfg: ConfigEvolution,
   nome: string,
-  telefone: string,
+  destino: string,
   texto: string,
 ): Promise<string | null> {
-  const numero = telefone.replace(/\D/g, "");
+  const numero = /@g\.us$/i.test(destino.trim()) ? destino.trim() : destino.replace(/\D/g, "");
   if (!numero) throw new EvolutionError("Conversa sem número de telefone para envio.", 400);
   const conteudo = texto.trim();
   if (!conteudo) throw new EvolutionError("Mensagem vazia.", 400);

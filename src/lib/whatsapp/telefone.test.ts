@@ -1,7 +1,9 @@
 import { describe, expect, test } from "vitest";
 import {
   chaveTelefone,
+  ehConversaAtendivel,
   ehConversaPessoal,
+  ehJidGrupo,
   formatarTelefone,
   redigirTelefone,
   telefoneDoJid,
@@ -44,6 +46,24 @@ describe("ehConversaPessoal", () => {
   });
 });
 
+describe("ehConversaAtendivel", () => {
+  test("pessoa e grupo viram conversa", () => {
+    expect(ehConversaAtendivel("5511987654321@s.whatsapp.net")).toBe(true);
+    expect(ehConversaAtendivel("120363000000000000@g.us")).toBe(true);
+  });
+
+  test("transmissão e status continuam de fora", () => {
+    expect(ehConversaAtendivel("status@broadcast")).toBe(false);
+    expect(ehConversaAtendivel("5511999999999@broadcast")).toBe(false);
+    expect(ehConversaAtendivel("")).toBe(false);
+  });
+
+  test("ehJidGrupo distingue os dois", () => {
+    expect(ehJidGrupo("120363000000000000@g.us")).toBe(true);
+    expect(ehJidGrupo("5511987654321@s.whatsapp.net")).toBe(false);
+  });
+});
+
 describe("telefoneDoJid", () => {
   test("extrai os dígitos do JID de telefone", () => {
     expect(telefoneDoJid("5511987654321@s.whatsapp.net")).toBe("5511987654321");
@@ -51,6 +71,12 @@ describe("telefoneDoJid", () => {
 
   test("@lid não expõe número", () => {
     expect(telefoneDoJid("199384756@lid")).toBe("");
+  });
+
+  // O id do grupo tem cara de telefone longo; tratá-lo como número criaria
+  // cadastro fantasma e ainda casaria com lead de verdade pelos últimos dígitos.
+  test("id de grupo não é telefone", () => {
+    expect(telefoneDoJid("120363000000000000@g.us")).toBe("");
   });
 
   test("JID curto demais não vira telefone", () => {

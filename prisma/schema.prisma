@@ -560,8 +560,9 @@ model Conversa {
   instance   WhatsappInstance @relation(fields: [instanceId], references: [id], onDelete: Cascade)
   instanceId String
   remoteJid  String
-  telefone   String // só dígitos; vazio quando o JID não expõe o número (@lid)
-  pushName   String?
+  telefone   String // só dígitos; vazio quando o JID não expõe o número (@lid) ou é grupo
+  pushName   String? // pessoa: nome do perfil de quem escreve; grupo: assunto do grupo
+  ehGrupo    Boolean @default(false) // JID @g.us: conversa coletiva, não vira lead
 
   person      Person? @relation(fields: [personId], references: [id], onDelete: SetNull)
   personId    String?
@@ -591,6 +592,7 @@ model Mensagem {
   autor       MensagemAutor
   autorUser   User?           @relation(fields: [autorUserId], references: [id], onDelete: SetNull)
   autorUserId String? // nulo em OUT enviado pelo celular do dono
+  remetente   String? // quem escreveu dentro do grupo; nulo em conversa 1:1
   texto       String
   tipoMidia   String          @default("texto") // texto | imagem | audio | video | documento | outro
   enviadaEm   DateTime        @default(now())

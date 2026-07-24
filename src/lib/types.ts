@@ -245,8 +245,9 @@ export const INTERESSE_ESTAGIO: Record<ConversaInteresse, LeadEstagio> = {
 
 export interface ConversaResumo {
   id: string;
-  nome: string; // pushName, nome do cadastro ou telefone formatado
-  telefone: string;
+  nome: string; // pushName, nome do cadastro, assunto do grupo ou telefone formatado
+  telefone: string; // vazio em grupo
+  ehGrupo: boolean; // conversa coletiva: não tem cadastro nem entra no funil
   personId: string | null;
   atendente: string | null;
   interesse: ConversaInteresse;
@@ -260,6 +261,7 @@ export interface MensagemItem {
   direcao: "IN" | "OUT";
   autor: "LEAD" | "ATENDENTE";
   autorNome: string | null; // null em OUT respondido pelo celular do dono
+  remetente: string | null; // quem escreveu dentro do grupo; null em conversa 1:1
   texto: string;
   tipoMidia: string;
   enviadaEm: string; // ISO

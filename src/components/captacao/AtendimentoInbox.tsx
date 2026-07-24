@@ -9,6 +9,11 @@ import { INTERESSE_LABEL, type ConversaInteresse, type ConversaResumo } from "@/
 
 const POLL_LISTA_MS = 5_000;
 
+/** Rótulo do grupo enquanto o assunto não chega da Evolution — ver `toResumo`. */
+const GRUPO_SEM_NOME = "Grupo do WhatsApp";
+
+type Aba = "pessoas" | "grupos";
+
 const PONTO: Record<ConversaInteresse, string> = {
   nao_classificado: "bg-border-strong",
   com_interesse: "bg-red",
@@ -24,6 +29,46 @@ function quando(iso: string) {
   return mesmoDia
     ? d.toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" })
     : d.toLocaleDateString("pt-BR", { day: "2-digit", month: "2-digit" });
+}
+
+function somaNaoLidas(lista: ConversaResumo[]) {
+  return lista.reduce((total, c) => total + c.naoLidas, 0);
+}
+
+/**
+ * Abas Pessoas/Grupos. Grupo costuma falar muito mais que lead: sem separar, a
+ * conversa de quem quer matrícula afundaria embaixo da conversa de grupo.
+ */
+function AbaBotao({
+  ativa,
+  label,
+  quantidade,
+  naoLidas,
+  onClick,
+}: {
+  ativa: boolean;
+  label: string;
+  quantidade: number;
+  naoLidas: number;
+  onClick: () => void;
+}) {
+  return (
+    <button
+      onClick={onClick}
+      className={cn(
+        "flex flex-1 items-center justify-center gap-2 px-4 py-3 font-display text-xs font-semibold uppercase tracking-widest transition-colors",
+        ativa ? "border-b-2 border-red bg-red-ghost text-ink" : "text-faint hover:text-muted",
+      )}
+    >
+      {label}
+      <span className="text-[11px] font-normal tracking-normal text-faint">{quantidade}</span>
+      {naoLidas > 0 && (
+        <span className="flex h-4 min-w-4 items-center justify-center rounded bg-red px-1 text-[10px] font-semibold tracking-normal text-white">
+          {naoLidas}
+        </span>
+      )}
+    </button>
+  );
 }
 
 /**
@@ -44,8 +89,12 @@ export function AtendimentoInbox({
   // `?c=<id>` vem do link "Responder" da tabela de leads e do aviso de login.
   const alvo = useSearchParams().get("c");
   const [conversas, setConversas] = useState(inicial);
+  const inicialSelecionada = alvo && inicial.some((c) => c.id === alvo) ? alvo : null;
+  const [aba, setAba] = useState<Aba>(
+    inicial.find((c) => c.id === inicialSelecionada)?.ehGrupo ? "grupos" : "pessoas",
+  );
   const [selecionada, setSelecionada] = useState<string | null>(
-    (alvo && inicial.some((c) => c.id === alvo) ? alvo : inicial[0]?.id) ?? null,
+    inicialSelecionada ?? inicial.find((c) => !c.ehGrupo)?.id ?? inicial[0]?.id ?? null,
   );
 
   useEffect(() => {
@@ -61,6 +110,42 @@ export function AtendimentoInbox({
     }, POLL_LISTA_MS);
     return () => clearInterval(t);
   }, []);
+
+  // Grupo entra pelo webhook sem o assunto — a mensagem só traz o nome de quem
+  // escreveu. Ao ver grupo sem nome, pede o título à Evolution uma vez; o
+  // servidor tem janela própria, então tela reaberta não vira martelo.
+  const faltaNome = conversas.some((c) => c.ehGrupo && c.nome === GRUPO_SEM_NOME);
+  useEffect(() => {
+    if (!faltaNome) return;
+    let ativo = true;
+    (async () => {
+      try {
+        const r = await fetch("/api/whatsapp/grupos", { method: "POST" });
+        const d = (await r.json().catch(() => ({}))) as { renomeados?: number };
+        if (!ativo || !d.renomeados) return;
+        const lista = await fetch("/api/whatsapp/conversas", { cache: "no-store" });
+        if (!lista.ok || !ativo) return;
+        const dados = (await lista.json()) as { conversas: ConversaResumo[] };
+        if (ativo) setConversas(dados.conversas ?? []);
+      } catch {
+        /* sem nome do grupo a inbox continua funcionando */
+      }
+    })();
+    return () => {
+      ativo = false;
+    };
+  }, [faltaNome]);
+
+  const pessoas = conversas.filter((c) => !c.ehGrupo);
+  const grupos = conversas.filter((c) => c.ehGrupo);
+  const visiveis = aba === "grupos" ? grupos : pessoas;
+
+  function trocarAba(nova: Aba) {
+    setAba(nova);
+    const lista = nova === "grupos" ? grupos : pessoas;
+    // Sem isso a conversa aberta continuaria à direita fora da aba escolhida.
+    if (!lista.some((c) => c.id === selecionada)) setSelecionada(lista[0]?.id ?? null);
+  }
 
   // A conversa aberta some da lista só se for apagada; mantém a seleção viva.
   const atual = conversas.find((c) => c.id === selecionada) ?? null;
@@ -89,9 +174,33 @@ export function AtendimentoInbox({
 
   return (
     <div className="grid gap-4 lg:grid-cols-[320px_1fr]">
-      <Card className="max-h-[70dvh] overflow-y-auto">
-        <ul>
-          {conversas.map((c) => {
+      <Card className="flex max-h-[70dvh] flex-col overflow-hidden">
+        <div className="flex shrink-0 border-b border-border">
+          <AbaBotao
+            ativa={aba === "pessoas"}
+            label="Pessoas"
+            quantidade={pessoas.length}
+            naoLidas={somaNaoLidas(pessoas)}
+            onClick={() => trocarAba("pessoas")}
+          />
+          <AbaBotao
+            ativa={aba === "grupos"}
+            label="Grupos"
+            quantidade={grupos.length}
+            naoLidas={somaNaoLidas(grupos)}
+            onClick={() => trocarAba("grupos")}
+          />
+        </div>
+
+        <ul className="flex-1 overflow-y-auto">
+          {visiveis.length === 0 && (
+            <li className="px-4 py-10 text-center text-sm text-faint">
+              {aba === "grupos"
+                ? "Nenhum grupo por aqui ainda. Quando alguém escrever num grupo seu, ele aparece nesta aba."
+                : "Nenhuma conversa individual ainda."}
+            </li>
+          )}
+          {visiveis.map((c) => {
             const ativo = c.id === selecionada;
             return (
               <li key={c.id}>

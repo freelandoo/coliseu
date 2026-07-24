@@ -20,6 +20,7 @@ function evento(overrides: {
   texto?: string;
   fromMe?: boolean;
   pushName?: string;
+  participant?: string;
 }) {
   return {
     event: "messages.upsert",
@@ -29,6 +30,7 @@ function evento(overrides: {
         id: overrides.id,
         remoteJid: overrides.remoteJid ?? JID,
         fromMe: overrides.fromMe ?? false,
+        ...(overrides.participant ? { participant: overrides.participant } : {}),
       },
       pushName: overrides.pushName ?? "Cliente Teste",
       messageTimestamp: Math.floor(Date.now() / 1000),
@@ -128,10 +130,34 @@ test("mensagem enviada pelo aparelho entra como saída sem autor de sistema", as
   expect(conversa?.naoLidas).toBe(0);
 });
 
-test("grupo é ignorado", async () => {
-  const r = await processarEventoWhatsapp(evento({ id: "MSG-6", remoteJid: JID_GRUPO }));
+test("grupo vira conversa para atender, mas não vira lead", async () => {
+  const r = await processarEventoWhatsapp(
+    evento({
+      id: "MSG-6",
+      remoteJid: JID_GRUPO,
+      pushName: "Vitor do Grupo",
+      participant: "5511999000222@s.whatsapp.net",
+      texto: "Qual o horário de sábado?",
+    }),
+  );
+  expect(r).toMatchObject({ tipo: "mensagens", gravadas: 1 });
+
+  const conversa = await prisma.conversa.findFirst({ where: { remoteJid: JID_GRUPO } });
+  // Sem cadastro e sem telefone: o "120363…" do JID é id de grupo, não número.
+  expect(conversa).toMatchObject({ ehGrupo: true, telefone: "", personId: null });
+  // O nome de quem escreveu não pode virar título do grupo.
+  expect(conversa?.pushName).toBeNull();
+  expect(await prisma.person.count({ where: { nome: "Vitor do Grupo" } })).toBe(0);
+
+  // Em grupo, a bolha precisa dizer quem falou.
+  const mensagens = await listarMensagensRepo(conversa!.id);
+  expect(mensagens.at(-1)).toMatchObject({ remetente: "Vitor do Grupo", texto: "Qual o horário de sábado?" });
+});
+
+test("transmissão e status continuam fora do atendimento", async () => {
+  const r = await processarEventoWhatsapp(evento({ id: "MSG-6b", remoteJid: "status@broadcast" }));
   expect(r).toMatchObject({ gravadas: 0, duplicadas: 0 });
-  expect(await prisma.conversa.count({ where: { remoteJid: JID_GRUPO } })).toBe(0);
+  expect(await prisma.conversa.count({ where: { remoteJid: "status@broadcast" } })).toBe(0);
 });
 
 test("evento sem instância registrada é ignorado sem quebrar", async () => {

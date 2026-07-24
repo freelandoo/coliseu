@@ -74,7 +74,9 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
   if (conversa.instance.status !== "CONNECTED") {
     return NextResponse.json({ erro: "WhatsApp desconectado. Conecte antes de responder." }, { status: 409 });
   }
-  if (!conversa.telefone) {
+  // Grupo se endereça pelo JID; pessoa, pelo telefone.
+  const destino = conversa.ehGrupo ? conversa.remoteJid : conversa.telefone;
+  if (!destino) {
     return NextResponse.json(
       { erro: "Esta conversa não expõe o número; responda pelo aparelho." },
       { status: 409 },
@@ -87,7 +89,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
   }
 
   try {
-    const waId = await enviarTexto(cfg, conversa.instance.evolutionInstance, conversa.telefone, texto);
+    const waId = await enviarTexto(cfg, conversa.instance.evolutionInstance, destino, texto);
     // Sem id do WhatsApp não há como deduplicar o eco do webhook; o prefixo
     // "local:" deixa isso explícito no banco.
     await registrarMensagemRepo({

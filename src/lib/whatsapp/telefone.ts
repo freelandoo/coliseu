@@ -18,24 +18,38 @@ export function chaveTelefone(valor: string | null | undefined): string {
   return d.length >= 8 ? d.slice(-8) : "";
 }
 
+/** JID de grupo — `120363...@g.us`. Conversa coletiva, nunca um cadastro. */
+export function ehJidGrupo(remoteJid: string | null | undefined): boolean {
+  return /@g\.us$/i.test(String(remoteJid ?? "").trim());
+}
+
 /** JIDs que não são conversa 1:1 com uma pessoa — grupo, transmissão, status. */
 export function ehConversaPessoal(remoteJid: string | null | undefined): boolean {
   const jid = String(remoteJid ?? "").trim();
   if (!jid) return false;
-  if (/@g\.us$/i.test(jid)) return false;
+  if (ehJidGrupo(jid)) return false;
   if (/@broadcast$/i.test(jid)) return false;
   if (/^status@/i.test(jid)) return false;
   return true;
 }
 
 /**
+ * JIDs que viram conversa no Atendimento: pessoa **ou** grupo. Transmissão e
+ * status ficam de fora — não são conversa, são publicação de mão única.
+ */
+export function ehConversaAtendivel(remoteJid: string | null | undefined): boolean {
+  return ehJidGrupo(remoteJid) || ehConversaPessoal(remoteJid);
+}
+
+/**
  * Extrai o telefone de um JID. `@lid` é um identificador opaco que o WhatsApp
  * usa quando não expõe o número — devolve vazio, e a conversa fica sem telefone
- * até a recepção completar o cadastro.
+ * até a recepção completar o cadastro. Grupo também: o `120363…` do JID é um id
+ * de grupo com cara de telefone, e tratá-lo como número criaria cadastro fantasma.
  */
 export function telefoneDoJid(remoteJid: string | null | undefined): string {
   const jid = String(remoteJid ?? "").trim();
-  if (!jid || /@lid$/i.test(jid)) return "";
+  if (!jid || /@lid$/i.test(jid) || ehJidGrupo(jid)) return "";
   const [parte] = jid.split("@");
   const d = soDigitos(parte);
   return d.length >= 10 ? d : "";

@@ -11,7 +11,10 @@ export interface MensagemRecebida {
   waMessageId: string;
   remoteJid: string;
   fromMe: boolean;
+  /** Nome do perfil de quem escreveu — em grupo, do participante, não do grupo. */
   pushName: string;
+  /** JID de quem escreveu dentro do grupo; vazio em conversa 1:1. */
+  participante: string;
   texto: string;
   tipoMidia: TipoMidia;
   enviadaEm: Date;
@@ -19,7 +22,14 @@ export interface MensagemRecebida {
 
 /** Estrutura mínima que consumimos do evento `messages.upsert`. */
 interface WebhookMensagemBruta {
-  key?: { id?: string; remoteJid?: string; remoteJidAlt?: string; fromMe?: boolean };
+  key?: {
+    id?: string;
+    remoteJid?: string;
+    remoteJidAlt?: string;
+    fromMe?: boolean;
+    participant?: string;
+    participantAlt?: string;
+  };
   pushName?: string;
   messageTimestamp?: number | string;
   message?: Record<string, unknown> | null;
@@ -73,8 +83,10 @@ function instante(valor: number | string | undefined): Date {
 export function lerMensagem(bruta: unknown): MensagemRecebida | null {
   const msg = (bruta ?? {}) as WebhookMensagemBruta;
   const waMessageId = String(msg.key?.id ?? "").trim();
-  // remoteJidAlt traz o JID de telefone quando o principal é @lid.
-  const remoteJid = String(msg.key?.remoteJidAlt || msg.key?.remoteJid || "").trim();
+  // remoteJidAlt traz o JID de telefone quando o principal é @lid. Em grupo o
+  // JID do grupo é o endereço da conversa: o alt (se vier) é do participante.
+  const jid = String(msg.key?.remoteJid ?? "").trim();
+  const remoteJid = /@g\.us$/i.test(jid) ? jid : String(msg.key?.remoteJidAlt || jid).trim();
   if (!waMessageId || !remoteJid) return null;
 
   const message = msg.message;
@@ -97,6 +109,9 @@ export function lerMensagem(bruta: unknown): MensagemRecebida | null {
     remoteJid,
     fromMe: !!msg.key?.fromMe,
     pushName: String(msg.pushName ?? "").trim(),
+    // Em grupo o autor vem à parte; `participantAlt` traz o telefone quando o
+    // principal é @lid, mesma lógica do remoteJid.
+    participante: String(msg.key?.participantAlt || msg.key?.participant || "").trim(),
     texto,
     tipoMidia: tipo,
     enviadaEm: instante(msg.messageTimestamp),

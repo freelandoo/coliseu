@@ -183,12 +183,16 @@ export function ConversaPainel({
             {conversa.nome}
           </p>
           <p className="text-xs text-faint">
-            {conversa.telefone || "sem número"}
+            {conversa.ehGrupo ? "grupo do WhatsApp" : conversa.telefone || "sem número"}
             {conversa.atendente && ` · atendido por ${conversa.atendente}`}
           </p>
         </div>
         <div className="flex items-center gap-3">
-          <Badge tone={TOM[conversa.interesse]}>{INTERESSE_LABEL[conversa.interesse]}</Badge>
+          {conversa.ehGrupo ? (
+            <Badge tone="neutral">Grupo</Badge>
+          ) : (
+            <Badge tone={TOM[conversa.interesse]}>{INTERESSE_LABEL[conversa.interesse]}</Badge>
+          )}
           {conversa.personId && (
             <Link
               href={`/matriculados/${conversa.personId}`}
@@ -240,11 +244,14 @@ export function ConversaPainel({
         <div ref={fim} />
       </div>
 
-      <ClassificarAtendimento
-        atual={conversa.interesse}
-        atendimentos={atendimentos}
-        onSalvar={classificar}
-      />
+      {/* Grupo não é lead: classificar interesse ali não moveria funil nenhum. */}
+      {!conversa.ehGrupo && (
+        <ClassificarAtendimento
+          atual={conversa.interesse}
+          atendimentos={atendimentos}
+          onSalvar={classificar}
+        />
+      )}
 
       <div className="border-t border-border px-5 py-4">
         {podeResponder ? (
@@ -357,6 +364,10 @@ function Bolha({ mensagem }: { mensagem: MensagemItem }) {
           mensagem.erro && "border-red/70",
         )}
       >
+        {/* Em grupo, quem falou importa tanto quanto o que foi dito. */}
+        {!saida && mensagem.remetente && (
+          <p className="mb-0.5 text-[11px] font-semibold text-red-bright">{mensagem.remetente}</p>
+        )}
         <p className="whitespace-pre-wrap break-words text-sm text-ink">{mensagem.texto}</p>
         <p className="mt-1 text-right text-[11px] text-faint">
           {saida && (mensagem.autorNome ?? "pelo aparelho")}

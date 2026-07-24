@@ -70,12 +70,17 @@ async function acharPessoaPorTelefone(telefone: string): Promise<string | null> 
 /**
  * Garante conversa e cadastro para um número que escreveu.
  * Número já conhecido (lead ou aluno) é vinculado, nunca duplicado.
+ *
+ * Grupo é a exceção: conversa coletiva não é pessoa, então não gera cadastro
+ * nem entra no funil de leads. Fica só como conversa a ser atendida.
  */
 export async function garantirConversaRepo(input: {
   instanceId: string;
   remoteJid: string;
   pushName: string;
+  ehGrupo?: boolean;
 }) {
+  const ehGrupo = input.ehGrupo ?? false;
   const existente = await prisma.conversa.findUnique({
     where: { instanceId_remoteJid: { instanceId: input.instanceId, remoteJid: input.remoteJid } },
   });
@@ -92,6 +97,20 @@ export async function garantirConversaRepo(input: {
 
   const unitId = await unitIdAtual();
   const telefone = telefoneDoJid(input.remoteJid);
+
+  if (ehGrupo) {
+    return prisma.conversa.create({
+      data: {
+        unitId,
+        instanceId: input.instanceId,
+        remoteJid: input.remoteJid,
+        telefone: "",
+        pushName: input.pushName || null,
+        ehGrupo: true,
+      },
+    });
+  }
+
   let personId = telefone ? await acharPessoaPorTelefone(telefone) : null;
 
   if (!personId) {
@@ -130,10 +149,27 @@ const RESUMO_INCLUDE = {
 type ConversaComResumo = Prisma.ConversaGetPayload<{ include: typeof RESUMO_INCLUDE }>;
 
 function toResumo(c: ConversaComResumo): ConversaResumo {
+  // Grupo ainda não sincronizado não tem assunto: mostrar o JID cru ("120363…")
+  // não diz nada a quem atende, então o rótulo genérico serve até o nome chegar.
+  if (c.ehGrupo) {
+    return {
+      id: c.id,
+      nome: c.pushName || "Grupo do WhatsApp",
+      telefone: "",
+      ehGrupo: true,
+      personId: null,
+      atendente: c.atendente?.nome ?? null,
+      interesse: c.interesse as ConversaInteresse,
+      naoLidas: c.naoLidas,
+      ultimaMensagemEm: c.ultimaMensagemEm.toISOString(),
+      preview: c.ultimaMensagemPreview,
+    };
+  }
   return {
     id: c.id,
     nome: c.person?.nome || c.pushName || formatarTelefone(c.telefone) || c.remoteJid,
     telefone: formatarTelefone(c.telefone || c.person?.telefone),
+    ehGrupo: false,
     personId: c.personId,
     atendente: c.atendente?.nome ?? null,
     interesse: c.interesse as ConversaInteresse,
@@ -178,17 +214,44 @@ export async function obterConversaRepo(id: string): Promise<ConversaResumo | nu
   return row ? toResumo(row) : null;
 }
 
-/** Telefone cru para envio — o resumo só devolve o formato de exibição. */
+/**
+ * Endereço cru para envio — o resumo só devolve o formato de exibição.
+ * Grupo se endereça pelo JID (`120363…@g.us`); pessoa, pelo telefone.
+ */
 export async function dadosEnvioConversaRepo(id: string) {
   return prisma.conversa.findUnique({
     where: { id },
     select: {
       id: true,
       telefone: true,
+      remoteJid: true,
+      ehGrupo: true,
       atendenteId: true,
       instance: { select: { evolutionInstance: true, status: true } },
     },
   });
+}
+
+/**
+ * Grava o assunto dos grupos vindo da Evolution. A mensagem do webhook não traz
+ * o nome do grupo — só o de quem escreveu —, então o título chega por aqui.
+ * Devolve quantas conversas foram renomeadas.
+ */
+export async function renomearGruposRepo(assuntos: Map<string, string>): Promise<number> {
+  if (assuntos.size === 0) return 0;
+  const grupos = await prisma.conversa.findMany({
+    where: { ehGrupo: true, remoteJid: { in: [...assuntos.keys()] } },
+    select: { id: true, remoteJid: true, pushName: true },
+  });
+
+  let renomeados = 0;
+  for (const g of grupos) {
+    const assunto = assuntos.get(g.remoteJid)?.trim();
+    if (!assunto || assunto === g.pushName) continue;
+    await prisma.conversa.update({ where: { id: g.id }, data: { pushName: assunto } });
+    renomeados++;
+  }
+  return renomeados;
 }
 
 export async function marcarConversaLidaRepo(id: string) {
@@ -214,6 +277,7 @@ export async function listarMensagensRepo(
     direcao: m.direcao,
     autor: m.autor,
     autorNome: m.autorUser?.nome ?? null,
+    remetente: m.remetente,
     texto: m.texto,
     tipoMidia: m.tipoMidia,
     enviadaEm: m.enviadaEm.toISOString(),
@@ -232,6 +296,7 @@ export async function registrarMensagemRepo(input: {
   direcao: "IN" | "OUT";
   autor: "LEAD" | "ATENDENTE";
   autorUserId?: string | null;
+  remetente?: string | null;
   texto: string;
   tipoMidia?: string;
   enviadaEm?: Date;
@@ -247,6 +312,7 @@ export async function registrarMensagemRepo(input: {
           direcao: input.direcao,
           autor: input.autor,
           autorUserId: input.autorUserId ?? null,
+          remetente: input.remetente ?? null,
           texto: input.texto,
           tipoMidia: input.tipoMidia ?? "texto",
           enviadaEm,

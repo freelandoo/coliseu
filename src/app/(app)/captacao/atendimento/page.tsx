@@ -24,7 +24,7 @@ export default async function AtendimentoPage() {
           <PageHeader
             step={1}
             title="Atendimento no WhatsApp"
-            subtitle="Toda conversa recebida vira lead e fica registrada aqui. A resposta é sempre manual — nada é respondido automaticamente."
+            subtitle="Conversa de pessoa vira lead; grupo fica na aba Grupos, sem entrar no funil. Tudo é registrado aqui e a resposta é sempre manual — nada é respondido automaticamente."
           />
           <ConectarWhatsapp inicial={whatsapp} />
         </div>

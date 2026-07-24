@@ -14,7 +14,13 @@ import {
   registrarMensagemRepo,
 } from "@/lib/repositories/whatsapp";
 import { conexaoAberta, lerMensagem, mensagensDoEvento } from "@/lib/whatsapp/payload";
-import { ehConversaPessoal, redigirTelefone } from "@/lib/whatsapp/telefone";
+import {
+  ehConversaAtendivel,
+  ehJidGrupo,
+  formatarTelefone,
+  redigirTelefone,
+  telefoneDoJid,
+} from "@/lib/whatsapp/telefone";
 
 export interface EventoWebhook {
   event?: string;
@@ -54,6 +60,15 @@ async function tratarConexao(evento: EventoWebhook): Promise<ResultadoIngestao> 
 }
 
 /**
+ * Quem escreveu dentro do grupo. O nome de perfil é o melhor rótulo; sem ele
+ * sobra o telefone do participante, e sem os dois a bolha fica sem assinatura
+ * em vez de mentir um nome.
+ */
+function remetenteDaMensagem(msg: { pushName: string; participante: string }): string | null {
+  return msg.pushName || formatarTelefone(telefoneDoJid(msg.participante)) || null;
+}
+
+/**
  * Processa um evento. Nunca lança por conteúdo inesperado: devolve `ignorado`.
  * Erro real (banco fora) sobe para o caller logar.
  */
@@ -72,12 +87,17 @@ export async function processarEventoWhatsapp(evento: EventoWebhook): Promise<Re
   for (const bruta of mensagensDoEvento(evento.data)) {
     const msg = lerMensagem(bruta);
     if (!msg) continue;
-    if (!ehConversaPessoal(msg.remoteJid)) continue;
+    if (!ehConversaAtendivel(msg.remoteJid)) continue;
 
+    const grupo = ehJidGrupo(msg.remoteJid);
     const conversa = await garantirConversaRepo({
       instanceId: instancia.id,
       remoteJid: msg.remoteJid,
-      pushName: msg.pushName,
+      // Em grupo o pushName é de quem escreveu, não do grupo: usar isso como
+      // nome da conversa faria o título trocar a cada mensagem. O assunto do
+      // grupo vem da sincronização com a Evolution, fora da ingestão.
+      pushName: grupo ? "" : msg.pushName,
+      ehGrupo: grupo,
     });
 
     // fromMe = respondido pelo celular do dono: entra no histórico como saída
@@ -87,6 +107,7 @@ export async function processarEventoWhatsapp(evento: EventoWebhook): Promise<Re
       waMessageId: msg.waMessageId,
       direcao: msg.fromMe ? "OUT" : "IN",
       autor: msg.fromMe ? "ATENDENTE" : "LEAD",
+      remetente: grupo ? remetenteDaMensagem(msg) : null,
       texto: msg.texto,
       tipoMidia: msg.tipoMidia,
       enviadaEm: msg.enviadaEm,
