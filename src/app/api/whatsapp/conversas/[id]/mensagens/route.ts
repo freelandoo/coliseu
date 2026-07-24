@@ -9,11 +9,23 @@ import {
   listarMensagensRepo,
   registrarMensagemRepo,
 } from "@/lib/repositories/whatsapp";
-import { configEvolution, enviarTexto, EvolutionError } from "@/lib/whatsapp/evolution";
+import { configEvolution, enviarMidia, enviarTexto, EvolutionError } from "@/lib/whatsapp/evolution";
+import { ROTULO_MIDIA } from "@/lib/whatsapp/payload";
 
 export const dynamic = "force-dynamic";
 
 const LIMITE_TEXTO = 4096; // limite prático de uma mensagem de texto do WhatsApp
+const LIMITE_MIDIA = 16 * 1024 * 1024; // 16 MB — teto prático de anexo do WhatsApp
+
+/** Só imagem e PDF: o que a recepção precisa mandar, e o que a bolha sabe exibir. */
+function classificarUpload(
+  mime: string,
+): { mediatype: "image" | "document"; tipoMidia: "imagem" | "documento" } | null {
+  const m = mime.toLowerCase();
+  if (m.startsWith("image/")) return { mediatype: "image", tipoMidia: "imagem" };
+  if (m === "application/pdf") return { mediatype: "document", tipoMidia: "documento" };
+  return null;
+}
 
 async function guarda() {
   const g = await exigirSessaoApi();
@@ -53,18 +65,15 @@ export async function DELETE(_req: Request, { params }: { params: Promise<{ id: 
 /**
  * POST — resposta manual da recepção. Único caminho de envio da aplicação:
  * exige sessão, e portanto um clique humano.
+ *
+ * Aceita texto (JSON `{ texto }`) ou anexo (`multipart/form-data` com o campo
+ * `arquivo` e um `texto` opcional de legenda) — imagem ou PDF.
  */
 export async function POST(req: Request, { params }: { params: Promise<{ id: string }> }) {
   const g = await guarda();
   if (g.erro || !g.user) return g.erro;
 
   const { id } = await params;
-  const body = (await req.json().catch(() => ({}))) as { texto?: string };
-  const texto = String(body.texto ?? "").trim();
-  if (!texto) return NextResponse.json({ erro: "Mensagem vazia." }, { status: 400 });
-  if (texto.length > LIMITE_TEXTO) {
-    return NextResponse.json({ erro: "Mensagem longa demais." }, { status: 400 });
-  }
 
   const cfg = configEvolution();
   if (!cfg) return NextResponse.json({ erro: "WhatsApp não configurado." }, { status: 503 });
@@ -83,13 +92,80 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
     );
   }
 
-  // Quem responde primeiro assume o atendimento.
-  if (!conversa.atendenteId) {
-    await assumirConversaRepo(id, g.user.id).catch(() => undefined);
+  const instancia = conversa.instance.evolutionInstance;
+  const ehMidia = (req.headers.get("content-type") ?? "").includes("multipart/form-data");
+
+  // Quem responde primeiro assume o atendimento — vale para texto e anexo.
+  async function assumir() {
+    if (!conversa!.atendenteId) await assumirConversaRepo(id, g.user!.id).catch(() => undefined);
   }
 
+  if (ehMidia) {
+    const form = await req.formData().catch(() => null);
+    const arquivo = form?.get("arquivo");
+    if (!(arquivo instanceof File) || arquivo.size === 0) {
+      return NextResponse.json({ erro: "Nenhum arquivo recebido." }, { status: 400 });
+    }
+    const info = classificarUpload(arquivo.type);
+    if (!info) {
+      return NextResponse.json({ erro: "Tipo não suportado. Envie imagem ou PDF." }, { status: 415 });
+    }
+    if (arquivo.size > LIMITE_MIDIA) {
+      return NextResponse.json({ erro: "Arquivo grande demais (máx. 16 MB)." }, { status: 413 });
+    }
+
+    const legenda = String(form?.get("texto") ?? "").trim().slice(0, LIMITE_TEXTO);
+    const rotulo = legenda || ROTULO_MIDIA[info.tipoMidia];
+    const base64 = Buffer.from(await arquivo.arrayBuffer()).toString("base64");
+    const fileName = arquivo.name || (info.mediatype === "image" ? "imagem" : "arquivo");
+
+    await assumir();
+    try {
+      const waId = await enviarMidia(cfg, instancia, destino, {
+        mediatype: info.mediatype,
+        mimetype: arquivo.type,
+        base64,
+        fileName,
+        caption: legenda || undefined,
+      });
+      await registrarMensagemRepo({
+        conversaId: id,
+        waMessageId: waId ?? `local:${randomUUID()}`,
+        direcao: "OUT",
+        autor: "ATENDENTE",
+        autorUserId: g.user.id,
+        texto: rotulo,
+        tipoMidia: info.tipoMidia,
+      });
+      return NextResponse.json({ mensagens: await listarMensagensRepo(id) });
+    } catch (e) {
+      await registrarMensagemRepo({
+        conversaId: id,
+        waMessageId: `local:${randomUUID()}`,
+        direcao: "OUT",
+        autor: "ATENDENTE",
+        autorUserId: g.user.id,
+        texto: rotulo,
+        tipoMidia: info.tipoMidia,
+        erro: e instanceof Error ? e.message.slice(0, 200) : "falha no envio",
+      }).catch(() => undefined);
+
+      if (e instanceof EvolutionError) return NextResponse.json({ erro: e.message }, { status: e.status });
+      console.error("[whatsapp] falha ao enviar anexo", e);
+      return NextResponse.json({ erro: "Falha ao enviar o anexo." }, { status: 502 });
+    }
+  }
+
+  const body = (await req.json().catch(() => ({}))) as { texto?: string };
+  const texto = String(body.texto ?? "").trim();
+  if (!texto) return NextResponse.json({ erro: "Mensagem vazia." }, { status: 400 });
+  if (texto.length > LIMITE_TEXTO) {
+    return NextResponse.json({ erro: "Mensagem longa demais." }, { status: 400 });
+  }
+
+  await assumir();
   try {
-    const waId = await enviarTexto(cfg, conversa.instance.evolutionInstance, destino, texto);
+    const waId = await enviarTexto(cfg, instancia, destino, texto);
     // Sem id do WhatsApp não há como deduplicar o eco do webhook; o prefixo
     // "local:" deixa isso explícito no banco.
     await registrarMensagemRepo({

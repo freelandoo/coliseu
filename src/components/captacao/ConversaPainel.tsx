@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, type ChangeEvent } from "react";
 import { useRouter } from "next/navigation";
 import { Modal } from "@/components/ui/Modal";
 import { cn } from "@/lib/cn";
@@ -47,10 +47,12 @@ export function ConversaPainel({
   const [atendimentos, setAtendimentos] = useState<AtendimentoItem[]>([]);
   const [texto, setTexto] = useState("");
   const [enviando, setEnviando] = useState(false);
+  const [anexando, setAnexando] = useState(false);
   const [erro, setErro] = useState("");
   const [carregando, setCarregando] = useState(true);
   const [confirmando, setConfirmando] = useState<"limpar" | "remover" | null>(null);
   const fim = useRef<HTMLDivElement>(null);
+  const inputArquivo = useRef<HTMLInputElement>(null);
   const router = useRouter();
 
   // Carrega o histórico ao montar. Trocar de conversa remonta o componente
@@ -127,6 +129,36 @@ export function ConversaPainel({
       setErro("Falha de conexão.");
     } finally {
       setEnviando(false);
+    }
+  }
+
+  /** Anexa imagem ou PDF: manda direto ao escolher, com o texto digitado de legenda. */
+  async function enviarArquivo(e: ChangeEvent<HTMLInputElement>) {
+    const arquivo = e.target.files?.[0];
+    e.target.value = ""; // permite reescolher o mesmo arquivo depois
+    if (!arquivo || anexando || enviando) return;
+    setAnexando(true);
+    setErro("");
+    try {
+      const form = new FormData();
+      form.append("arquivo", arquivo);
+      const legenda = texto.trim();
+      if (legenda) form.append("texto", legenda);
+      const r = await fetch(`/api/whatsapp/conversas/${conversa.id}/mensagens`, {
+        method: "POST",
+        body: form,
+      });
+      const d = await r.json().catch(() => ({}));
+      if (r.ok) {
+        setMensagens(d.mensagens ?? []);
+        setTexto("");
+      } else {
+        setErro(d?.erro ?? "Não foi possível enviar o anexo.");
+      }
+    } catch {
+      setErro("Falha de conexão.");
+    } finally {
+      setAnexando(false);
     }
   }
 
@@ -228,7 +260,39 @@ export function ConversaPainel({
       <div className="border-t border-border px-4 py-3">
         {podeResponder ? (
           <>
-            <div className="flex gap-3">
+            <div className="flex items-end gap-2">
+              <input
+                ref={inputArquivo}
+                type="file"
+                accept="image/*,application/pdf"
+                onChange={(e) => void enviarArquivo(e)}
+                className="hidden"
+              />
+              <button
+                type="button"
+                onClick={() => inputArquivo.current?.click()}
+                disabled={enviando || anexando}
+                title="Anexar imagem ou PDF"
+                aria-label="Anexar imagem ou PDF"
+                className={cn(
+                  "shrink-0 self-end rounded-lg border border-border p-2.5 text-muted transition-colors hover:text-ink",
+                  (enviando || anexando) && "cursor-not-allowed opacity-50",
+                )}
+              >
+                <svg
+                  viewBox="0 0 24 24"
+                  width="18"
+                  height="18"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="2"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  aria-hidden
+                >
+                  <path d="M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48" />
+                </svg>
+              </button>
               <textarea
                 value={texto}
                 onChange={(e) => setTexto(e.target.value)}
@@ -240,14 +304,14 @@ export function ConversaPainel({
                 }}
                 rows={2}
                 placeholder="Escreva a resposta… (Enter envia, Shift+Enter quebra linha)"
-                className={cn(inputCls, "resize-none")}
+                className={cn(inputCls, "flex-1 resize-none")}
               />
               <button
                 onClick={() => void responder()}
-                disabled={enviando || !texto.trim()}
+                disabled={enviando || anexando || !texto.trim()}
                 className={cn(
                   "shrink-0 self-end rounded-lg px-5 py-2.5 font-display text-sm font-semibold uppercase tracking-widest transition-colors",
-                  enviando || !texto.trim()
+                  enviando || anexando || !texto.trim()
                     ? "cursor-not-allowed bg-surface-2 text-faint"
                     : "bg-red text-white hover:bg-red-bright",
                 )}
@@ -255,6 +319,7 @@ export function ConversaPainel({
                 {enviando ? "Enviando…" : "Enviar"}
               </button>
             </div>
+            {anexando && <p className="mt-2 text-xs text-faint">Enviando anexo…</p>}
             {erro && <p className="mt-2 text-xs text-red-bright">{erro}</p>}
           </>
         ) : (

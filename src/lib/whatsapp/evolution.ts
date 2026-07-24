@@ -280,8 +280,7 @@ export async function enviarTexto(
   destino: string,
   texto: string,
 ): Promise<string | null> {
-  const numero = /@g\.us$/i.test(destino.trim()) ? destino.trim() : destino.replace(/\D/g, "");
-  if (!numero) throw new EvolutionError("Conversa sem número de telefone para envio.", 400);
+  const numero = destinoParaNumero(destino);
   const conteudo = texto.trim();
   if (!conteudo) throw new EvolutionError("Mensagem vazia.", 400);
 
@@ -291,8 +290,57 @@ export async function enviarTexto(
       text: conteudo,
     }),
   );
+  return extrairChaveId(data);
+}
+
+/** Grupo endereça pelo JID inteiro; pessoa, só pelos dígitos do telefone. */
+function destinoParaNumero(destino: string): string {
+  const numero = /@g\.us$/i.test(destino.trim()) ? destino.trim() : destino.replace(/\D/g, "");
+  if (!numero) throw new EvolutionError("Conversa sem número de telefone para envio.", 400);
+  return numero;
+}
+
+/** `key.id` do WhatsApp: dedup do eco do webhook e chave para rebaixar a mídia. */
+function extrairChaveId(data: Record<string, unknown>): string | null {
   const chave = (data.key ?? (data.message as { key?: unknown } | undefined)?.key) as
     | { id?: string }
     | undefined;
   return chave?.id ?? null;
+}
+
+export interface MidiaEnvio {
+  /** Categoria que a Evolution espera no sendMedia. */
+  mediatype: "image" | "video" | "document";
+  mimetype: string;
+  /** Conteúdo do arquivo em base64 puro (sem prefixo data:). */
+  base64: string;
+  fileName: string;
+  caption?: string;
+}
+
+/**
+ * Envia mídia (imagem, documento…) pelo `sendMedia`. Mesma regra do texto: é o
+ * único ponto de saída, sempre acionado por um clique da recepção. Devolve o
+ * `key.id` do WhatsApp para deduplicar o eco e permitir rebaixar o arquivo.
+ */
+export async function enviarMidia(
+  cfg: ConfigEvolution,
+  nome: string,
+  destino: string,
+  midia: MidiaEnvio,
+): Promise<string | null> {
+  const numero = destinoParaNumero(destino);
+  if (!midia.base64) throw new EvolutionError("Arquivo vazio.", 400);
+
+  const data = garantirOk(
+    await chamar(cfg, "POST", `/message/sendMedia/${encodeURIComponent(validarNomeInstancia(nome))}`, {
+      number: numero,
+      mediatype: midia.mediatype,
+      mimetype: midia.mimetype,
+      media: midia.base64,
+      fileName: midia.fileName,
+      ...(midia.caption ? { caption: midia.caption } : {}),
+    }),
+  );
+  return extrairChaveId(data);
 }
