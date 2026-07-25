@@ -13,7 +13,7 @@ import {
   type MensagemItem,
 } from "@/lib/types";
 
-const POLL_THREAD_MS = 3_000;
+const POLL_THREAD_MS = 30_000;
 
 const inputCls =
   "w-full rounded-lg border border-border bg-surface px-3 py-2 text-sm text-ink " +

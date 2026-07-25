@@ -8,7 +8,7 @@ import { ConversaPainel } from "@/components/captacao/ConversaPainel";
 import { cn } from "@/lib/cn";
 import { INTERESSE_LABEL, type ConversaInteresse, type ConversaResumo } from "@/lib/types";
 
-const POLL_LISTA_MS = 5_000;
+const POLL_LISTA_MS = 30_000;
 
 /** Rótulo do grupo enquanto o assunto não chega da Evolution — ver `toResumo`. */
 const GRUPO_SEM_NOME = "Grupo do WhatsApp";
