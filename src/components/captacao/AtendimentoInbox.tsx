@@ -1,14 +1,16 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { Card } from "@/components/ui/primitives";
+import { assinarMensagens } from "@/lib/whatsapp/stream-cliente";
 import { ConversaPainel } from "@/components/captacao/ConversaPainel";
 import { cn } from "@/lib/cn";
 import { INTERESSE_LABEL, type ConversaInteresse, type ConversaResumo } from "@/lib/types";
 
-const POLL_LISTA_MS = 30_000;
+/** Rede de segurança: o SSE atualiza em tempo real; isto cobre um stream caído. */
+const FALLBACK_LISTA_MS = 60_000;
 
 /** Rótulo do grupo enquanto o assunto não chega da Evolution — ver `toResumo`. */
 const GRUPO_SEM_NOME = "Grupo do WhatsApp";
@@ -98,19 +100,27 @@ export function AtendimentoInbox({
     inicialSelecionada ?? inicial.find((c) => !c.ehGrupo)?.id ?? inicial[0]?.id ?? null,
   );
 
-  useEffect(() => {
-    const t = setInterval(async () => {
-      try {
-        const r = await fetch("/api/whatsapp/conversas", { cache: "no-store" });
-        if (!r.ok) return;
-        const d = (await r.json()) as { conversas: ConversaResumo[] };
-        setConversas(d.conversas ?? []);
-      } catch {
-        /* rede instável: próxima volta resolve */
-      }
-    }, POLL_LISTA_MS);
-    return () => clearInterval(t);
+  const buscarLista = useCallback(async () => {
+    try {
+      const r = await fetch("/api/whatsapp/conversas", { cache: "no-store" });
+      if (!r.ok) return;
+      const d = (await r.json()) as { conversas: ConversaResumo[] };
+      setConversas(d.conversas ?? []);
+    } catch {
+      /* rede instável: o SSE reconecta e o fallback cobre */
+    }
   }, []);
+
+  // Tempo real: qualquer mensagem nova atualiza a lista na hora; polling lento
+  // fica de rede de segurança se o stream cair.
+  useEffect(() => {
+    const desassinar = assinarMensagens(() => void buscarLista());
+    const t = setInterval(() => void buscarLista(), FALLBACK_LISTA_MS);
+    return () => {
+      desassinar();
+      clearInterval(t);
+    };
+  }, [buscarLista]);
 
   // Grupo entra pelo webhook sem o assunto — a mensagem só traz o nome de quem
   // escreveu. Ao ver grupo sem nome, pede o título à Evolution uma vez; o

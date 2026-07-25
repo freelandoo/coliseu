@@ -1,8 +1,9 @@
 "use client";
 
-import { useEffect, useRef, useState, type ChangeEvent } from "react";
+import { useCallback, useEffect, useRef, useState, type ChangeEvent } from "react";
 import { useRouter } from "next/navigation";
 import { Modal } from "@/components/ui/Modal";
+import { assinarMensagens } from "@/lib/whatsapp/stream-cliente";
 import { cn } from "@/lib/cn";
 import { ROTULO_MIDIA } from "@/lib/whatsapp/payload";
 import {
@@ -13,7 +14,8 @@ import {
   type MensagemItem,
 } from "@/lib/types";
 
-const POLL_THREAD_MS = 30_000;
+/** Rede de segurança: o SSE traz em tempo real; isto cobre um stream caído. */
+const FALLBACK_THREAD_MS = 60_000;
 
 const inputCls =
   "w-full rounded-lg border border-border bg-surface px-3 py-2 text-sm text-ink " +
@@ -80,27 +82,45 @@ export function ConversaPainel({
     };
   }, [conversa.id]);
 
-  // Polling incremental: pede só o que chegou depois da última mensagem.
+  // Cursor do delta: horário da última mensagem já confirmada pelo servidor
+  // (ignora bolhas otimistas, cujo horário é do cliente).
+  const ultimaMsgRef = useRef<string | undefined>(undefined);
   useEffect(() => {
-    const t = setInterval(async () => {
-      const ultima = mensagens[mensagens.length - 1]?.enviadaEm;
-      const url = `/api/whatsapp/conversas/${conversa.id}/mensagens${ultima ? `?depois=${encodeURIComponent(ultima)}` : ""}`;
-      try {
-        const r = await fetch(url, { cache: "no-store" });
-        if (!r.ok) return;
-        const d = (await r.json()) as { mensagens: MensagemItem[] };
-        if (d.mensagens?.length) {
-          setMensagens((antigas) => {
-            const vistos = new Set(antigas.map((m) => m.id));
-            return [...antigas, ...d.mensagens.filter((m) => !vistos.has(m.id))];
-          });
-        }
-      } catch {
-        /* rede instável: próxima volta resolve */
+    const reais = mensagens.filter((m) => !m.id.startsWith("tmp:"));
+    ultimaMsgRef.current = reais[reais.length - 1]?.enviadaEm;
+  }, [mensagens]);
+
+  // Busca incremental: só o que chegou depois do cursor.
+  const buscarDelta = useCallback(async () => {
+    const ultima = ultimaMsgRef.current;
+    const url = `/api/whatsapp/conversas/${conversa.id}/mensagens${ultima ? `?depois=${encodeURIComponent(ultima)}` : ""}`;
+    try {
+      const r = await fetch(url, { cache: "no-store" });
+      if (!r.ok) return;
+      const d = (await r.json()) as { mensagens: MensagemItem[] };
+      if (d.mensagens?.length) {
+        setMensagens((antigas) => {
+          const vistos = new Set(antigas.map((m) => m.id));
+          return [...antigas, ...d.mensagens.filter((m) => !vistos.has(m.id))];
+        });
       }
-    }, POLL_THREAD_MS);
-    return () => clearInterval(t);
-  }, [conversa.id, mensagens]);
+    } catch {
+      /* rede instável: o SSE reconecta e o fallback cobre */
+    }
+  }, [conversa.id]);
+
+  // Tempo real: ao chegar aviso desta conversa, busca o delta na hora. Um
+  // polling lento fica de rede de segurança caso o stream caia.
+  useEffect(() => {
+    const desassinar = assinarMensagens((e) => {
+      if (!e.conversaId || e.conversaId === conversa.id) void buscarDelta();
+    });
+    const t = setInterval(() => void buscarDelta(), FALLBACK_THREAD_MS);
+    return () => {
+      desassinar();
+      clearInterval(t);
+    };
+  }, [conversa.id, buscarDelta]);
 
   useEffect(() => {
     fim.current?.scrollIntoView({ block: "end" });

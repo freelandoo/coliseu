@@ -1,6 +1,7 @@
 import { prisma } from "@/lib/db";
 import { unitIdAtual } from "@/lib/repositories/unit";
 import { chaveTelefone, formatarTelefone, telefoneDoJid } from "@/lib/whatsapp/telefone";
+import { publicarMensagem } from "@/lib/whatsapp/eventos";
 import { proximoCodigoRepo } from "@/lib/repositories/pessoas";
 import {
   INTERESSE_ESTAGIO,
@@ -346,6 +347,8 @@ export async function registrarMensagemRepo(input: {
         },
       }),
     ]);
+    // Avisa as conexões SSE abertas — só quando é mensagem nova (não duplicata).
+    publicarMensagem({ conversaId: input.conversaId, direcao: input.direcao });
     return true;
   } catch (e) {
     if (ehDuplicata(e)) return false;
