@@ -17,10 +17,7 @@ export default async function MatriculadosPage() {
       </Reveal>
 
       <Reveal>
-        <PageHeader
-          title="Matriculados"
-          subtitle="Alunos matriculados na academia. Busque, filtre por situação e abra a ficha completa de cada um."
-        />
+        <PageHeader title="Matriculados" />
       </Reveal>
 
       <Reveal delay={0.05}>

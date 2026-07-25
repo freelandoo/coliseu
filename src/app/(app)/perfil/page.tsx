@@ -35,16 +35,13 @@ export default async function PerfilPage() {
   return (
     <>
       <Reveal>
-        <header className="mb-8">
-          <p className="text-xs font-medium uppercase tracking-widest text-red-bright">
+        <header className="mb-4">
+          <p className="text-[11px] font-medium uppercase tracking-widest text-red-bright">
             Conta
           </p>
-          <h1 className="mt-1 font-display text-4xl font-semibold uppercase tracking-wide text-ink">
+          <h1 className="mt-0.5 font-display text-2xl font-semibold uppercase tracking-wide text-ink">
             Perfil
           </h1>
-          <p className="mt-1 text-sm text-muted">
-            Seus dados de acesso e as ferramentas da sua conta.
-          </p>
         </header>
       </Reveal>
 

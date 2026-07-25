@@ -53,10 +53,7 @@ export default async function RenovarPage() {
       </Reveal>
 
       <Reveal>
-        <PageHeader
-          title="Renovar e Matricular"
-          subtitle="Leads novos e matriculados para renovação. Busque a pessoa → confirme o cadastro → escolha o plano → matricule. O sistema gera o código, a cobrança e o link de pagamento no WhatsApp."
-        />
+        <PageHeader title="Renovar e Matricular" />
       </Reveal>
 
       <Reveal delay={0.05}>

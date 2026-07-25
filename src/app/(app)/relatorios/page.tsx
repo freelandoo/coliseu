@@ -204,11 +204,7 @@ export default async function RelatoriosPage() {
   return (
     <>
       <Reveal>
-        <PageHeader
-          step={5}
-          title="Relatórios e Indicadores"
-          subtitle="Saúde do negócio em números: receita, inadimplência, conversão, evasão e retenção — atualizado a partir dos dados do CRM."
-        />
+        <PageHeader step={5} title="Relatórios e Indicadores" />
       </Reveal>
 
       <Reveal delay={0.05}>

@@ -13,10 +13,7 @@ export default async function CustosPage() {
   return (
     <>
       <Reveal>
-        <PageHeader
-          title="Custos e Lucro"
-          subtitle="Lance as despesas da academia (luz, água, internet, aluguel…) e acompanhe o lucro do mês cruzando a receita recorrente com os custos lançados."
-        />
+        <PageHeader title="Custos e Lucro" />
       </Reveal>
 
       <Reveal delay={0.05}>

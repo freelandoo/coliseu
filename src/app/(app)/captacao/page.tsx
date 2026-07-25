@@ -20,18 +20,14 @@ export default async function CaptacaoPage() {
   return (
     <>
       <Reveal>
-        <div className="mb-8 flex flex-wrap items-start justify-between gap-4">
-          <PageHeader
-            step={1}
-            title="Captação e Atendimento"
-            subtitle="Leads de WhatsApp, redes, balcão e indicação entram no CRM, são qualificados pela recepção e avançam para matrícula ou lista de reativação."
-          />
-          <ConectarWhatsapp inicial={whatsapp} />
+        <div className="mb-4 flex flex-wrap items-center justify-between gap-4">
+          <PageHeader step={1} title="Captação e Atendimento" />
+          <ConectarWhatsapp inicial={whatsapp} compacto />
         </div>
       </Reveal>
 
       <Reveal delay={0.03}>
-        <div className="mb-5">
+        <div className="mb-3">
           <CaptacaoTabs naoLidas={naoLidas} />
         </div>
       </Reveal>

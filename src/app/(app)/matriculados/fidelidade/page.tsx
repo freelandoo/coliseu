@@ -52,10 +52,7 @@ export default async function FidelidadePage() {
       </Reveal>
 
       <Reveal>
-        <PageHeader
-          title="Fidelidade"
-          subtitle="Mede a lealdade dos matriculados: há quanto tempo cada aluno ativo está na casa e há quanto tempo os cancelados deixaram de frequentar."
-        />
+        <PageHeader title="Fidelidade" />
       </Reveal>
 
       <Reveal delay={0.03}>
@@ -72,7 +69,7 @@ export default async function FidelidadePage() {
       </Reveal>
 
       <Reveal delay={0.1}>
-        <div className="mt-10">
+        <div className="mt-6">
           <h2 className="mb-3 font-display text-sm font-semibold uppercase tracking-widest text-muted">
             Ativos — tempo de casa
           </h2>
@@ -114,7 +111,7 @@ export default async function FidelidadePage() {
       </Reveal>
 
       <Reveal delay={0.15}>
-        <div className="mt-10">
+        <div className="mt-6">
           <h2 className="mb-3 font-display text-sm font-semibold uppercase tracking-widest text-muted">
             Cancelados — há quanto tempo saíram
           </h2>

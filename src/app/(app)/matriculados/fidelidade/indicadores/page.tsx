@@ -40,10 +40,7 @@ export default async function IndicadoresFidelidadePage() {
       </Reveal>
 
       <Reveal>
-        <PageHeader
-          title="Fidelidade"
-          subtitle="Indicadores de gestão: valor do tempo de vida, evasão, mix de lealdade e oportunidades de reativação."
-        />
+        <PageHeader title="Fidelidade" />
       </Reveal>
 
       <Reveal delay={0.03}>
@@ -67,7 +64,7 @@ export default async function IndicadoresFidelidadePage() {
 
       {/* #3 mix de fidelidade */}
       <Reveal delay={0.1}>
-        <div className="mt-10">
+        <div className="mt-6">
           <h2 className="mb-3 font-display text-sm font-semibold uppercase tracking-widest text-muted">
             Mix de fidelidade — composição da base ativa
           </h2>
@@ -95,9 +92,8 @@ export default async function IndicadoresFidelidadePage() {
                 </div>
               ))}
             </div>
-            <p className="mt-4 text-xs text-faint">
-              Novato &lt; 3m · Firmando 3–6m · Fiel 6–12m · Veterano 12m+. Base concentrada em novatos
-              é frágil; peso em fiéis e veteranos indica receita estável.
+            <p className="mt-3 text-xs text-faint">
+              Novato &lt; 3m · Firmando 3–6m · Fiel 6–12m · Veterano 12m+
             </p>
           </Card>
         </div>
@@ -105,7 +101,7 @@ export default async function IndicadoresFidelidadePage() {
 
       {/* #4 alto valor em risco */}
       <Reveal delay={0.12}>
-        <div className="mt-10">
+        <div className="mt-6">
           <h2 className="mb-3 font-display text-sm font-semibold uppercase tracking-widest text-muted">
             Fiéis e veteranos em risco
           </h2>
@@ -141,15 +137,12 @@ export default async function IndicadoresFidelidadePage() {
               </div>
             )}
           </Card>
-          <p className="mt-2 text-xs text-faint">
-            Alunos antigos são os mais caros de repor — priorize contato pessoal, não campanha em massa.
-          </p>
         </div>
       </Reveal>
 
       {/* #5 janela de reativação */}
       <Reveal delay={0.14}>
-        <div className="mt-10">
+        <div className="mt-6">
           <h2 className="mb-3 font-display text-sm font-semibold uppercase tracking-widest text-muted">
             Janela de reativação — cancelados por tempo de saída
           </h2>

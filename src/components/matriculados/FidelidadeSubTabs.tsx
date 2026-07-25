@@ -13,7 +13,7 @@ export function FidelidadeSubTabs() {
   const pathname = usePathname();
 
   return (
-    <div className="mb-6 flex gap-1 rounded-lg border border-border bg-surface p-1">
+    <div className="mb-4 flex gap-1 rounded-lg border border-border bg-surface p-1">
       {SUB.map((s) => {
         const ativo = pathname === s.href;
         return (
@@ -21,7 +21,7 @@ export function FidelidadeSubTabs() {
             key={s.href}
             href={s.href}
             className={cn(
-              "rounded-md px-4 py-1.5 text-sm font-medium transition-colors",
+              "rounded-md px-3 py-1 text-xs font-medium transition-colors",
               ativo ? "bg-red text-white" : "text-muted hover:bg-surface-2 hover:text-ink",
             )}
           >

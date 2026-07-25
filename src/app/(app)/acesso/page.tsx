@@ -34,7 +34,7 @@ export default async function AcessoPage() {
   return (
     <>
       <Reveal>
-        <PageHeader step={5} title="Controle de Acesso" subtitle="Catracas, sincronização, comandos pendentes e acessos recentes." />
+        <PageHeader step={5} title="Controle de Acesso" />
       </Reveal>
       <Reveal delay={0.05}>
         <AcessoDashboard dados={dados} podeCriar={podePapel(user.role as Papel, ["ADMIN"])} />

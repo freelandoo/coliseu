@@ -87,11 +87,7 @@ export default async function CobrancaPage() {
   return (
     <>
       <Reveal>
-        <PageHeader
-          step={3}
-          title="Cobrança e Renovação"
-          subtitle="Avisos de vencimento, tratamento de inadimplência e renovação de planos perto de expirar — com cobrança ativa da recepção."
-        />
+        <PageHeader step={3} title="Cobrança e Renovação" />
       </Reveal>
 
       <Reveal delay={0.05}>
@@ -108,7 +104,7 @@ export default async function CobrancaPage() {
       </Reveal>
 
       <Reveal delay={0.1}>
-        <div className="mt-10">
+        <div className="mt-6">
           <CobrancaTabs linhas={linhas} planos={planosComContagem} />
         </div>
       </Reveal>

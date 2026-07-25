@@ -67,13 +67,13 @@ export function Stat({
   tone?: Tone;
 }) {
   return (
-    <Card className="p-5">
-      <p className="text-xs font-medium uppercase tracking-widest text-faint">
+    <Card className="p-4">
+      <p className="text-[11px] font-medium uppercase tracking-widest text-faint">
         {label}
       </p>
       <p
         className={cn(
-          "mt-2 font-display text-4xl font-semibold leading-none",
+          "mt-1 font-display text-3xl font-semibold leading-none",
           tone === "red" && "text-red-bright",
           tone === "ok" && "text-ok",
           tone === "warn" && "text-warn",
@@ -81,7 +81,7 @@ export function Stat({
       >
         {value}
       </p>
-      {hint && <p className="mt-2 text-sm text-muted">{hint}</p>}
+      {hint && <p className="mt-1.5 text-xs text-muted">{hint}</p>}
     </Card>
   );
 }
@@ -94,18 +94,19 @@ export function PageHeader({
 }: {
   step?: number;
   title: string;
-  subtitle: string;
+  /** Descrição opcional e enxuta; a maioria das telas dispensa. */
+  subtitle?: string;
 }) {
   return (
-    <header className="mb-8 flex items-start gap-4">
-      <span className="steel-plate mt-1 h-10 w-10 shrink-0 rounded-md text-xl">
+    <header className="mb-4 flex items-center gap-3">
+      <span className="steel-plate h-8 w-8 shrink-0 rounded-md text-base">
         {step ?? "•"}
       </span>
       <div>
-        <h1 className="font-display text-3xl font-semibold uppercase tracking-wide text-ink">
+        <h1 className="font-display text-xl font-semibold uppercase tracking-wide text-ink">
           {title}
         </h1>
-        <p className="mt-1 max-w-2xl text-sm text-muted">{subtitle}</p>
+        {subtitle && <p className="mt-0.5 max-w-2xl text-xs text-muted">{subtitle}</p>}
       </div>
     </header>
   );

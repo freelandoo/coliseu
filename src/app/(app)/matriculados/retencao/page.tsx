@@ -41,10 +41,7 @@ export default async function RetencaoPage() {
       </Reveal>
 
       <Reveal>
-        <PageHeader
-          title="Retenção e Reativação"
-          subtitle="Monitora a presença dos matriculados. Após 7, 14 ou 21 dias sem comparecer, dispara acompanhamento, alerta de risco e campanha de reativação."
-        />
+        <PageHeader title="Retenção e Reativação" />
       </Reveal>
 
       <Reveal delay={0.05}>
@@ -56,7 +53,7 @@ export default async function RetencaoPage() {
       </Reveal>
 
       <Reveal delay={0.1}>
-        <div className="mt-10">
+        <div className="mt-6">
           <RetencaoFiltro linhas={linhas} />
         </div>
       </Reveal>

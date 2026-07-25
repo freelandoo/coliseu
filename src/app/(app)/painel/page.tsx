@@ -69,16 +69,13 @@ export default async function PainelPage() {
   return (
     <>
       <Reveal>
-        <header className="mb-8">
-          <p className="text-xs font-medium uppercase tracking-widest text-red-bright">
+        <header className="mb-4">
+          <p className="text-[11px] font-medium uppercase tracking-widest text-red-bright">
             Visão geral
           </p>
-          <h1 className="mt-1 font-display text-4xl font-semibold uppercase tracking-wide text-ink">
+          <h1 className="mt-0.5 font-display text-2xl font-semibold uppercase tracking-wide text-ink">
             Painel operacional
           </h1>
-          <p className="mt-1 text-sm text-muted">
-            Captação, matrícula, cobrança e retenção — integradas com Asaas.
-          </p>
         </header>
       </Reveal>
 
@@ -92,25 +89,25 @@ export default async function PainelPage() {
       </Reveal>
 
       <Reveal delay={0.1}>
-        <section className="mt-10">
+        <section className="mt-6">
           <h2 className="mb-4 font-display text-sm font-semibold uppercase tracking-widest text-faint">
             Pipeline em 4 estágios
           </h2>
           <div className="grid gap-4 md:grid-cols-2">
             {stages.map((s) => (
               <Link key={s.step} href={s.href} className="group">
-                <Card className="flex h-full items-start gap-4 p-5 transition-colors group-hover:border-border-strong group-hover:bg-surface-2">
-                  <span className="steel-plate h-9 w-9 shrink-0 rounded-md text-lg">
+                <Card className="flex h-full items-start gap-3 p-4 transition-colors group-hover:border-border-strong group-hover:bg-surface-2">
+                  <span className="steel-plate h-8 w-8 shrink-0 rounded-md text-base">
                     {s.step}
                   </span>
                   <div className="flex-1">
                     <div className="flex items-center justify-between">
-                      <h3 className="font-display text-xl font-semibold uppercase tracking-wide text-ink">
+                      <h3 className="font-display text-base font-semibold uppercase tracking-wide text-ink">
                         {s.title}
                       </h3>
                       <Badge tone="red">{s.metric}</Badge>
                     </div>
-                    <p className="mt-1.5 text-sm text-muted">{s.desc}</p>
+                    <p className="mt-1 text-xs text-muted">{s.desc}</p>
                   </div>
                 </Card>
               </Link>
@@ -121,13 +118,13 @@ export default async function PainelPage() {
 
       {inadimplentes.length > 0 && (
         <Reveal delay={0.15}>
-          <section className="mt-10">
+          <section className="mt-6">
             <h2 className="mb-4 font-display text-sm font-semibold uppercase tracking-widest text-faint">
               Atenção imediata
             </h2>
             <Card className="divide-y divide-border">
               {inadimplentes.map((a) => (
-                <div key={a.id} className="flex items-center justify-between px-5 py-3.5">
+                <div key={a.id} className="flex items-center justify-between px-4 py-2.5">
                   <div>
                     <p className="text-sm font-medium text-ink">{a.nome}</p>
                     <p className="text-xs text-faint">{a.telefone}</p>
@@ -142,7 +139,7 @@ export default async function PainelPage() {
 
       {user.role === "ADMIN" && (
         <Reveal delay={0.2}>
-          <section className="mt-10">
+          <section className="mt-6">
             <h2 className="mb-4 font-display text-sm font-semibold uppercase tracking-widest text-faint">
               Integrações
             </h2>

@@ -23,7 +23,7 @@ export function CobrancaTabs({
   const [aba, setAba] = useState<Aba>("cobrancas");
 
   return (
-    <div className="flex flex-col gap-6">
+    <div className="flex flex-col gap-4">
       <div className="flex gap-2">
         <TabBtn ativo={aba === "cobrancas"} onClick={() => setAba("cobrancas")}>
           Cobranças
@@ -55,7 +55,7 @@ function TabBtn({
     <button
       onClick={onClick}
       className={cn(
-        "rounded-lg border px-4 py-2 font-display text-sm font-semibold uppercase tracking-widest transition-colors",
+        "rounded-lg border px-3 py-1.5 font-display text-xs font-semibold uppercase tracking-widest transition-colors",
         ativo
           ? "border-red/60 bg-red-ghost text-ink"
           : "border-border bg-surface text-muted hover:border-border-strong hover:text-ink",

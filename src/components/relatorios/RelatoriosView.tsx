@@ -329,11 +329,11 @@ function ChartCard({
   sufixo?: string;
 }) {
   return (
-    <Card className={cn("p-6", className)}>
+    <Card className={cn("p-5", className)}>
       <h3 className="font-display text-sm font-semibold uppercase tracking-widest text-ink">
         {titulo}
       </h3>
-      <p className="mb-5 mt-0.5 text-xs text-faint">{descricao}</p>
+      <p className="mb-4 mt-0.5 text-xs text-faint">{descricao}</p>
       <BarChart data={data} moeda={moeda} sufixo={sufixo} />
     </Card>
   );
@@ -357,7 +357,7 @@ export function RelatoriosView({ data }: { data: RelatoriosData }) {
   );
 
   return (
-    <div ref={root} className="flex flex-col gap-8">
+    <div ref={root} className="flex flex-col gap-6">
       {/* KPIs — no mobile viram linhas finas (rótulo à esquerda, valor à direita);
           a partir de sm voltam a ser cards empilhados. */}
       <section className="grid grid-cols-1 gap-3 sm:grid-cols-2 sm:gap-4 lg:grid-cols-3">
@@ -365,21 +365,21 @@ export function RelatoriosView({ data }: { data: RelatoriosData }) {
           <Card
             key={k.label}
             data-kpi
-            className="grid grid-cols-[1fr_auto] items-center gap-x-3 p-4 sm:block sm:p-5"
+            className="grid grid-cols-[1fr_auto] items-center gap-x-3 p-4 sm:block"
           >
-            <p className="col-start-1 row-start-1 text-xs font-medium uppercase tracking-widest text-faint">
+            <p className="col-start-1 row-start-1 text-[11px] font-medium uppercase tracking-widest text-faint">
               {k.label}
             </p>
             <p
               className={cn(
-                "col-start-2 row-span-2 row-start-1 self-center text-right font-display text-3xl font-semibold leading-none tabular-nums",
-                "sm:mt-2 sm:text-left sm:text-4xl",
+                "col-start-2 row-span-2 row-start-1 self-center text-right font-display text-2xl font-semibold leading-none tabular-nums",
+                "sm:mt-1.5 sm:text-left sm:text-3xl",
                 KPI_TONE[k.tone ?? "neutral"],
               )}
             >
               <CountUp value={k.valor} formato={k.formato} />
             </p>
-            <p className="col-start-1 row-start-2 mt-0.5 text-sm text-muted sm:mt-2">
+            <p className="col-start-1 row-start-2 mt-0.5 text-xs text-muted sm:mt-1.5">
               {k.hint}
             </p>
           </Card>
@@ -433,7 +433,7 @@ export function RelatoriosView({ data }: { data: RelatoriosData }) {
 
       {/* evolução temporal */}
       <section className="grid gap-4 lg:grid-cols-[1.5fr_1fr]">
-        <Card className="p-6">
+        <Card className="p-5">
           <div className="flex items-baseline justify-between">
             <div>
               <h3 className="font-display text-sm font-semibold uppercase tracking-widest text-ink">
@@ -447,16 +447,16 @@ export function RelatoriosView({ data }: { data: RelatoriosData }) {
               </span>
             )}
           </div>
-          <div className="mt-5">
+          <div className="mt-4">
             <LineChart serie={data.serie} />
           </div>
         </Card>
 
-        <Card className="p-6">
+        <Card className="p-5">
           <h3 className="font-display text-sm font-semibold uppercase tracking-widest text-ink">
             Novas matrículas
           </h3>
-          <p className="mb-5 mt-0.5 text-xs text-faint">Por mês</p>
+          <p className="mb-4 mt-0.5 text-xs text-faint">Por mês</p>
           <BarrasVerticais serie={data.serie} />
         </Card>
       </section>
