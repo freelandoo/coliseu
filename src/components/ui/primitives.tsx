@@ -1,4 +1,5 @@
 import type { ComponentPropsWithoutRef, ReactNode } from "react";
+import Link from "next/link";
 import { cn } from "@/lib/cn";
 
 /* ---------- Card ---------- */
@@ -60,14 +61,17 @@ export function Stat({
   value,
   hint,
   tone = "neutral",
+  href,
 }: {
   label: string;
   value: ReactNode;
   hint?: string;
   tone?: Tone;
+  /** Quando presente, o tile inteiro vira link para a tela daquele dado. */
+  href?: string;
 }) {
-  return (
-    <Card className="p-4">
+  const conteudo = (
+    <>
       <p className="text-[11px] font-medium uppercase tracking-widest text-faint">
         {label}
       </p>
@@ -82,8 +86,20 @@ export function Stat({
         {value}
       </p>
       {hint && <p className="mt-1.5 text-xs text-muted">{hint}</p>}
-    </Card>
+    </>
   );
+
+  if (href) {
+    return (
+      <Link href={href} className="group block">
+        <Card className="h-full p-4 transition-colors group-hover:border-border-strong group-hover:bg-surface-2">
+          {conteudo}
+        </Card>
+      </Link>
+    );
+  }
+
+  return <Card className="p-4">{conteudo}</Card>;
 }
 
 /* ---------- Cabeçalho de página ---------- */
