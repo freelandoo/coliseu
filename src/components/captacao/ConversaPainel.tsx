@@ -46,7 +46,6 @@ export function ConversaPainel({
   const [mensagens, setMensagens] = useState<MensagemItem[]>([]);
   const [atendimentos, setAtendimentos] = useState<AtendimentoItem[]>([]);
   const [texto, setTexto] = useState("");
-  const [enviando, setEnviando] = useState(false);
   const [anexando, setAnexando] = useState(false);
   const [erro, setErro] = useState("");
   const [carregando, setCarregando] = useState(true);
@@ -109,9 +108,26 @@ export function ConversaPainel({
 
   async function responder() {
     const conteudo = texto.trim();
-    if (!conteudo || enviando) return;
-    setEnviando(true);
+    if (!conteudo) return;
     setErro("");
+    setTexto(""); // libera o campo na hora — sem indicador de carregamento
+
+    // Bolha otimista: a mensagem aparece na conversa imediatamente; o servidor
+    // confirma em segundo plano. Só marca falha se o envio não completar.
+    const tempId = `tmp:${Date.now()}-${Math.random().toString(36).slice(2)}`;
+    const otimista: MensagemItem = {
+      id: tempId,
+      direcao: "OUT",
+      autor: "ATENDENTE",
+      autorNome: null,
+      remetente: null,
+      texto: conteudo,
+      tipoMidia: "texto",
+      enviadaEm: new Date().toISOString(),
+      erro: null,
+    };
+    setMensagens((antigas) => [...antigas, otimista]);
+
     try {
       const r = await fetch(`/api/whatsapp/conversas/${conversa.id}/mensagens`, {
         method: "POST",
@@ -120,15 +136,23 @@ export function ConversaPainel({
       });
       const d = await r.json().catch(() => ({}));
       if (r.ok) {
-        setMensagens(d.mensagens ?? []);
-        setTexto("");
+        // Verdade do servidor substitui a bolha otimista, preservando outras
+        // ainda em voo (envios rápidos em sequência).
+        setMensagens((antigas) => {
+          const pendentes = antigas.filter((m) => m.id.startsWith("tmp:") && m.id !== tempId);
+          return [...(d.mensagens ?? []), ...pendentes];
+        });
       } else {
+        setMensagens((antigas) =>
+          antigas.map((m) => (m.id === tempId ? { ...m, erro: d?.erro ?? "não enviada" } : m)),
+        );
         setErro(d?.erro ?? "Não foi possível enviar.");
       }
     } catch {
+      setMensagens((antigas) =>
+        antigas.map((m) => (m.id === tempId ? { ...m, erro: "falha de conexão" } : m)),
+      );
       setErro("Falha de conexão.");
-    } finally {
-      setEnviando(false);
     }
   }
 
@@ -136,7 +160,7 @@ export function ConversaPainel({
   async function enviarArquivo(e: ChangeEvent<HTMLInputElement>) {
     const arquivo = e.target.files?.[0];
     e.target.value = ""; // permite reescolher o mesmo arquivo depois
-    if (!arquivo || anexando || enviando) return;
+    if (!arquivo || anexando) return;
     setAnexando(true);
     setErro("");
     try {
@@ -271,12 +295,12 @@ export function ConversaPainel({
               <button
                 type="button"
                 onClick={() => inputArquivo.current?.click()}
-                disabled={enviando || anexando}
+                disabled={anexando}
                 title="Anexar imagem ou PDF"
                 aria-label="Anexar imagem ou PDF"
                 className={cn(
                   "shrink-0 self-end rounded-lg border border-border p-2.5 text-muted transition-colors hover:text-ink",
-                  (enviando || anexando) && "cursor-not-allowed opacity-50",
+                  anexando && "cursor-not-allowed opacity-50",
                 )}
               >
                 <svg
@@ -308,15 +332,15 @@ export function ConversaPainel({
               />
               <button
                 onClick={() => void responder()}
-                disabled={enviando || anexando || !texto.trim()}
+                disabled={anexando || !texto.trim()}
                 className={cn(
                   "shrink-0 self-end rounded-lg px-5 py-2.5 font-display text-sm font-semibold uppercase tracking-widest transition-colors",
-                  enviando || anexando || !texto.trim()
+                  anexando || !texto.trim()
                     ? "cursor-not-allowed bg-surface-2 text-faint"
                     : "bg-red text-white hover:bg-red-bright",
                 )}
               >
-                {enviando ? "Enviando…" : "Enviar"}
+                Enviar
               </button>
             </div>
             {anexando && <p className="mt-2 text-xs text-faint">Enviando anexo…</p>}
