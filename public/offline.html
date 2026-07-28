@@ -1,0 +1,49 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <title>Sem conexão — Coliseu CRM</title>
+    <style>
+      :root { color-scheme: dark; }
+      * { box-sizing: border-box; }
+      body {
+        margin: 0;
+        min-height: 100dvh;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        gap: 20px;
+        padding: 24px;
+        background: #0e0f11;
+        color: #e7e8ea;
+        font-family: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+        text-align: center;
+      }
+      img { width: 96px; height: 96px; border-radius: 22px; }
+      h1 { font-size: 1.5rem; margin: 0; font-weight: 700; text-transform: uppercase; letter-spacing: 0.04em; }
+      p { margin: 0; max-width: 30ch; font-size: 0.95rem; line-height: 1.5; color: #9aa0a6; }
+      button {
+        margin-top: 4px;
+        border: 1px solid #3a3f47;
+        background: #a82824;
+        color: #fff;
+        font-weight: 600;
+        text-transform: uppercase;
+        letter-spacing: 0.08em;
+        font-size: 0.8rem;
+        padding: 12px 22px;
+        border-radius: 10px;
+        cursor: pointer;
+      }
+      button:active { transform: translateY(1px); }
+    </style>
+  </head>
+  <body>
+    <img src="/icons/icon-192.png" alt="Coliseu" />
+    <h1>Você está offline</h1>
+    <p>Não conseguimos carregar o Coliseu agora. Verifique sua conexão e tente de novo.</p>
+    <button onclick="location.reload()">Tentar novamente</button>
+  </body>
+</html>
