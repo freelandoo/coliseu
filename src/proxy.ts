@@ -23,6 +23,8 @@ export function proxy(req: NextRequest) {
 
 export const config = {
   matcher: [
-    "/((?!_next/static|_next/image|favicon.ico|.*\\.png$).*)",
+    // sw.js/manifest/offline ficam fora da sessão: o navegador busca o
+    // manifest sem cookie (mesmo logado) e o SW não aceita redirect.
+    "/((?!_next/static|_next/image|favicon.ico|sw\\.js|manifest\\.webmanifest|offline\\.html|icons/|.*\\.png$).*)",
   ],
 };

@@ -1,6 +1,7 @@
 import type { ReactNode } from "react";
 import { Sidebar } from "@/components/Sidebar";
 import { NotificationBell } from "@/components/NotificationBell";
+import { InstallPrompt } from "@/components/pwa/InstallPrompt";
 import { AvisoLeadsNovos } from "@/components/captacao/AvisoLeadsNovos";
 import { TrocaSenhaObrigatoria } from "@/components/perfil/TrocaSenhaObrigatoria";
 import { podeModulo } from "@/lib/auth/modulos";
@@ -30,6 +31,8 @@ export default async function AppLayout({ children }: { children: ReactNode }) {
       {podeModulo(user.role as Papel, "captacao") && <NotificationBell />}
       {/* Aviso de lead novo: aparece uma vez por sessão, em qualquer tela. */}
       <AvisoLeadsNovos />
+      {/* Convite de instalação do PWA: só depois do login, nunca na tela pública. */}
+      <InstallPrompt />
     </div>
   );
 }

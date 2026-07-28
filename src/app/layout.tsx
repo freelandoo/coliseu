@@ -1,6 +1,5 @@
 import type { Metadata, Viewport } from "next";
 import { Oswald, Sora } from "next/font/google";
-import { InstallPrompt } from "@/components/pwa/InstallPrompt";
 import "./globals.css";
 
 const oswald = Oswald({
@@ -45,10 +44,7 @@ export default function RootLayout({
       lang="pt-BR"
       className={`${oswald.variable} ${sora.variable} h-full antialiased`}
     >
-      <body className="min-h-full">
-        {children}
-        <InstallPrompt />
-      </body>
+      <body className="min-h-full">{children}</body>
     </html>
   );
 }
