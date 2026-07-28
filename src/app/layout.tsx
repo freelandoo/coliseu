@@ -1,4 +1,4 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import { Oswald, Sora } from "next/font/google";
 import "./globals.css";
 
@@ -18,6 +18,20 @@ export const metadata: Metadata = {
   title: "Coliseu CRM — Academia Coliseu Team",
   description:
     "CRM da Academia Coliseu Team: captação, matrícula, cobrança, renovação e retenção integradas com Asaas.",
+  applicationName: "Coliseu CRM",
+  // Instalado na tela de início do iOS, abre em janela própria (sem Safari).
+  appleWebApp: {
+    capable: true,
+    title: "Coliseu",
+    statusBarStyle: "black-translucent",
+  },
+};
+
+export const viewport: Viewport = {
+  width: "device-width",
+  initialScale: 1,
+  themeColor: "#0e0f11",
+  viewportFit: "cover",
 };
 
 export default function RootLayout({
