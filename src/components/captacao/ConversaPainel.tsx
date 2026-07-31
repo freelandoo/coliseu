@@ -55,6 +55,9 @@ export function ConversaPainel({
   const [erro, setErro] = useState("");
   const [carregando, setCarregando] = useState(true);
   const [confirmando, setConfirmando] = useState<"limpar" | "remover" | null>(null);
+  // Gaveta de classificação: o botão fica no topo, a gaveta abre embaixo,
+  // em cima da caixa de texto — perto de onde se digita a observação.
+  const [classificando, setClassificando] = useState(false);
   const fim = useRef<HTMLDivElement>(null);
   const inputArquivo = useRef<HTMLInputElement>(null);
   const router = useRouter();
@@ -260,22 +263,44 @@ export function ConversaPainel({
 
   return (
     <div className="flex h-full flex-col">
-      {/* Sem cabeçalho: nome e contato saem no "ver" da lista à esquerda.
-          Só sobra a barra fina de ações destrutivas, para ADMIN. */}
-      {podeApagar && (
-        <div className="flex shrink-0 items-center justify-end gap-3 border-b border-border px-4 py-1.5">
-          <button
-            onClick={() => setConfirmando("limpar")}
-            className="text-[11px] font-medium text-faint transition-colors hover:text-ink"
-          >
-            Limpar
-          </button>
-          <button
-            onClick={() => setConfirmando("remover")}
-            className="text-[11px] font-medium text-faint transition-colors hover:text-red-bright"
-          >
-            Remover
-          </button>
+      {/* Barra fina no topo: "Classificar lead" abre a gaveta de classificação
+          (não existe em grupo) e, para ADMIN, as ações destrutivas à direita.
+          Nome e contato saem no "ver" da lista — cabeçalho maior seria só peso. */}
+      {(podeApagar || !conversa.ehGrupo) && (
+        <div className="flex shrink-0 items-center justify-between gap-3 border-b border-border px-4 py-1.5">
+          {!conversa.ehGrupo ? (
+            <button
+              onClick={() => setClassificando((a) => !a)}
+              aria-expanded={classificando}
+              className="flex items-center gap-1.5 text-[11px] font-medium text-faint transition-colors hover:text-ink"
+            >
+              Classificar lead
+              <span
+                aria-hidden
+                className={cn("text-[9px] transition-transform", classificando && "rotate-180")}
+              >
+                ▼
+              </span>
+            </button>
+          ) : (
+            <span />
+          )}
+          {podeApagar && (
+            <div className="flex items-center gap-3">
+              <button
+                onClick={() => setConfirmando("limpar")}
+                className="text-[11px] font-medium text-faint transition-colors hover:text-ink"
+              >
+                Limpar
+              </button>
+              <button
+                onClick={() => setConfirmando("remover")}
+                className="text-[11px] font-medium text-faint transition-colors hover:text-red-bright"
+              >
+                Remover
+              </button>
+            </div>
+          )}
         </div>
       )}
 
@@ -306,6 +331,7 @@ export function ConversaPainel({
       {/* Grupo não é lead: classificar interesse ali não moveria funil nenhum. */}
       {!conversa.ehGrupo && (
         <ClassificarAtendimento
+          aberto={classificando}
           atual={conversa.interesse}
           atendimentos={atendimentos}
           onSalvar={classificar}
@@ -576,10 +602,13 @@ const OPCOES = Object.entries(INTERESSE_LABEL) as [ConversaInteresse, string][];
 
 /** Cadastro de atendimento: quem atendeu, o que classificou e por quê. */
 function ClassificarAtendimento({
+  aberto,
   atual,
   atendimentos,
   onSalvar,
 }: {
+  /** Controlado pelo botão "Classificar lead" na barra do topo da conversa. */
+  aberto: boolean;
   atual: ConversaInteresse;
   atendimentos: AtendimentoItem[];
   onSalvar: (i: ConversaInteresse, obs: string, motivo: string) => Promise<boolean>;
@@ -589,8 +618,6 @@ function ClassificarAtendimento({
   const [motivo, setMotivo] = useState("");
   const [salvando, setSalvando] = useState(false);
   const [ok, setOk] = useState(false);
-  // Gaveta fechada por padrão: em cima da caixa de texto fica só a observação.
-  const [aberto, setAberto] = useState(false);
 
   async function salvar() {
     setSalvando(true);
@@ -608,9 +635,11 @@ function ClassificarAtendimento({
   const ultimo = atendimentos[0];
 
   return (
-    <div className="border-t border-border bg-surface-2/40 text-xs">
+    // A borda só existe aberta: fechada, a gaveta colapsa e não pode deixar
+    // um fio duplicado em cima da borda da caixa de texto.
+    <div className={cn("bg-surface-2/40 text-xs", aberto && "border-t border-border")}>
       {/* Gaveta retrátil: classificação, observação, botão e último registro.
-          Fechada, some; aberta, empurra tudo pra cima acima do rótulo. */}
+          Fechada, some; aberta, aparece em cima da caixa de texto. */}
       <div
         className={cn(
           "grid transition-[grid-template-rows] duration-200 ease-out",
@@ -618,7 +647,9 @@ function ClassificarAtendimento({
         )}
       >
         <div className="overflow-hidden">
-          <div className="flex flex-wrap items-end gap-3 px-4 pt-3">
+          {/* O respiro fica aqui dentro: padding no contêiner de fora quebraria
+              o colapso da gaveta (0fr some, padding não). */}
+          <div className="flex flex-wrap items-end gap-3 px-4 py-3">
             <div className="min-w-[160px] flex-1">
               <label className="mb-1 block text-xs font-medium text-muted">Interesse</label>
               <select
@@ -671,36 +702,13 @@ function ClassificarAtendimento({
           </div>
 
           {ultimo && (
-            <p className="px-4 pt-2 text-xs text-faint">
+            <p className="px-4 pb-3 text-xs text-faint">
               Último registro: {INTERESSE_LABEL[ultimo.interesse]} por {ultimo.usuario} em{" "}
               {new Date(ultimo.criadoEm).toLocaleString("pt-BR")}
               {ultimo.observacao && ` — ${ultimo.observacao}`}
             </p>
           )}
         </div>
-      </div>
-
-      {/* Handle sempre visível: só o rótulo "Observação" e a setinha. */}
-      <div
-        role="button"
-        tabIndex={0}
-        aria-expanded={aberto}
-        onClick={() => setAberto((a) => !a)}
-        onKeyDown={(e) => {
-          if (e.key === "Enter" || e.key === " ") {
-            e.preventDefault();
-            setAberto((a) => !a);
-          }
-        }}
-        className="flex cursor-pointer items-center justify-between px-4 py-2.5"
-      >
-        <span className="text-xs font-medium text-muted">Observação</span>
-        <span
-          aria-hidden
-          className={cn("text-[11px] text-faint transition-transform", aberto && "rotate-180")}
-        >
-          ▲
-        </span>
       </div>
     </div>
   );
