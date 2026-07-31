@@ -22,6 +22,7 @@ export default async function AtendimentoPage() {
           com uma conversa aberta, o inbox o esconde e fica só a conversa. */}
       <AtendimentoInbox
         inicial={conversas}
+        assinatura={user.login}
         conectado={whatsapp.status === "CONNECTED"}
         podeResponder={user.role === "ADMIN" || user.role === "RECEPCAO"}
         podeApagar={user.role === "ADMIN"}

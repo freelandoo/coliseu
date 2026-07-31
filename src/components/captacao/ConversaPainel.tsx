@@ -33,12 +33,15 @@ function hora(iso: string) {
 /** Histórico da conversa + resposta manual + classificação do atendimento. */
 export function ConversaPainel({
   conversa,
+  assinatura,
   podeResponder,
   podeApagar,
   onConversaAtualizada,
   onConversaRemovida,
 }: {
   conversa: ConversaResumo;
+  /** Login de quem atende — vira o "alex.rodriguus: " no começo de cada resposta. */
+  assinatura: string;
   podeResponder: boolean;
   /** Limpar/remover apagam trilha de atendimento — só ADMIN. */
   podeApagar: boolean;
@@ -55,6 +58,13 @@ export function ConversaPainel({
   const fim = useRef<HTMLDivElement>(null);
   const inputArquivo = useRef<HTMLInputElement>(null);
   const router = useRouter();
+
+  // Assinatura no corpo da mensagem: quem recebe no WhatsApp vê quem atendeu.
+  // Focar a caixa vazia já deixa "login: " pronto, com o cursor na frente;
+  // sair sem escrever nada limpa, para o placeholder voltar.
+  const prefixo = `${assinatura}: `;
+  const semAssinatura = texto.startsWith(prefixo) ? texto.slice(prefixo.length) : texto;
+  const temConteudo = semAssinatura.trim().length > 0;
 
   // Carrega o histórico ao montar. Trocar de conversa remonta o componente
   // (a lista passa `key={id}`), então não há estado antigo para limpar aqui.
@@ -128,9 +138,10 @@ export function ConversaPainel({
 
   async function responder() {
     const conteudo = texto.trim();
-    if (!conteudo) return;
+    if (!temConteudo) return;
     setErro("");
-    setTexto(""); // libera o campo na hora — sem indicador de carregamento
+    // Libera o campo na hora, já com a assinatura pronta para a próxima resposta.
+    setTexto(prefixo);
 
     // Bolha otimista: a mensagem aparece na conversa imediatamente; o servidor
     // confirma em segundo plano. Só marca falha se o envio não completar.
@@ -186,8 +197,8 @@ export function ConversaPainel({
     try {
       const form = new FormData();
       form.append("arquivo", arquivo);
-      const legenda = texto.trim();
-      if (legenda) form.append("texto", legenda);
+      // Só assinatura não é legenda — o anexo vai limpo.
+      if (temConteudo) form.append("texto", texto.trim());
       const r = await fetch(`/api/whatsapp/conversas/${conversa.id}/mensagens`, {
         method: "POST",
         body: form,
@@ -340,27 +351,48 @@ export function ConversaPainel({
               <textarea
                 value={texto}
                 onChange={(e) => setTexto(e.target.value)}
+                onFocus={() => {
+                  if (texto === "") setTexto(prefixo);
+                }}
+                onBlur={() => {
+                  if (!temConteudo) setTexto("");
+                }}
                 onKeyDown={(e) => {
                   if (e.key === "Enter" && !e.shiftKey) {
                     e.preventDefault();
                     void responder();
                   }
                 }}
-                rows={2}
+                rows={3}
                 placeholder="Escreva a resposta… (Enter envia, Shift+Enter quebra linha)"
                 className={cn(inputCls, "flex-1 resize-none")}
               />
               <button
                 onClick={() => void responder()}
-                disabled={anexando || !texto.trim()}
+                disabled={anexando || !temConteudo}
+                title="Enviar"
+                aria-label="Enviar"
                 className={cn(
-                  "shrink-0 self-end rounded-lg px-5 py-2.5 font-display text-sm font-semibold uppercase tracking-widest transition-colors",
-                  anexando || !texto.trim()
+                  "shrink-0 self-end rounded-lg p-2.5 transition-colors",
+                  anexando || !temConteudo
                     ? "cursor-not-allowed bg-surface-2 text-faint"
                     : "bg-red text-white hover:bg-red-bright",
                 )}
               >
-                Enviar
+                <svg
+                  viewBox="0 0 24 24"
+                  width="18"
+                  height="18"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="2"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  aria-hidden
+                >
+                  <path d="M22 2L11 13" />
+                  <path d="M22 2l-7 20-4-9-9-4 22-7z" />
+                </svg>
               </button>
             </div>
             {anexando && <p className="mt-2 text-xs text-faint">Enviando anexo…</p>}

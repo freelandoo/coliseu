@@ -82,12 +82,15 @@ function AbaBotao({
  */
 export function AtendimentoInbox({
   inicial,
+  assinatura,
   conectado,
   podeResponder,
   podeApagar,
   cabecalho,
 }: {
   inicial: ConversaResumo[];
+  /** Login de quem está atendendo — assina as respostas na conversa. */
+  assinatura: string;
   conectado: boolean;
   podeResponder: boolean;
   podeApagar: boolean;
@@ -373,6 +376,7 @@ export function AtendimentoInbox({
                 <ConversaPainel
                   key={atual.id}
                   conversa={atual}
+                  assinatura={assinatura}
                   podeResponder={podeResponder}
                   podeApagar={podeApagar}
                   onConversaAtualizada={atualizarConversa}
