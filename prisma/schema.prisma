@@ -96,6 +96,22 @@ model User {
   mensagensEnviadas  Mensagem[]
   atendimentos       AtendimentoRegistro[]
   matriculasFeitas   Membership[] @relation("MatriculadoPor")
+  pushSubscriptions  PushSubscription[]
+}
+
+/// Inscrição de Web Push do PWA: cada linha é um navegador/aparelho que aceitou
+/// receber aviso de mensagem nova no atendimento. O endpoint identifica o
+/// aparelho; reassinar noutra conta só muda o dono.
+model PushSubscription {
+  id        String   @id @default(cuid())
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId    String
+  endpoint  String   @unique
+  p256dh    String
+  auth      String
+  createdAt DateTime @default(now())
+
+  @@index([userId])
 }
 
 model Session {

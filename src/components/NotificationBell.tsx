@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { formatarTelefone } from "@/lib/whatsapp/telefone";
 import { assinarMensagens } from "@/lib/whatsapp/stream-cliente";
+import { AtivarNotificacoes } from "@/components/pwa/AtivarNotificacoes";
 
 interface LeadNovo {
   id: string;
@@ -135,6 +136,11 @@ export function NotificationBell() {
                 ))}
               </ul>
             )}
+
+            {/* Push no celular: ativar/desativar o aviso deste aparelho. */}
+            <div className="border-t border-border px-4 py-3">
+              <AtivarNotificacoes />
+            </div>
 
             <div className="border-t border-border px-4 py-3">
               <Link

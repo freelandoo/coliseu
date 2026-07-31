@@ -2,6 +2,7 @@ import { prisma } from "@/lib/db";
 import { unitIdAtual } from "@/lib/repositories/unit";
 import { chaveTelefone, formatarTelefone, telefoneDoJid } from "@/lib/whatsapp/telefone";
 import { publicarMensagem } from "@/lib/whatsapp/eventos";
+import { notificarMensagemRecebida } from "@/lib/push/notificar";
 import { proximoCodigoRepo } from "@/lib/repositories/pessoas";
 import {
   INTERESSE_ESTAGIO,
@@ -349,6 +350,11 @@ export async function registrarMensagemRepo(input: {
     ]);
     // Avisa as conexões SSE abertas — só quando é mensagem nova (não duplicata).
     publicarMensagem({ conversaId: input.conversaId, direcao: input.direcao });
+    // Push no celular só para mensagem recebida; fire-and-forget — o aviso
+    // nunca pode atrasar nem derrubar a gravação.
+    if (input.direcao === "IN") {
+      void notificarMensagemRecebida(input.conversaId).catch(() => {});
+    }
     return true;
   } catch (e) {
     if (ehDuplicata(e)) return false;

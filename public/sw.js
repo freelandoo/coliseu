@@ -71,3 +71,40 @@ self.addEventListener("fetch", (event) => {
     );
   }
 });
+
+// ── Web Push: aviso de mensagem nova no atendimento ──────────────────────────
+// O payload vem pronto do servidor ({titulo, corpo, url, tag}); aqui só exibe.
+// A tag agrupa por conversa: aviso novo substitui o anterior da mesma pessoa.
+self.addEventListener("push", (event) => {
+  let dados = {};
+  try {
+    dados = event.data ? event.data.json() : {};
+  } catch {
+    /* payload não-JSON: mostra o genérico */
+  }
+  event.waitUntil(
+    self.registration.showNotification(dados.titulo || "Coliseu", {
+      body: dados.corpo || "Nova mensagem no WhatsApp",
+      icon: "/icons/icon-192.png",
+      badge: "/icons/icon-192.png",
+      tag: dados.tag || "coliseu-mensagem",
+      data: { url: dados.url || "/captacao/atendimento" },
+    }),
+  );
+});
+
+// Tocar no aviso abre (ou foca) o app já na conversa certa.
+self.addEventListener("notificationclick", (event) => {
+  event.notification.close();
+  const url = (event.notification.data && event.notification.data.url) || "/captacao/atendimento";
+  event.waitUntil(
+    self.clients.matchAll({ type: "window", includeUncontrolled: true }).then((janelas) => {
+      const aberta = janelas.find((j) => "focus" in j);
+      if (aberta) {
+        if ("navigate" in aberta) aberta.navigate(url);
+        return aberta.focus();
+      }
+      return self.clients.openWindow(url);
+    }),
+  );
+});
