@@ -4,6 +4,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useState, type ReactNode } from "react";
 import { cn } from "@/lib/cn";
+import { NaoLidasBadge } from "@/components/NaoLidasBadge";
 import { podeModulo, type Modulo, type Papel } from "@/lib/auth/modulos";
 
 const IconBarras = (
@@ -18,6 +19,20 @@ const IconPessoas = (
   <svg width="15" height="15" viewBox="0 0 15 15" fill="none" aria-hidden>
     <circle cx="7.5" cy="5" r="2.4" fill="currentColor" />
     <path d="M2.5 13c0-2.5 2.2-4.2 5-4.2s5 1.7 5 4.2" fill="currentColor" />
+  </svg>
+);
+
+const IconChat = (
+  <svg width="15" height="15" viewBox="0 0 15 15" fill="none" aria-hidden>
+    <path
+      d="M13 7.2c0 2.9-2.5 5.2-5.5 5.2-.6 0-1.2-.1-1.7-.3L2.5 13l.9-2.6C2.5 9.5 2 8.4 2 7.2 2 4.3 4.5 2 7.5 2S13 4.3 13 7.2z"
+      stroke="currentColor"
+      strokeWidth="1.3"
+      strokeLinejoin="round"
+    />
+    <circle cx="5.4" cy="7.2" r=".8" fill="currentColor" />
+    <circle cx="7.5" cy="7.2" r=".8" fill="currentColor" />
+    <circle cx="9.6" cy="7.2" r=".8" fill="currentColor" />
   </svg>
 );
 
@@ -51,7 +66,8 @@ const NAV: {
 }[] = [
   { href: "/painel", modulo: "painel", label: "Painel", hint: "Visão geral" },
   { href: "/matriculados", modulo: "matriculados", icon: IconPessoas, label: "Matriculados", hint: "Alunos, renovação, retenção e fidelidade" },
-  { href: "/captacao", modulo: "captacao", step: 1, label: "Captação", hint: "Leads e atendimento" },
+  { href: "/captacao", modulo: "captacao", step: 1, label: "Captação", hint: "Leads e funil" },
+  { href: "/atendimento", modulo: "atendimento", icon: IconChat, label: "Atendimento", hint: "Conversas do WhatsApp" },
   { href: "/cobranca", modulo: "cobranca", step: 3, label: "Cobrança", hint: "Renovação e inadimplência" },
   { href: "/custos", modulo: "custos", icon: IconCustos, label: "Custos", hint: "Despesas e lucro" },
   { href: "/acesso", modulo: "acesso", icon: IconAcesso, label: "Acesso", hint: "Catracas e credenciais" },
@@ -151,7 +167,11 @@ export function Sidebar({ papel }: { papel: Papel }) {
                   {item.icon ?? item.step ?? "•"}
                 </span>
                 <span className="leading-tight">
-                  <span className="block text-sm font-medium">{item.label}</span>
+                  <span className="flex items-center gap-2 text-sm font-medium">
+                    {item.label}
+                    {/* Badge de não lidas — só no Atendimento, some quando zera. */}
+                    {item.modulo === "atendimento" && <NaoLidasBadge />}
+                  </span>
                   <span className="block text-[11px] text-faint">{item.hint}</span>
                 </span>
               </Link>

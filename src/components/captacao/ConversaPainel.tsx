@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useRef, useState, type ChangeEvent } from "react";
 import { useRouter } from "next/navigation";
 import { Modal } from "@/components/ui/Modal";
+import { RespostasProntas } from "@/components/captacao/RespostasProntas";
 import { assinarMensagens } from "@/lib/whatsapp/stream-cliente";
 import { cn } from "@/lib/cn";
 import { ROTULO_MIDIA } from "@/lib/whatsapp/payload";
@@ -58,6 +59,8 @@ export function ConversaPainel({
   // Gaveta de classificação: o botão fica no topo, a gaveta abre embaixo,
   // em cima da caixa de texto — perto de onde se digita a observação.
   const [classificando, setClassificando] = useState(false);
+  // Gaveta de respostas prontas — mesmo lugar; abrir uma fecha a outra.
+  const [mostrandoRespostas, setMostrandoRespostas] = useState(false);
   const fim = useRef<HTMLDivElement>(null);
   const inputArquivo = useRef<HTMLInputElement>(null);
   const router = useRouter();
@@ -264,27 +267,52 @@ export function ConversaPainel({
   return (
     <div className="flex h-full flex-col">
       {/* Barra fina no topo: "Classificar lead" abre a gaveta de classificação
-          (não existe em grupo) e, para ADMIN, as ações destrutivas à direita.
-          Nome e contato saem no "ver" da lista — cabeçalho maior seria só peso. */}
-      {(podeApagar || !conversa.ehGrupo) && (
+          (não existe em grupo), "Respostas prontas" abre o acervo comum e,
+          para ADMIN, as ações destrutivas à direita. Nome e contato saem no
+          "ver" da lista — cabeçalho maior seria só peso. */}
+      {(podeApagar || podeResponder || !conversa.ehGrupo) && (
         <div className="flex shrink-0 items-center justify-between gap-3 border-b border-border px-4 py-1.5">
-          {!conversa.ehGrupo ? (
-            <button
-              onClick={() => setClassificando((a) => !a)}
-              aria-expanded={classificando}
-              className="flex items-center gap-1.5 text-[11px] font-medium text-faint transition-colors hover:text-ink"
-            >
-              Classificar lead
-              <span
-                aria-hidden
-                className={cn("text-[9px] transition-transform", classificando && "rotate-180")}
+          <div className="flex items-center gap-4">
+            {!conversa.ehGrupo && (
+              <button
+                onClick={() => {
+                  setClassificando((a) => !a);
+                  setMostrandoRespostas(false);
+                }}
+                aria-expanded={classificando}
+                className="flex items-center gap-1.5 text-[11px] font-medium text-faint transition-colors hover:text-ink"
               >
-                ▼
-              </span>
-            </button>
-          ) : (
-            <span />
-          )}
+                Classificar lead
+                <span
+                  aria-hidden
+                  className={cn("text-[9px] transition-transform", classificando && "rotate-180")}
+                >
+                  ▼
+                </span>
+              </button>
+            )}
+            {podeResponder && (
+              <button
+                onClick={() => {
+                  setMostrandoRespostas((a) => !a);
+                  setClassificando(false);
+                }}
+                aria-expanded={mostrandoRespostas}
+                className="flex items-center gap-1.5 text-[11px] font-medium text-faint transition-colors hover:text-ink"
+              >
+                Respostas prontas
+                <span
+                  aria-hidden
+                  className={cn(
+                    "text-[9px] transition-transform",
+                    mostrandoRespostas && "rotate-180",
+                  )}
+                >
+                  ▼
+                </span>
+              </button>
+            )}
+          </div>
           {podeApagar && (
             <div className="flex items-center gap-3">
               <button
@@ -327,6 +355,18 @@ export function ConversaPainel({
         )}
         <div ref={fim} />
       </div>
+
+      {/* A resposta escolhida cai na caixa já assinada, pronta para ajustar
+          antes de enviar — escolher nunca envia sozinho. */}
+      {podeResponder && (
+        <RespostasProntas
+          aberto={mostrandoRespostas}
+          onEscolher={(t) => {
+            setTexto(prefixo + t);
+            setMostrandoRespostas(false);
+          }}
+        />
+      )}
 
       {/* Grupo não é lead: classificar interesse ali não moveria funil nenhum. */}
       {!conversa.ehGrupo && (

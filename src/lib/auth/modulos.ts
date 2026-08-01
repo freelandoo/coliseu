@@ -15,6 +15,7 @@ export type Modulo =
   | "painel"
   | "matriculados"
   | "captacao"
+  | "atendimento"
   | "cobranca"
   | "custos"
   | "acesso"
@@ -26,8 +27,8 @@ export type Modulo =
  * A ordem importa: o primeiro módulo da lista é a tela inicial do papel.
  */
 const MODULOS_POR_PAPEL: Record<Papel, Modulo[]> = {
-  ADMIN: ["painel", "matriculados", "captacao", "cobranca", "custos", "acesso", "relatorios"],
-  RECEPCAO: ["matriculados", "captacao", "acesso"],
+  ADMIN: ["painel", "matriculados", "captacao", "atendimento", "cobranca", "custos", "acesso", "relatorios"],
+  RECEPCAO: ["matriculados", "captacao", "atendimento", "acesso"],
   TECNICO: ["acesso"],
 };
 

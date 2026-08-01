@@ -75,7 +75,7 @@ export async function notificarMensagemRecebida(conversaId: string): Promise<voi
   const payload = JSON.stringify({
     titulo: nome || "Mensagem nova",
     corpo: conversa.ultimaMensagemPreview || "Nova mensagem no WhatsApp",
-    url: `/captacao/atendimento?c=${conversaId}`,
+    url: `/atendimento?c=${conversaId}`,
     // Mesma tag = a notificação seguinte substitui a anterior da conversa.
     tag: `conversa:${conversaId}`,
   });

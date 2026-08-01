@@ -97,6 +97,7 @@ model User {
   atendimentos       AtendimentoRegistro[]
   matriculasFeitas   Membership[] @relation("MatriculadoPor")
   pushSubscriptions  PushSubscription[]
+  respostasProntas   RespostaPronta[]
 }
 
 /// Inscrição de Web Push do PWA: cada linha é um navegador/aparelho que aceitou
@@ -615,6 +616,19 @@ model Mensagem {
   erro        String?
 
   @@index([conversaId, enviadaEm])
+}
+
+/// Resposta pronta do atendimento: texto cadastrado uma vez e compartilhado
+/// por todos os usuários — qualquer atendente escolhe da lista e a resposta
+/// cai na caixa de texto. SetNull: apagar o usuário não apaga o acervo comum.
+model RespostaPronta {
+  id          String   @id @default(cuid())
+  texto       String
+  criadoPor   User?    @relation(fields: [criadoPorId], references: [id], onDelete: SetNull)
+  criadoPorId String?
+  criadoEm    DateTime @default(now())
+
+  @@index([criadoEm])
 }
 
 /// Cadastro de atendimento: log append-only de quem classificou o quê.

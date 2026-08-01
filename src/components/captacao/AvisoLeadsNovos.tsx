@@ -68,7 +68,7 @@ export function AvisoLeadsNovos() {
             </span>
             {l.conversaId ? (
               <Link
-                href={`/captacao/atendimento?c=${l.conversaId}`}
+                href={`/atendimento?c=${l.conversaId}`}
                 onClick={() => setAberto(false)}
                 className="shrink-0 rounded-md bg-red px-3 py-1.5 font-display text-xs font-semibold uppercase tracking-wide text-white transition-colors hover:bg-red-bright"
               >

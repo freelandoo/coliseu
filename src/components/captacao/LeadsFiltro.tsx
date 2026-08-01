@@ -140,7 +140,7 @@ export function LeadsFiltro({ leads, planos }: { leads: Lead[]; planos: Plano[] 
                               indicação — só resta abrir o WhatsApp por fora. */}
                           {lead.conversaId ? (
                             <Link
-                              href={`/captacao/atendimento?c=${lead.conversaId}`}
+                              href={`/atendimento?c=${lead.conversaId}`}
                               className="text-xs font-medium text-red-bright hover:underline"
                             >
                               Responder →

@@ -275,3 +275,11 @@ export interface AtendimentoItem {
   observacao: string | null;
   criadoEm: string; // ISO
 }
+
+/** Resposta pronta do atendimento — acervo comum, compartilhado por todos. */
+export interface RespostaProntaItem {
+  id: string;
+  texto: string;
+  autor: string | null; // nome de quem cadastrou; null quando o usuário saiu
+  criadoEm: string; // ISO
+}

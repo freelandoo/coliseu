@@ -88,7 +88,7 @@ self.addEventListener("push", (event) => {
       icon: "/icons/icon-192.png",
       badge: "/icons/icon-192.png",
       tag: dados.tag || "coliseu-mensagem",
-      data: { url: dados.url || "/captacao/atendimento" },
+      data: { url: dados.url || "/atendimento" },
     }),
   );
 });
@@ -96,7 +96,7 @@ self.addEventListener("push", (event) => {
 // Tocar no aviso abre (ou foca) o app já na conversa certa.
 self.addEventListener("notificationclick", (event) => {
   event.notification.close();
-  const url = (event.notification.data && event.notification.data.url) || "/captacao/atendimento";
+  const url = (event.notification.data && event.notification.data.url) || "/atendimento";
   event.waitUntil(
     self.clients.matchAll({ type: "window", includeUncontrolled: true }).then((janelas) => {
       const aberta = janelas.find((j) => "focus" in j);
