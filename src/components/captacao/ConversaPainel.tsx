@@ -3,15 +3,16 @@
 import { useCallback, useEffect, useRef, useState, type ChangeEvent } from "react";
 import { useRouter } from "next/navigation";
 import { Modal } from "@/components/ui/Modal";
+import { Bandeira } from "@/components/ui/Bandeira";
 import { RespostasProntas } from "@/components/captacao/RespostasProntas";
 import { assinarMensagens } from "@/lib/whatsapp/stream-cliente";
 import { cn } from "@/lib/cn";
 import { ROTULO_MIDIA } from "@/lib/whatsapp/payload";
 import {
   INTERESSE_LABEL,
-  type AtendimentoItem,
   type ConversaInteresse,
   type ConversaResumo,
+  type LeadEstagio,
   type MensagemItem,
 } from "@/lib/types";
 
@@ -22,10 +23,17 @@ const inputCls =
   "w-full rounded-lg border border-border bg-surface px-3 py-2 text-sm text-ink " +
   "placeholder:text-faint outline-none transition-colors focus:border-red/60";
 
-/** Variante compacta (fonte pequena) usada na barra de classificação. */
-const campoCls =
-  "w-full rounded-lg border border-border bg-surface px-2.5 py-1.5 text-xs text-ink " +
-  "placeholder:text-faint outline-none transition-colors focus:border-red/60";
+/**
+ * As 5 flags de classificação, na ordem do funil (a mesma das abas da
+ * Captação). Um toque na bandeira classifica — sem gaveta, sem formulário.
+ */
+const FLAGS: { interesse: ConversaInteresse; estagio: LeadEstagio }[] = [
+  { interesse: "nao_classificado", estagio: "novo" },
+  { interesse: "sem_interesse", estagio: "qualificado" },
+  { interesse: "com_interesse", estagio: "interesse" },
+  { interesse: "convertido", estagio: "convertido" },
+  { interesse: "perdido", estagio: "perdido" },
+];
 
 function hora(iso: string) {
   return new Date(iso).toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" });
@@ -50,16 +58,14 @@ export function ConversaPainel({
   onConversaRemovida: (id: string) => void;
 }) {
   const [mensagens, setMensagens] = useState<MensagemItem[]>([]);
-  const [atendimentos, setAtendimentos] = useState<AtendimentoItem[]>([]);
   const [texto, setTexto] = useState("");
   const [anexando, setAnexando] = useState(false);
   const [erro, setErro] = useState("");
   const [carregando, setCarregando] = useState(true);
   const [confirmando, setConfirmando] = useState<"limpar" | "remover" | null>(null);
-  // Gaveta de classificação: o botão fica no topo, a gaveta abre embaixo,
-  // em cima da caixa de texto — perto de onde se digita a observação.
+  // Um toque numa flag classifica; o disable evita toque duplo em voo.
   const [classificando, setClassificando] = useState(false);
-  // Gaveta de respostas prontas — mesmo lugar; abrir uma fecha a outra.
+  // Gaveta de respostas prontas, em cima da caixa de texto.
   const [mostrandoRespostas, setMostrandoRespostas] = useState(false);
   const fim = useRef<HTMLDivElement>(null);
   const inputArquivo = useRef<HTMLInputElement>(null);
@@ -83,7 +89,6 @@ export function ConversaPainel({
         if (!ativo) return;
         if (r.ok) {
           setMensagens(d.mensagens ?? []);
-          setAtendimentos(d.atendimentos ?? []);
         } else {
           setErro(d?.erro ?? "Não foi possível abrir a conversa.");
         }
@@ -245,51 +250,69 @@ export function ConversaPainel({
     onConversaRemovida(conversa.id);
   }
 
-  async function classificar(interesse: ConversaInteresse, observacao: string, motivo: string) {
-    const r = await fetch(`/api/whatsapp/conversas/${conversa.id}`, {
-      method: "PATCH",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ interesse, observacao, motivoPerdido: motivo }),
-    });
-    const d = await r.json().catch(() => ({}));
-    if (!r.ok) {
-      setErro(d?.erro ?? "Não foi possível salvar a classificação.");
-      return false;
+  /** Um toque na bandeira classifica e move o lead no funil na hora. */
+  async function classificar(interesse: ConversaInteresse) {
+    if (classificando || interesse === conversa.interesse) return;
+    setClassificando(true);
+    setErro("");
+    try {
+      const r = await fetch(`/api/whatsapp/conversas/${conversa.id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ interesse }),
+      });
+      const d = await r.json().catch(() => ({}));
+      if (!r.ok) {
+        setErro(d?.erro ?? "Não foi possível classificar.");
+        return;
+      }
+      onConversaAtualizada(d.conversa);
+      // A classificação move o lead no funil; sem isso a Captação continuaria
+      // servindo o RSC em cache com o estágio antigo.
+      router.refresh();
+    } catch {
+      setErro("Falha de conexão.");
+    } finally {
+      setClassificando(false);
     }
-    setAtendimentos(d.atendimentos ?? []);
-    onConversaAtualizada(d.conversa);
-    // A classificação move o lead no funil; sem isso a aba Leads continuaria
-    // servindo o RSC em cache com o estágio antigo.
-    router.refresh();
-    return true;
   }
 
   return (
     <div className="flex h-full flex-col">
-      {/* Barra fina no topo: "Classificar lead" abre a gaveta de classificação
-          (não existe em grupo), "Respostas prontas" abre o acervo comum e,
-          para ADMIN, as ações destrutivas à direita. Nome e contato saem no
-          "ver" da lista — cabeçalho maior seria só peso. */}
+      {/* Barra fina no topo: as flags de classificação (não existem em grupo),
+          "Respostas prontas" abre o acervo comum e, para ADMIN, as ações
+          destrutivas à direita. Nome e contato saem no "ver" da lista —
+          cabeçalho maior seria só peso. */}
       {(podeApagar || podeResponder || !conversa.ehGrupo) && (
         <div className="flex shrink-0 items-center justify-between gap-3 border-b border-border px-4 py-1.5">
           <div className="flex items-center gap-4">
             {!conversa.ehGrupo && (
-              <button
-                onClick={() => {
-                  setClassificando((a) => !a);
-                  setMostrandoRespostas(false);
-                }}
-                aria-expanded={classificando}
-                className="flex items-center gap-1.5 text-[11px] font-medium text-faint transition-colors hover:text-ink"
-              >
-                Classificar lead
-                <span
-                  aria-hidden
-                  className={cn("text-[9px] transition-transform", classificando && "rotate-180")}
-                >
-                  ▼
-                </span>
-              </button>
+              // Todo lead entra "Lead novo"; um toque numa bandeira reclassifica.
+              // A ativa fica acesa; as outras, apagadas até o hover.
+              <div className="flex items-center gap-0.5" role="group" aria-label="Classificar lead">
+                {FLAGS.map((f) => {
+                  const ativa = conversa.interesse === f.interesse;
+                  return (
+                    <button
+                      key={f.interesse}
+                      onClick={() => void classificar(f.interesse)}
+                      disabled={classificando}
+                      title={INTERESSE_LABEL[f.interesse]}
+                      aria-label={`Classificar como ${INTERESSE_LABEL[f.interesse]}`}
+                      aria-pressed={ativa}
+                      className={cn(
+                        "rounded-md p-1 transition-all",
+                        ativa
+                          ? "bg-surface-2 ring-1 ring-border-strong"
+                          : "opacity-35 hover:opacity-90",
+                        classificando && "cursor-wait",
+                      )}
+                    >
+                      <Bandeira estagio={f.estagio} />
+                    </button>
+                  );
+                })}
+              </div>
             )}
             {podeResponder && (
               <button
@@ -365,16 +388,6 @@ export function ConversaPainel({
             setTexto(prefixo + t);
             setMostrandoRespostas(false);
           }}
-        />
-      )}
-
-      {/* Grupo não é lead: classificar interesse ali não moveria funil nenhum. */}
-      {!conversa.ehGrupo && (
-        <ClassificarAtendimento
-          aberto={classificando}
-          atual={conversa.interesse}
-          atendimentos={atendimentos}
-          onSalvar={classificar}
         />
       )}
 
@@ -638,118 +651,3 @@ function Bolha({ mensagem }: { mensagem: MensagemItem }) {
   );
 }
 
-const OPCOES = Object.entries(INTERESSE_LABEL) as [ConversaInteresse, string][];
-
-/** Cadastro de atendimento: quem atendeu, o que classificou e por quê. */
-function ClassificarAtendimento({
-  aberto,
-  atual,
-  atendimentos,
-  onSalvar,
-}: {
-  /** Controlado pelo botão "Classificar lead" na barra do topo da conversa. */
-  aberto: boolean;
-  atual: ConversaInteresse;
-  atendimentos: AtendimentoItem[];
-  onSalvar: (i: ConversaInteresse, obs: string, motivo: string) => Promise<boolean>;
-}) {
-  const [interesse, setInteresse] = useState<ConversaInteresse>(atual);
-  const [observacao, setObservacao] = useState("");
-  const [motivo, setMotivo] = useState("");
-  const [salvando, setSalvando] = useState(false);
-  const [ok, setOk] = useState(false);
-
-  async function salvar() {
-    setSalvando(true);
-    setOk(false);
-    const sucesso = await onSalvar(interesse, observacao, motivo);
-    setSalvando(false);
-    if (sucesso) {
-      setObservacao("");
-      setMotivo("");
-      setOk(true);
-      setTimeout(() => setOk(false), 2500);
-    }
-  }
-
-  const ultimo = atendimentos[0];
-
-  return (
-    // A borda só existe aberta: fechada, a gaveta colapsa e não pode deixar
-    // um fio duplicado em cima da borda da caixa de texto.
-    <div className={cn("bg-surface-2/40 text-xs", aberto && "border-t border-border")}>
-      {/* Gaveta retrátil: classificação, observação, botão e último registro.
-          Fechada, some; aberta, aparece em cima da caixa de texto. */}
-      <div
-        className={cn(
-          "grid transition-[grid-template-rows] duration-200 ease-out",
-          aberto ? "grid-rows-[1fr]" : "grid-rows-[0fr]",
-        )}
-      >
-        <div className="overflow-hidden">
-          {/* O respiro fica aqui dentro: padding no contêiner de fora quebraria
-              o colapso da gaveta (0fr some, padding não). */}
-          <div className="flex flex-wrap items-end gap-3 px-4 py-3">
-            <div className="min-w-[160px] flex-1">
-              <label className="mb-1 block text-xs font-medium text-muted">Interesse</label>
-              <select
-                value={interesse}
-                onChange={(e) => setInteresse(e.target.value as ConversaInteresse)}
-                className={campoCls}
-              >
-                {OPCOES.map(([valor, label]) => (
-                  <option key={valor} value={valor}>
-                    {label}
-                  </option>
-                ))}
-              </select>
-            </div>
-
-            {interesse === "perdido" && (
-              <div className="min-w-[160px] flex-1">
-                <label className="mb-1 block text-xs font-medium text-muted">Motivo</label>
-                <input
-                  value={motivo}
-                  onChange={(e) => setMotivo(e.target.value)}
-                  placeholder="Preço, distância, foi pra outra academia…"
-                  className={campoCls}
-                />
-              </div>
-            )}
-
-            <div className="min-w-[200px] flex-1">
-              <label className="mb-1 block text-xs font-medium text-muted">Observação</label>
-              <input
-                value={observacao}
-                onChange={(e) => setObservacao(e.target.value)}
-                placeholder="O que ficou combinado"
-                className={campoCls}
-              />
-            </div>
-
-            <button
-              onClick={() => void salvar()}
-              disabled={salvando}
-              className={cn(
-                "rounded-lg border px-3 py-1.5 text-xs font-semibold uppercase tracking-widest transition-colors",
-                salvando
-                  ? "cursor-not-allowed border-border text-faint"
-                  : "border-border-strong text-muted hover:text-ink",
-              )}
-            >
-              {salvando ? "Salvando…" : ok ? "Registrado ✓" : "Registrar"}
-            </button>
-          </div>
-
-          {ultimo && (
-            <p className="px-4 pb-3 text-xs text-faint">
-              Último registro: {INTERESSE_LABEL[ultimo.interesse]} por {ultimo.usuario} em{" "}
-              {new Date(ultimo.criadoEm).toLocaleString("pt-BR")}
-              {ultimo.observacao && ` — ${ultimo.observacao}`}
-            </p>
-          )}
-        </div>
-      </div>
-    </div>
-  );
-}

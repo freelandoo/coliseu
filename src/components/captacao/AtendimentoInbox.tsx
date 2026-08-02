@@ -17,11 +17,12 @@ const GRUPO_SEM_NOME = "Grupo do WhatsApp";
 
 type Aba = "pessoas" | "grupos";
 
+/** Ponto na cor da bandeira do estágio — a mesma língua da Captação. */
 const PONTO: Record<ConversaInteresse, string> = {
-  nao_classificado: "bg-border-strong",
-  com_interesse: "bg-red",
-  sem_interesse: "bg-warn",
-  perdido: "bg-border-strong",
+  nao_classificado: "bg-white",
+  com_interesse: "bg-warn",
+  sem_interesse: "bg-info",
+  perdido: "bg-red-bright",
   convertido: "bg-ok",
 };
 

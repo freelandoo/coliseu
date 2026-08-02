@@ -3,6 +3,7 @@
 import { useMemo, useState } from "react";
 import Link from "next/link";
 import { Badge, Card } from "@/components/ui/primitives";
+import { Bandeira } from "@/components/ui/Bandeira";
 import { NovoCadastro } from "@/components/clientes/NovoCadastro";
 import { RemoverPessoa } from "@/components/clientes/RemoverPessoa";
 import { cn } from "@/lib/cn";
@@ -24,14 +25,6 @@ const ORDEM: LeadEstagio[] = [
   "convertido",
   "perdido",
 ];
-
-const TONE: Record<LeadEstagio, "neutral" | "red" | "ok" | "warn"> = {
-  novo: "neutral",
-  qualificado: "warn",
-  interesse: "red",
-  convertido: "ok",
-  perdido: "neutral",
-};
 
 export function LeadsFiltro({ leads, planos }: { leads: Lead[]; planos: Plano[] }) {
   const [filtro, setFiltro] = useState<Filtro>("todos");
@@ -70,6 +63,9 @@ export function LeadsFiltro({ leads, planos }: { leads: Lead[]; planos: Plano[] 
                   : "border-border bg-surface text-muted hover:border-border-strong hover:text-ink",
               )}
             >
+              {/* A bandeira do estágio na frente do nome — a mesma que
+                  classifica a conversa no Atendimento. "Todos" não tem. */}
+              {chip.key !== "todos" && <Bandeira estagio={chip.key} />}
               <span className="uppercase tracking-wide">{chip.label}</span>
               <span
                 className={cn(
@@ -126,9 +122,10 @@ export function LeadsFiltro({ leads, planos }: { leads: Lead[]; planos: Plano[] 
                         <Badge>{ORIGEM_LABEL[lead.origem]}</Badge>
                       </td>
                       <td className="px-4 py-3">
-                        <Badge tone={TONE[lead.estagio]}>
+                        <span className="inline-flex items-center gap-1.5 text-xs font-medium text-muted">
+                          <Bandeira estagio={lead.estagio} />
                           {LEAD_ESTAGIO_LABEL[lead.estagio]}
-                        </Badge>
+                        </span>
                       </td>
                       <td className="px-4 py-3 text-faint">
                         {formatData(lead.criadoEm)}

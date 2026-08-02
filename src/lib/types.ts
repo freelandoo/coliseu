@@ -215,10 +215,16 @@ export type ConversaInteresse =
   | "perdido"
   | "convertido";
 
+/**
+ * Os rótulos falam a língua das flags do funil: todo mundo entra como
+ * "Lead novo" e cada classificação é uma bandeira — os mesmos nomes das
+ * abas da Captação. `sem_interesse` é a bandeira "Qualificado": conversou,
+ * foi qualificado, não fechou agora (ver INTERESSE_ESTAGIO).
+ */
 export const INTERESSE_LABEL: Record<ConversaInteresse, string> = {
-  nao_classificado: "Não classificado",
+  nao_classificado: "Lead novo",
   com_interesse: "Com interesse",
-  sem_interesse: "Sem interesse",
+  sem_interesse: "Qualificado",
   perdido: "Perdido",
   convertido: "Convertido",
 };

@@ -27,6 +27,7 @@
   /* estados */
   --color-ok: #3f9d6b;
   --color-warn: #c79a3a;
+  --color-info: #3f7fae;
 
   /* tipografia */
   --font-display: var(--font-oswald), "Arial Narrow", sans-serif;
