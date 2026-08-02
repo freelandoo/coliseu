@@ -15,8 +15,8 @@ export const BANDEIRA_COR: Record<LeadEstagio, string> = {
 
 /**
  * Bandeirinha do estágio, em forma de marcador (bookmark): retângulo com o
- * recorte em V embaixo, só contorno. Cor via currentColor — sobrescreva com
- * className.
+ * recorte em V embaixo, preenchido na cor — sem contorno. Cor via
+ * currentColor — sobrescreva com className.
  */
 export function Bandeira({
   estagio,
@@ -34,12 +34,7 @@ export function Bandeira({
       aria-hidden
       className={cn("shrink-0", BANDEIRA_COR[estagio], className)}
     >
-      <path
-        d="M4.5 2.3h7v11.4L8 10.6l-3.5 3.1z"
-        stroke="currentColor"
-        strokeWidth="1.7"
-        strokeLinejoin="round"
-      />
+      <path d="M3.8 1.5h8.4v13l-4.2-3.7-4.2 3.7z" fill="currentColor" />
     </svg>
   );
 }
