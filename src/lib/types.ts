@@ -285,6 +285,8 @@ export interface AtendimentoItem {
 /** Resposta pronta do atendimento — acervo comum, compartilhado por todos. */
 export interface RespostaProntaItem {
   id: string;
+  /** Identificação na lista, editável sem mexer na mensagem; null = primeira frase. */
+  titulo: string | null;
   texto: string;
   autor: string | null; // nome de quem cadastrou; null quando o usuário saiu
   criadoEm: string; // ISO

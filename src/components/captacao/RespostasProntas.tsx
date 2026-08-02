@@ -43,6 +43,11 @@ export function RespostasProntas({
   const [cadastrando, setCadastrando] = useState(false);
   const [novoTexto, setNovoTexto] = useState("");
   const [salvando, setSalvando] = useState(false);
+  // Edição inline do título: troca a identificação na própria linha, sem
+  // mexer na mensagem original.
+  const [editandoId, setEditandoId] = useState<string | null>(null);
+  const [tituloRascunho, setTituloRascunho] = useState("");
+  const [renomeando, setRenomeando] = useState(false);
   const jaCarregou = useRef(false);
 
   useEffect(() => {
@@ -97,6 +102,33 @@ export function RespostasProntas({
       setErro("Falha de conexão.");
     } finally {
       setSalvando(false);
+    }
+  }
+
+  /** Salva só o título; vazio limpa e a linha volta à primeira frase. */
+  async function salvarTitulo(id: string) {
+    if (renomeando) return;
+    setRenomeando(true);
+    setErro("");
+    try {
+      const r = await fetch(`/api/whatsapp/respostas/${id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ titulo: tituloRascunho }),
+      });
+      const d = await r.json().catch(() => ({}));
+      if (r.ok) {
+        setRespostas((antigas) =>
+          antigas.map((x) => (x.id === id ? (d.resposta as RespostaProntaItem) : x)),
+        );
+        setEditandoId(null);
+      } else {
+        setErro(d?.erro ?? "Não foi possível salvar o título.");
+      }
+    } catch {
+      setErro("Falha de conexão.");
+    } finally {
+      setRenomeando(false);
     }
   }
 
@@ -171,28 +203,92 @@ export function RespostasProntas({
                   Nenhuma resposta cadastrada ainda. Cadastre a primeira — ela vale para todo mundo.
                 </li>
               )}
-              {respostas.map((r) => (
-                <li key={r.id} className="flex items-center gap-2">
-                  <button
-                    onClick={() => onEscolher(r.texto)}
-                    title={r.texto}
-                    className="min-w-0 flex-1 px-3 py-2 text-left transition-colors hover:bg-red-ghost"
-                  >
-                    <span className="block truncate text-xs text-ink">{primeiraFrase(r.texto)}</span>
-                    {r.autor && <span className="block text-[10px] text-faint">por {r.autor}</span>}
-                  </button>
-                  <button
-                    onClick={() => void remover(r.id)}
-                    title="Remover do acervo"
-                    aria-label="Remover resposta"
-                    className="shrink-0 px-2 py-2 text-faint transition-colors hover:text-red-bright"
-                  >
-                    <svg width="12" height="12" viewBox="0 0 12 12" fill="none" aria-hidden>
-                      <path d="M3 3l6 6M9 3l-6 6" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" />
-                    </svg>
-                  </button>
-                </li>
-              ))}
+              {respostas.map((r) =>
+                editandoId === r.id ? (
+                  // Modo edição: o input toma a linha; Enter salva, Esc cancela.
+                  // Título vazio limpa e a linha volta à primeira frase do texto.
+                  <li key={r.id} className="flex items-center gap-1 px-2 py-1.5">
+                    <input
+                      value={tituloRascunho}
+                      onChange={(e) => setTituloRascunho(e.target.value)}
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter") {
+                          e.preventDefault();
+                          void salvarTitulo(r.id);
+                        }
+                        if (e.key === "Escape") setEditandoId(null);
+                      }}
+                      autoFocus
+                      maxLength={80}
+                      placeholder="Título da resposta… (vazio volta à primeira frase)"
+                      className={campoCls}
+                    />
+                    <button
+                      onClick={() => void salvarTitulo(r.id)}
+                      disabled={renomeando}
+                      title="Salvar título"
+                      aria-label="Salvar título"
+                      className="shrink-0 rounded-md p-1.5 text-ok transition-colors hover:bg-surface-2"
+                    >
+                      <svg width="13" height="13" viewBox="0 0 13 13" fill="none" aria-hidden>
+                        <path d="M2.5 7l3 3 5-6.5" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" />
+                      </svg>
+                    </button>
+                    <button
+                      onClick={() => setEditandoId(null)}
+                      title="Cancelar"
+                      aria-label="Cancelar edição do título"
+                      className="shrink-0 rounded-md p-1.5 text-faint transition-colors hover:bg-surface-2 hover:text-ink"
+                    >
+                      <svg width="12" height="12" viewBox="0 0 12 12" fill="none" aria-hidden>
+                        <path d="M3 3l6 6M9 3l-6 6" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" />
+                      </svg>
+                    </button>
+                  </li>
+                ) : (
+                  <li key={r.id} className="flex items-center gap-1">
+                    <button
+                      onClick={() => onEscolher(r.texto)}
+                      title={r.texto}
+                      className="min-w-0 flex-1 px-3 py-2 text-left transition-colors hover:bg-red-ghost"
+                    >
+                      <span className="block truncate text-xs font-medium text-ink">
+                        {r.titulo ?? primeiraFrase(r.texto)}
+                      </span>
+                      {r.autor && <span className="block text-[10px] text-faint">por {r.autor}</span>}
+                    </button>
+                    <button
+                      onClick={() => {
+                        setEditandoId(r.id);
+                        setTituloRascunho(r.titulo ?? "");
+                        setErro("");
+                      }}
+                      title="Renomear (a mensagem não muda)"
+                      aria-label="Renomear resposta"
+                      className="shrink-0 px-1.5 py-2 text-faint transition-colors hover:text-ink"
+                    >
+                      <svg width="12" height="12" viewBox="0 0 12 12" fill="none" aria-hidden>
+                        <path
+                          d="M8.2 1.9a1.1 1.1 0 0 1 1.6 0l.3.3a1.1 1.1 0 0 1 0 1.6L4.7 9.2 2 10l.8-2.7z"
+                          stroke="currentColor"
+                          strokeWidth="1.1"
+                          strokeLinejoin="round"
+                        />
+                      </svg>
+                    </button>
+                    <button
+                      onClick={() => void remover(r.id)}
+                      title="Remover do acervo"
+                      aria-label="Remover resposta"
+                      className="shrink-0 px-1.5 py-2 text-faint transition-colors hover:text-red-bright"
+                    >
+                      <svg width="12" height="12" viewBox="0 0 12 12" fill="none" aria-hidden>
+                        <path d="M3 3l6 6M9 3l-6 6" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" />
+                      </svg>
+                    </button>
+                  </li>
+                ),
+              )}
             </ul>
           </div>
         </div>

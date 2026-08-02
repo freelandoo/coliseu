@@ -623,6 +623,9 @@ model Mensagem {
 /// cai na caixa de texto. SetNull: apagar o usuário não apaga o acervo comum.
 model RespostaPronta {
   id          String   @id @default(cuid())
+  /// Identificação na lista, editável sem mexer na mensagem; sem título,
+  /// a lista mostra a primeira frase do texto.
+  titulo      String?
   texto       String
   criadoPor   User?    @relation(fields: [criadoPorId], references: [id], onDelete: SetNull)
   criadoPorId String?

@@ -9,14 +9,19 @@ import type { RespostaProntaItem } from "@/lib/types";
 /** Teto de sanidade para o texto — cabe um roteiro inteiro, não um anexo colado. */
 export const RESPOSTA_MAX_CHARS = 4000;
 
+/** Título é identificação de lista, não outra mensagem. */
+export const TITULO_MAX_CHARS = 80;
+
 function toItem(r: {
   id: string;
+  titulo: string | null;
   texto: string;
   criadoEm: Date;
   criadoPor: { nome: string } | null;
 }): RespostaProntaItem {
   return {
     id: r.id,
+    titulo: r.titulo,
     texto: r.texto,
     autor: r.criadoPor?.nome ?? null,
     criadoEm: r.criadoEm.toISOString(),
@@ -44,6 +49,26 @@ export async function criarRespostaProntaRepo(
     include: INCLUDE_AUTOR,
   });
   return toItem(r);
+}
+
+/**
+ * Troca só a identificação da resposta na lista — a mensagem original não
+ * muda. `null` limpa o título e a lista volta a mostrar a primeira frase.
+ */
+export async function renomearRespostaProntaRepo(
+  id: string,
+  titulo: string | null,
+): Promise<RespostaProntaItem | null> {
+  try {
+    const r = await prisma.respostaPronta.update({
+      where: { id },
+      data: { titulo },
+      include: INCLUDE_AUTOR,
+    });
+    return toItem(r);
+  } catch {
+    return null; // removida por outro usuário no meio do caminho
+  }
 }
 
 export async function removerRespostaProntaRepo(id: string): Promise<boolean> {
