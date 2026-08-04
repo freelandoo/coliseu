@@ -262,6 +262,14 @@ export interface ConversaResumo {
   preview: string;
 }
 
+/**
+ * Conversa achada pela busca por palavra-chave: a mesma linha da lista, mais a
+ * mensagem do histórico que casou com o termo.
+ */
+export interface ConversaBuscaItem extends ConversaResumo {
+  trecho: string;
+}
+
 export interface MensagemItem {
   id: string;
   direcao: "IN" | "OUT";

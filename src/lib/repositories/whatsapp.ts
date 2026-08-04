@@ -8,6 +8,7 @@ import { arquivarConversaRepo } from "@/lib/repositories/whatsapp-backup";
 import {
   INTERESSE_ESTAGIO,
   type AtendimentoItem,
+  type ConversaBuscaItem,
   type ConversaInteresse,
   type ConversaResumo,
   type MensagemItem,
@@ -192,6 +193,45 @@ export async function listarConversasRepo(): Promise<ConversaResumo[]> {
     take: 200,
   });
   return rows.map(toResumo);
+}
+
+/**
+ * Conversas em que alguém escreveu o termo — a busca por palavra-chave da
+ * inbox. Nome e telefone a tela resolve sozinha na lista que já tem; aqui é o
+ * histórico, que só o banco enxerga.
+ *
+ * `contains` insensitive vira ILIKE: sem índice de texto, mas a academia tem
+ * ordem de dezenas de milhares de mensagens — e o teto de linhas segura o custo
+ * do pior caso (termo curtíssimo que casa com quase tudo).
+ */
+export async function buscarConversasPorMensagemRepo(
+  termo: string,
+  limite = 30,
+): Promise<ConversaBuscaItem[]> {
+  const alvo = termo.trim();
+  if (alvo.length < 2) return [];
+
+  const mensagens = await prisma.mensagem.findMany({
+    where: { texto: { contains: alvo, mode: "insensitive" } },
+    orderBy: { enviadaEm: "desc" },
+    take: 400,
+    select: { conversaId: true, texto: true },
+  });
+
+  // A mais recente de cada conversa é a que vira trecho na lista.
+  const trechos = new Map<string, string>();
+  for (const m of mensagens) {
+    if (trechos.size >= limite && !trechos.has(m.conversaId)) continue;
+    if (!trechos.has(m.conversaId)) trechos.set(m.conversaId, m.texto);
+  }
+  if (trechos.size === 0) return [];
+
+  const rows = await prisma.conversa.findMany({
+    where: { id: { in: [...trechos.keys()] } },
+    include: RESUMO_INCLUDE,
+    orderBy: { ultimaMensagemEm: "desc" },
+  });
+  return rows.map((r) => ({ ...toResumo(r), trecho: trechos.get(r.id) ?? "" }));
 }
 
 /**

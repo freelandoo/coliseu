@@ -1,14 +1,20 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState, type ReactNode } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { Card } from "@/components/ui/primitives";
 import { assinarMensagens } from "@/lib/whatsapp/stream-cliente";
 import { ConversaPainel } from "@/components/captacao/ConversaPainel";
 import { cn } from "@/lib/cn";
+import { casaConversa, trechoAoRedor } from "@/lib/whatsapp/busca";
 import { ehDataISO, mensagemRemarcarAula } from "@/lib/aula-experimental";
-import { INTERESSE_LABEL, type ConversaInteresse, type ConversaResumo } from "@/lib/types";
+import {
+  INTERESSE_LABEL,
+  type ConversaBuscaItem,
+  type ConversaInteresse,
+  type ConversaResumo,
+} from "@/lib/types";
 
 /** Rede de segurança: o SSE atualiza em tempo real; isto cobre um stream caído. */
 const FALLBACK_LISTA_MS = 60_000;
@@ -17,6 +23,9 @@ const FALLBACK_LISTA_MS = 60_000;
 const GRUPO_SEM_NOME = "Grupo do WhatsApp";
 
 type Aba = "pessoas" | "grupos";
+
+/** Linha da lista: a conversa, mais o trecho quando ela veio da busca. */
+type LinhaConversa = ConversaResumo & { trecho?: string };
 
 /** Ponto na cor da bandeira do estágio — a mesma língua da Captação. */
 const PONTO: Record<ConversaInteresse, string> = {
@@ -123,6 +132,15 @@ export function AtendimentoInbox({
   // Se abrimos uma entrada no histórico, o "voltar" precisa desfazê-la; sem a
   // flag, um voltar em conversa aberta por deep link sairia da página.
   const empurrouHistorico = useRef(false);
+  // Busca: o campo filtra a lista na hora (nome, telefone, última mensagem) e,
+  // em paralelo, o servidor procura a palavra no histórico inteiro.
+  const [busca, setBusca] = useState("");
+  // O resultado carrega o termo que o gerou: assim o de uma busca anterior
+  // nunca é usado como se fosse o da palavra que está no campo agora.
+  const [achados, setAchados] = useState<{ termo: string; itens: ConversaBuscaItem[] }>({
+    termo: "",
+    itens: [],
+  });
 
   const buscarLista = useCallback(async () => {
     try {
@@ -182,8 +200,58 @@ export function AtendimentoInbox({
     return () => window.removeEventListener("popstate", aoVoltar);
   }, []);
 
-  const pessoas = conversas.filter((c) => !c.ehGrupo);
-  const grupos = conversas.filter((c) => c.ehGrupo);
+  // Busca no histórico: espera a digitação parar para não disparar uma consulta
+  // por tecla. O filtro local já respondeu enquanto isso.
+  const termo = busca.trim();
+  useEffect(() => {
+    if (termo.length < 2) return;
+    let ativo = true;
+    const t = setTimeout(async () => {
+      let itens: ConversaBuscaItem[] = [];
+      try {
+        const r = await fetch(`/api/whatsapp/conversas/busca?q=${encodeURIComponent(termo)}`, {
+          cache: "no-store",
+        });
+        const d = (await r.json().catch(() => ({}))) as { conversas?: ConversaBuscaItem[] };
+        if (r.ok) itens = d.conversas ?? [];
+      } catch {
+        /* sem rede a busca fica só no que já está na tela */
+      }
+      // Marca o termo mesmo sem resultado: é o que tira o "procurando…".
+      if (ativo) setAchados({ termo, itens });
+    }, 350);
+    return () => {
+      ativo = false;
+      clearTimeout(t);
+    };
+  }, [termo]);
+
+  // Enquanto o resultado não chega para o termo atual, a tela avisa em vez de
+  // dizer que não achou nada.
+  const buscandoServidor = termo.length >= 2 && achados.termo !== termo;
+
+  /**
+   * A lista que a tela mostra. Sem busca, é a inbox inteira. Com busca, junta o
+   * que casou aqui com o que o servidor achou no histórico — a conversa achada
+   * pode nem estar na lista carregada, se for antiga o bastante.
+   */
+  const filtradas = useMemo<LinhaConversa[]>(() => {
+    if (!termo) return conversas;
+    const porId = new Map<string, LinhaConversa>();
+    for (const c of conversas) if (casaConversa(c, termo)) porId.set(c.id, c);
+    // Resultado de um termo anterior não vale para a palavra que está no campo.
+    for (const a of achados.termo === termo ? achados.itens : []) {
+      // A versão da lista está mais fresca (não lidas, última mensagem); do
+      // achado interessa o trecho que casou.
+      porId.set(a.id, { ...(porId.get(a.id) ?? a), trecho: a.trecho });
+    }
+    return [...porId.values()].sort((x, y) =>
+      y.ultimaMensagemEm.localeCompare(x.ultimaMensagemEm),
+    );
+  }, [conversas, achados, termo]);
+
+  const pessoas = filtradas.filter((c) => !c.ehGrupo);
+  const grupos = filtradas.filter((c) => c.ehGrupo);
   const visiveis = aba === "grupos" ? grupos : pessoas;
 
   function trocarAba(nova: Aba) {
@@ -193,8 +261,12 @@ export function AtendimentoInbox({
     if (!lista.some((c) => c.id === selecionada)) setSelecionada(lista[0]?.id ?? null);
   }
 
-  // A conversa aberta some da lista só se for apagada; mantém a seleção viva.
-  const atual = conversas.find((c) => c.id === selecionada) ?? null;
+  // A conversa aberta some da lista só se for apagada; mantém a seleção viva —
+  // inclusive filtrando, e inclusive quando ela só existe no resultado da busca.
+  const atual =
+    conversas.find((c) => c.id === selecionada) ??
+    achados.itens.find((c) => c.id === selecionada) ??
+    null;
 
   function atualizarConversa(c: ConversaResumo) {
     setConversas((antigas) => antigas.map((a) => (a.id === c.id ? { ...a, ...c } : a)));
@@ -274,12 +346,39 @@ export function AtendimentoInbox({
             />
           </div>
 
+          {/* Busca: nome, telefone ou palavra que ficou no meio da conversa. */}
+          <div className="relative shrink-0 border-b border-border px-3 py-2">
+            <input
+              value={busca}
+              onChange={(e) => setBusca(e.target.value)}
+              type="search"
+              placeholder="Buscar nome, telefone ou palavra…"
+              aria-label="Buscar conversa por nome, telefone ou palavra"
+              className="w-full rounded-lg border border-border bg-surface px-3 py-1.5 pr-8 text-xs text-ink outline-none transition-colors placeholder:text-faint focus:border-red/60"
+            />
+            {busca && (
+              <button
+                onClick={() => setBusca("")}
+                aria-label="Limpar busca"
+                className="absolute right-5 top-1/2 -translate-y-1/2 rounded p-1 text-faint transition-colors hover:text-ink"
+              >
+                <svg width="11" height="11" viewBox="0 0 12 12" fill="none" aria-hidden>
+                  <path d="M3 3l6 6M9 3l-6 6" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" />
+                </svg>
+              </button>
+            )}
+          </div>
+
           <ul className="flex-1 overflow-y-auto">
             {visiveis.length === 0 && (
               <li className="px-4 py-10 text-center text-sm text-faint">
-                {aba === "grupos"
-                  ? "Nenhum grupo por aqui ainda. O grupo entra nesta aba na primeira mensagem nova que chegar nele — conversa anterior não é importada."
-                  : "Nenhuma conversa individual ainda."}
+                {termo
+                  ? buscandoServidor
+                    ? "Procurando no histórico…"
+                    : `Nada encontrado para “${termo}”. A busca cobre nome, telefone e o que foi escrito nas conversas.`
+                  : aba === "grupos"
+                    ? "Nenhum grupo por aqui ainda. O grupo entra nesta aba na primeira mensagem nova que chegar nele — conversa anterior não é importada."
+                    : "Nenhuma conversa individual ainda."}
               </li>
             )}
             {visiveis.map((c) => {
@@ -320,7 +419,14 @@ export function AtendimentoInbox({
                         <span className="shrink-0 text-[11px] text-faint">{quando(c.ultimaMensagemEm)}</span>
                       </span>
                       <span className="mt-0.5 flex items-center justify-between gap-2">
-                        <span className="truncate text-[11px] text-muted">{c.preview || c.telefone}</span>
+                        {/* Achado no histórico mostra o pedaço que casou, não a
+                            última mensagem — é o que responde "por que essa
+                            conversa apareceu?". */}
+                        <span className="truncate text-[11px] text-muted">
+                          {c.trecho
+                            ? trechoAoRedor(c.trecho, termo)
+                            : c.preview || c.telefone}
+                        </span>
                         {c.naoLidas > 0 && (
                           <span className="flex h-4 min-w-4 shrink-0 items-center justify-center rounded bg-red px-1 text-[10px] font-semibold text-white">
                             {c.naoLidas}
