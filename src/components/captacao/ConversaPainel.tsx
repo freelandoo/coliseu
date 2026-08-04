@@ -65,11 +65,13 @@ export function ConversaPainel({
   onConversaRemovida: (id: string) => void;
 }) {
   // Assinatura no corpo da mensagem: quem recebe no WhatsApp vê quem atendeu.
-  // Só o primeiro nome do login ("alex.rodriguus" vira "alex") — é assim que a
-  // recepção se apresenta. Focar a caixa vazia já deixa "alex: " pronto, com o
-  // cursor na frente; sair sem escrever nada limpa, para o placeholder voltar.
+  // Só o primeiro nome do login, escrito como nome de gente — "alex.rodriguus"
+  // vira "Alex". A caixa alta do começo não é enfeite: é o que faz a mensagem
+  // parecer assinada por uma pessoa, e não um login de sistema vazando para o
+  // cliente. Focar a caixa vazia já deixa "Alex: " pronto, com o cursor na
+  // frente; sair sem escrever nada limpa, para o placeholder voltar.
   const primeiroNome = assinatura.split(".")[0] || assinatura;
-  const prefixo = `${primeiroNome}: `;
+  const prefixo = `${primeiroNome.charAt(0).toUpperCase()}${primeiroNome.slice(1).toLowerCase()}: `;
 
   const [mensagens, setMensagens] = useState<MensagemItem[]>([]);
   // Texto que veio pronto da Captação já entra assinado, como se tivesse sido
