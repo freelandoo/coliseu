@@ -172,19 +172,19 @@ export function ClientesView({
                   onClick={() => router.push(`/matriculados/${p.id}`)}
                   className="flex cursor-pointer flex-col gap-2 px-4 py-3 transition-colors hover:bg-surface-2"
                 >
-                  <div className="flex items-start justify-between gap-2">
-                    <div className="min-w-0">
-                      <p className="truncate text-sm font-medium text-ink">{p.nome}</p>
-                      <p className="text-xs text-muted">
-                        {p.telefone || p.email || "—"}
-                        <span className="ml-2 font-mono text-faint">{p.codigo}</span>
-                      </p>
-                    </div>
-                    <Badge tone={s.tone}>{s.rotulo}</Badge>
+                  <div className="min-w-0">
+                    <p className="truncate text-sm font-medium text-ink">{p.nome}</p>
+                    <p className="text-xs text-muted">
+                      {p.telefone || p.email || "—"}
+                      <span className="ml-2 font-mono text-faint">{p.codigo}</span>
+                    </p>
                   </div>
-                  <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-1.5">
-                    <Badge>{ORIGEM_LABEL[p.origem]}</Badge>
-                    <span className="flex items-center gap-3">
+                  <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-2">
+                    <span className="flex flex-wrap items-center gap-1.5">
+                      <Badge>{ORIGEM_LABEL[p.origem]}</Badge>
+                      <Badge tone={s.tone}>{s.rotulo}</Badge>
+                    </span>
+                    <span className="ml-auto flex flex-wrap items-center justify-end gap-2">
                       {botaoRenovacao(p)}
                       <RemoverPessoa id={p.id} nome={p.nome} />
                     </span>
