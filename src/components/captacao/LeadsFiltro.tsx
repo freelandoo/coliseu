@@ -49,7 +49,7 @@ export function LeadsFiltro({ leads, planos }: { leads: Lead[]; planos: Plano[] 
   return (
     <div className="flex flex-col gap-5">
       {/* filtros */}
-      <div className="flex flex-wrap gap-2">
+      <div className="flex flex-wrap gap-1.5 sm:gap-2">
         {chips.map((chip) => {
           const ativo = filtro === chip.key;
           return (
@@ -57,7 +57,7 @@ export function LeadsFiltro({ leads, planos }: { leads: Lead[]; planos: Plano[] 
               key={chip.key}
               onClick={() => setFiltro(chip.key)}
               className={cn(
-                "flex items-center gap-2 rounded-lg border px-3.5 py-2 text-sm font-medium transition-colors",
+                "flex items-center gap-1.5 rounded-lg border px-2.5 py-1.5 text-xs font-medium transition-colors sm:gap-2 sm:px-3.5 sm:py-2 sm:text-sm",
                 ativo
                   ? "border-red/60 bg-red-ghost text-ink"
                   : "border-border bg-surface text-muted hover:border-border-strong hover:text-ink",
@@ -69,7 +69,7 @@ export function LeadsFiltro({ leads, planos }: { leads: Lead[]; planos: Plano[] 
               <span className="uppercase tracking-wide">{chip.label}</span>
               <span
                 className={cn(
-                  "flex h-5 min-w-5 items-center justify-center rounded-md px-1 text-xs font-semibold",
+                  "flex h-4 min-w-4 items-center justify-center rounded-md px-1 text-[10px] font-semibold sm:h-5 sm:min-w-5 sm:text-xs",
                   ativo
                     ? "bg-red text-white"
                     : "bg-surface-2 text-faint",
@@ -89,7 +89,39 @@ export function LeadsFiltro({ leads, planos }: { leads: Lead[]; planos: Plano[] 
             Nenhum lead nesta categoria.
           </p>
         ) : (
-          <div className="overflow-x-auto">
+          <>
+          {/* mobile: cards empilhados, sem scroll horizontal */}
+          <div className="divide-y divide-border sm:hidden">
+            {visiveis.map((lead) => (
+              <div key={lead.id} className="flex flex-col gap-2 px-4 py-3">
+                <div className="flex items-start justify-between gap-2">
+                  <div className="min-w-0">
+                    <p className="truncate text-sm font-medium text-ink">
+                      {lead.nome || "Sem nome"}
+                    </p>
+                    <p className="text-xs text-muted">{lead.telefone}</p>
+                    {lead.motivoPerdido && (
+                      <p className="mt-0.5 text-xs text-faint">{lead.motivoPerdido}</p>
+                    )}
+                  </div>
+                  <span className="inline-flex shrink-0 items-center gap-1.5 text-[11px] font-medium text-muted">
+                    <Bandeira estagio={lead.estagio} />
+                    {LEAD_ESTAGIO_LABEL[lead.estagio]}
+                  </span>
+                </div>
+                <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-1.5">
+                  <span className="inline-flex items-center gap-2 text-[11px] text-faint">
+                    <Badge>{ORIGEM_LABEL[lead.origem]}</Badge>
+                    {formatData(lead.criadoEm)}
+                  </span>
+                  <AcoesLead lead={lead} planos={planos} />
+                </div>
+              </div>
+            ))}
+          </div>
+
+          {/* desktop: tabela */}
+          <div className="hidden overflow-x-auto sm:block">
             <table className="w-full min-w-[720px] border-collapse text-sm">
               <thead>
                 <tr className="border-b border-border text-left">
@@ -103,7 +135,6 @@ export function LeadsFiltro({ leads, planos }: { leads: Lead[]; planos: Plano[] 
               </thead>
               <tbody>
                 {visiveis.map((lead) => {
-                  const fone = lead.telefone.replace(/\D/g, "");
                   return (
                     <tr
                       key={lead.id}
@@ -131,34 +162,7 @@ export function LeadsFiltro({ leads, planos }: { leads: Lead[]; planos: Plano[] 
                         {formatData(lead.criadoEm)}
                       </td>
                       <td className="px-4 py-3 text-right">
-                        <span className="inline-flex items-center gap-3">
-                          {/* Com conversa no CRM, responder é por dentro (histórico
-                              fica registrado). Sem conversa — lead de balcão ou
-                              indicação — só resta abrir o WhatsApp por fora. */}
-                          {lead.conversaId ? (
-                            <Link
-                              href={`/atendimento?c=${lead.conversaId}`}
-                              className="text-xs font-medium text-red-bright hover:underline"
-                            >
-                              Responder →
-                            </Link>
-                          ) : (
-                            <a
-                              href={`https://wa.me/55${fone}`}
-                              target="_blank"
-                              rel="noreferrer"
-                              className="text-xs font-medium text-faint hover:text-ink hover:underline"
-                            >
-                              WhatsApp →
-                            </a>
-                          )}
-                          <NovoCadastro
-                            planos={planos}
-                            compacto
-                            lead={{ id: lead.id, nome: lead.nome, telefone: lead.telefone }}
-                          />
-                          <RemoverPessoa id={lead.id} nome={lead.nome} />
-                        </span>
+                        <AcoesLead lead={lead} planos={planos} />
                       </td>
                     </tr>
                   );
@@ -166,9 +170,44 @@ export function LeadsFiltro({ leads, planos }: { leads: Lead[]; planos: Plano[] 
               </tbody>
             </table>
           </div>
+          </>
         )}
       </Card>
     </div>
+  );
+}
+
+function AcoesLead({ lead, planos }: { lead: Lead; planos: Plano[] }) {
+  const fone = lead.telefone.replace(/\D/g, "");
+  return (
+    <span className="inline-flex items-center gap-3">
+      {/* Com conversa no CRM, responder é por dentro (histórico
+          fica registrado). Sem conversa — lead de balcão ou
+          indicação — só resta abrir o WhatsApp por fora. */}
+      {lead.conversaId ? (
+        <Link
+          href={`/atendimento?c=${lead.conversaId}`}
+          className="text-xs font-medium text-red-bright hover:underline"
+        >
+          Responder →
+        </Link>
+      ) : (
+        <a
+          href={`https://wa.me/55${fone}`}
+          target="_blank"
+          rel="noreferrer"
+          className="text-xs font-medium text-faint hover:text-ink hover:underline"
+        >
+          WhatsApp →
+        </a>
+      )}
+      <NovoCadastro
+        planos={planos}
+        compacto
+        lead={{ id: lead.id, nome: lead.nome, telefone: lead.telefone }}
+      />
+      <RemoverPessoa id={lead.id} nome={lead.nome} />
+    </span>
   );
 }
 

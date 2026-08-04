@@ -115,11 +115,11 @@ export function PageHeader({
 }) {
   return (
     <header className="mb-4 flex items-center gap-3">
-      <span className="steel-plate h-8 w-8 shrink-0 rounded-md text-base">
+      <span className="steel-plate h-7 w-7 shrink-0 rounded-md text-sm sm:h-8 sm:w-8 sm:text-base">
         {step ?? "•"}
       </span>
       <div>
-        <h1 className="font-display text-xl font-semibold uppercase tracking-wide text-ink">
+        <h1 className="font-display text-lg font-semibold uppercase tracking-wide text-ink sm:text-xl">
           {title}
         </h1>
         {subtitle && <p className="mt-0.5 max-w-2xl text-xs text-muted">{subtitle}</p>}
