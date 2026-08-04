@@ -111,7 +111,30 @@ export default async function IndicadoresFidelidadePage() {
                 Nenhum aluno de 6+ meses ausente há 7+ dias. 👏
               </p>
             ) : (
-              <div className="overflow-x-auto">
+              <>
+              {/* mobile: cards empilhados, sem scroll horizontal */}
+              <div className="divide-y divide-border sm:hidden">
+                {risco.map(({ aluno, meses, diasAusente }) => (
+                  <div
+                    key={aluno.id}
+                    className="flex items-start justify-between gap-3 px-4 py-3"
+                  >
+                    <div className="min-w-0">
+                      <p className="truncate text-sm font-medium text-ink">{aluno.nome}</p>
+                      <p className="text-xs text-muted">
+                        {formatMeses(meses)} de casa
+                        <span className="ml-2 font-mono text-faint">{aluno.codigo}</span>
+                      </p>
+                    </div>
+                    <Badge tone={diasAusente >= 14 ? "red" : "warn"}>
+                      {diasAusente} dias
+                    </Badge>
+                  </div>
+                ))}
+              </div>
+
+              {/* desktop: tabela */}
+              <div className="hidden overflow-x-auto sm:block">
                 <table className="w-full min-w-[560px] border-collapse text-sm">
                   <thead>
                     <tr className="border-b border-border text-left">
@@ -135,6 +158,7 @@ export default async function IndicadoresFidelidadePage() {
                   </tbody>
                 </table>
               </div>
+              </>
             )}
           </Card>
         </div>

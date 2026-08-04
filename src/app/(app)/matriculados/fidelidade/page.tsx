@@ -77,7 +77,33 @@ export default async function FidelidadePage() {
             {ativos.length === 0 ? (
               <p className="px-5 py-10 text-center text-sm text-faint">Nenhum aluno ativo.</p>
             ) : (
-              <div className="overflow-x-auto">
+              <>
+              {/* mobile: cards empilhados, sem scroll horizontal */}
+              <div className="divide-y divide-border sm:hidden">
+                {ativos.map((a) => (
+                  <div key={a.id} className="flex flex-col gap-2 px-4 py-3">
+                    <div className="min-w-0">
+                      <p className="truncate text-sm font-medium text-ink">{a.nome}</p>
+                      <p className="text-xs text-muted">
+                        {planoNome(a.planoId)}
+                        <span className="ml-2 font-mono text-faint">{a.codigo}</span>
+                      </p>
+                      <p className="text-xs text-faint">
+                        Matriculado em {formatData(a.matriculadoEm)}
+                      </p>
+                    </div>
+                    <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-2">
+                      <Badge tone={a.faixa.tone}>{a.faixa.rotulo}</Badge>
+                      <span className="ml-auto text-sm font-medium text-ink">
+                        {formatMeses(a.meses)}
+                      </span>
+                    </div>
+                  </div>
+                ))}
+              </div>
+
+              {/* desktop: tabela */}
+              <div className="hidden overflow-x-auto sm:block">
                 <table className="w-full min-w-[640px] border-collapse text-sm">
                   <thead>
                     <tr className="border-b border-border text-left">
@@ -105,6 +131,7 @@ export default async function FidelidadePage() {
                   </tbody>
                 </table>
               </div>
+              </>
             )}
           </Card>
         </div>
@@ -121,7 +148,27 @@ export default async function FidelidadePage() {
                 Nenhum matriculado cancelado.
               </p>
             ) : (
-              <div className="overflow-x-auto">
+              <>
+              {/* mobile: cards empilhados, sem scroll horizontal */}
+              <div className="divide-y divide-border sm:hidden">
+                {inativos.map((a) => (
+                  <div key={a.id} className="flex items-start justify-between gap-3 px-4 py-3">
+                    <div className="min-w-0">
+                      <p className="truncate text-sm font-medium text-ink">{a.nome}</p>
+                      <p className="text-xs text-muted">
+                        Última presença {formatData(a.ultimaPresenca)}
+                        <span className="ml-2 font-mono text-faint">{a.codigo}</span>
+                      </p>
+                    </div>
+                    <span className="shrink-0 text-sm font-medium text-red-bright">
+                      {formatMeses(a.meses)}
+                    </span>
+                  </div>
+                ))}
+              </div>
+
+              {/* desktop: tabela */}
+              <div className="hidden overflow-x-auto sm:block">
                 <table className="w-full min-w-[560px] border-collapse text-sm">
                   <thead>
                     <tr className="border-b border-border text-left">
@@ -143,6 +190,7 @@ export default async function FidelidadePage() {
                   </tbody>
                 </table>
               </div>
+              </>
             )}
           </Card>
         </div>

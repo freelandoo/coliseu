@@ -69,7 +69,7 @@ export function RetencaoFiltro({ linhas }: { linhas: LinhaRetencao[] }) {
               key={String(chip.key)}
               onClick={() => setFiltro(chip.key)}
               className={cn(
-                "flex items-center gap-2 rounded-lg border px-3.5 py-2 text-sm font-medium transition-colors",
+                "flex items-center gap-1.5 rounded-lg border px-2.5 py-1.5 text-xs font-medium transition-colors sm:gap-2 sm:px-3.5 sm:py-2 sm:text-sm",
                 ativo
                   ? "border-red/60 bg-red-ghost text-ink"
                   : "border-border bg-surface text-muted hover:border-border-strong hover:text-ink",
@@ -78,7 +78,7 @@ export function RetencaoFiltro({ linhas }: { linhas: LinhaRetencao[] }) {
               <span className="uppercase tracking-wide">{chip.label}</span>
               <span
                 className={cn(
-                  "flex h-5 min-w-5 items-center justify-center rounded-md px-1 text-xs font-semibold",
+                  "flex h-4 min-w-4 items-center justify-center rounded-md px-1 text-[10px] font-semibold sm:h-5 sm:min-w-5 sm:text-xs",
                   ativo ? "bg-red text-white" : "bg-surface-2 text-faint",
                 )}
               >
@@ -96,7 +96,47 @@ export function RetencaoFiltro({ linhas }: { linhas: LinhaRetencao[] }) {
             Ninguém nesta categoria.
           </p>
         ) : (
-          <div className="overflow-x-auto">
+          <>
+          {/* mobile: cards empilhados, sem scroll horizontal */}
+          <div className="divide-y divide-border sm:hidden">
+            {visiveis.map((l) => {
+              const info = infoDe(l.faixa);
+              const fone = l.telefone.replace(/\D/g, "");
+              return (
+                <div key={l.id} className="flex flex-col gap-2 px-4 py-3">
+                  <div className="min-w-0">
+                    <p className="truncate text-sm font-medium text-ink">{l.nome}</p>
+                    <p className="text-xs text-muted">
+                      {l.planoNome} · última presença {l.ultimaPresenca} (
+                      <span
+                        className={cn(
+                          "font-semibold",
+                          l.faixa === null ? "text-ok" : "text-red-bright",
+                        )}
+                      >
+                        {l.dias}d
+                      </span>
+                      )
+                    </p>
+                  </div>
+                  <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-2">
+                    <Badge tone={info.tone}>{info.rotulo}</Badge>
+                    <a
+                      href={`https://wa.me/55${fone}`}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="ml-auto text-xs font-medium text-red-bright hover:underline"
+                    >
+                      WhatsApp →
+                    </a>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+
+          {/* desktop: tabela */}
+          <div className="hidden overflow-x-auto sm:block">
             <table className="w-full min-w-[720px] border-collapse text-sm">
               <thead>
                 <tr className="border-b border-border text-left">
@@ -149,6 +189,7 @@ export function RetencaoFiltro({ linhas }: { linhas: LinhaRetencao[] }) {
               </tbody>
             </table>
           </div>
+          </>
         )}
       </Card>
     </div>
