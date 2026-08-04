@@ -49,7 +49,7 @@ export function ConversaPainel({
   onConversaRemovida,
 }: {
   conversa: ConversaResumo;
-  /** Login de quem atende — vira o "alex.rodriguus: " no começo de cada resposta. */
+  /** Login de quem atende — o primeiro nome vira o "alex: " no começo de cada resposta. */
   assinatura: string;
   podeResponder: boolean;
   /** Limpar/remover apagam trilha de atendimento — só ADMIN. */
@@ -72,9 +72,11 @@ export function ConversaPainel({
   const router = useRouter();
 
   // Assinatura no corpo da mensagem: quem recebe no WhatsApp vê quem atendeu.
-  // Focar a caixa vazia já deixa "login: " pronto, com o cursor na frente;
-  // sair sem escrever nada limpa, para o placeholder voltar.
-  const prefixo = `${assinatura}: `;
+  // Só o primeiro nome do login ("alex.rodriguus" vira "alex") — é assim que a
+  // recepção se apresenta. Focar a caixa vazia já deixa "alex: " pronto, com o
+  // cursor na frente; sair sem escrever nada limpa, para o placeholder voltar.
+  const primeiroNome = assinatura.split(".")[0] || assinatura;
+  const prefixo = `${primeiroNome}: `;
   const semAssinatura = texto.startsWith(prefixo) ? texto.slice(prefixo.length) : texto;
   const temConteudo = semAssinatura.trim().length > 0;
 
@@ -436,14 +438,10 @@ export function ConversaPainel({
                 onBlur={() => {
                   if (!temConteudo) setTexto("");
                 }}
-                onKeyDown={(e) => {
-                  if (e.key === "Enter" && !e.shiftKey) {
-                    e.preventDefault();
-                    void responder();
-                  }
-                }}
                 rows={3}
-                placeholder="Escreva a resposta… (Enter envia, Shift+Enter quebra linha)"
+                // Enter quebra linha: mensagem longa se escreve em parágrafos sem
+                // disparar meia resposta sem querer. Enviar é só pelo botão.
+                placeholder="Escreva a resposta… (Enter quebra linha; envie no botão)"
                 className={cn(inputCls, "flex-1 resize-none")}
               />
               <button

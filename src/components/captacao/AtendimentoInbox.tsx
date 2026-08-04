@@ -363,7 +363,16 @@ export function AtendimentoInbox({
                   </svg>
                 </button>
                 <span className={cn("h-2 w-2 shrink-0 rounded-full", PONTO[atual.interesse])} />
-                <span className="min-w-0 flex-1 truncate text-sm font-medium text-ink">{atual.nome}</span>
+                {/* Nome com a classificação embaixo: tocar numa bandeira dá o
+                    retorno na hora, sem precisar voltar para a lista. */}
+                <span className="min-w-0 flex-1">
+                  <span className="block truncate text-sm font-medium text-ink">{atual.nome}</span>
+                  {!atual.ehGrupo && (
+                    <span className="block truncate text-[11px] uppercase tracking-wide text-faint">
+                      {INTERESSE_LABEL[atual.interesse]}
+                    </span>
+                  )}
+                </span>
                 {atual.personId && (
                   <Link
                     href={`/matriculados/${atual.personId}`}
