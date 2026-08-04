@@ -104,7 +104,7 @@ export function AulasExperimentais({
                   </div>
                   <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-1.5">
                     <Badge>{a.modalidade}</Badge>
-                    {a.conversaId && <LinkConversa id={a.conversaId} />}
+                    <Acoes aula={a} hoje={hoje} />
                   </div>
                 </div>
               ))}
@@ -139,7 +139,7 @@ export function AulasExperimentais({
                       </td>
                       <td className="px-4 py-3 text-faint">{a.agendadoPor ?? "—"}</td>
                       <td className="px-4 py-3 text-right">
-                        {a.conversaId && <LinkConversa id={a.conversaId} />}
+                        <Acoes aula={a} hoje={hoje} />
                       </td>
                     </tr>
                   ))}
@@ -169,14 +169,33 @@ function QuandoEtiqueta({ aula, hoje }: { aula: AulaExperimentalItem; hoje: stri
   );
 }
 
-function LinkConversa({ id }: { id: string }) {
+/**
+ * "Não compareceu" abre a conversa da pessoa com o convite para remarcar já
+ * escrito na caixa de texto — quem lê e envia é a recepção, como em toda
+ * resposta do Coliseu. O botão só existe depois que o dia da aula chegou: até
+ * lá não há falta, só aula marcada.
+ */
+function Acoes({ aula, hoje }: { aula: AulaExperimentalItem; hoje: string }) {
+  // Sem conversa não há para onde levar (aula marcada por conversa apagada).
+  if (!aula.conversaId) return <span className="text-xs text-faint">sem conversa</span>;
+
   return (
-    <Link
-      href={`/atendimento?c=${id}`}
-      className="text-xs font-medium text-red-bright hover:underline"
-    >
-      Conversa →
-    </Link>
+    <span className="inline-flex items-center gap-3">
+      {aula.data <= hoje && (
+        <Link
+          href={`/atendimento?c=${aula.conversaId}&remarcar=${aula.data}`}
+          className="text-xs font-medium text-muted transition-colors hover:text-ink hover:underline"
+        >
+          Não compareceu
+        </Link>
+      )}
+      <Link
+        href={`/atendimento?c=${aula.conversaId}`}
+        className="text-xs font-medium text-red-bright hover:underline"
+      >
+        Conversa →
+      </Link>
+    </span>
   );
 }
 

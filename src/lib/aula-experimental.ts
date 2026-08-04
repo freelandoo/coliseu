@@ -87,6 +87,40 @@ export function formatarHora(hora: number): string {
   return `${hora}h`;
 }
 
+/** Véspera de uma data. Faz a conta em UTC para não escorregar no horário de verão. */
+export function diaAnterior(data: string): string {
+  const [ano, mes, dia] = data.split("-").map(Number);
+  const t = new Date(Date.UTC(ano, mes - 1, dia) - 86_400_000);
+  return dataISO(t.getUTCFullYear(), t.getUTCMonth() + 1, t.getUTCDate());
+}
+
+/**
+ * Como falar do dia da aula que passou: "ontem" e "hoje" soam como conversa;
+ * data cheia é o que sobra quando já faz tempo — dizer "ontem" numa aula de
+ * cinco dias atrás entrega que a mensagem é de formulário.
+ */
+export function comoFalarDoDia(data: string, hoje: string = hojeNaAcademia()): string {
+  if (data === hoje) return "para hoje";
+  if (data === diaAnterior(hoje)) return "para ontem";
+  return `para o dia ${formatarDiaMes(data)}`;
+}
+
+/**
+ * O convite para remarcar quem faltou. Não sai sozinho: cai na caixa de texto
+ * da conversa para a recepção ler, ajustar se quiser e enviar.
+ */
+export function mensagemRemarcarAula(data: string, hoje: string = hojeNaAcademia()): string {
+  return [
+    "Olá! Tudo bem?",
+    "",
+    `Percebemos que você tinha uma aula experimental agendada ${comoFalarDoDia(data, hoje)}, mas não conseguiu comparecer.`,
+    "",
+    "Gostaríamos de saber se você ainda tem interesse em conhecer a academia. Se sim, será um prazer remarcar sua aula experimental! É só nos informar o melhor dia e horário para você. 💪🙏",
+    "",
+    "Ficamos no aguardo. Até breve!",
+  ].join("\n");
+}
+
 /**
  * A confirmação que vai para o WhatsApp ao fechar o horário. Texto fixo de
  * propósito: é o comprovante do combinado, e sair sempre igual é o que faz a

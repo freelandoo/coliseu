@@ -44,12 +44,18 @@ function hora(iso: string) {
 export function ConversaPainel({
   conversa,
   assinatura,
+  textoInicial,
   podeResponder,
   podeApagar,
   onConversaAtualizada,
   onConversaRemovida,
 }: {
   conversa: ConversaResumo;
+  /**
+   * Mensagem que já chega escrita na caixa (o "Não compareceu" da Captação).
+   * Fica só na caixa: enviar continua sendo um clique de quem atende.
+   */
+  textoInicial?: string;
   /** Login de quem atende — o primeiro nome vira o "alex: " no começo de cada resposta. */
   assinatura: string;
   podeResponder: boolean;
@@ -58,8 +64,17 @@ export function ConversaPainel({
   onConversaAtualizada: (c: ConversaResumo) => void;
   onConversaRemovida: (id: string) => void;
 }) {
+  // Assinatura no corpo da mensagem: quem recebe no WhatsApp vê quem atendeu.
+  // Só o primeiro nome do login ("alex.rodriguus" vira "alex") — é assim que a
+  // recepção se apresenta. Focar a caixa vazia já deixa "alex: " pronto, com o
+  // cursor na frente; sair sem escrever nada limpa, para o placeholder voltar.
+  const primeiroNome = assinatura.split(".")[0] || assinatura;
+  const prefixo = `${primeiroNome}: `;
+
   const [mensagens, setMensagens] = useState<MensagemItem[]>([]);
-  const [texto, setTexto] = useState("");
+  // Texto que veio pronto da Captação já entra assinado, como se tivesse sido
+  // escolhido nas respostas prontas.
+  const [texto, setTexto] = useState(textoInicial ? prefixo + textoInicial : "");
   const [anexando, setAnexando] = useState(false);
   const [erro, setErro] = useState("");
   const [carregando, setCarregando] = useState(true);
@@ -78,12 +93,6 @@ export function ConversaPainel({
   const inputArquivo = useRef<HTMLInputElement>(null);
   const router = useRouter();
 
-  // Assinatura no corpo da mensagem: quem recebe no WhatsApp vê quem atendeu.
-  // Só o primeiro nome do login ("alex.rodriguus" vira "alex") — é assim que a
-  // recepção se apresenta. Focar a caixa vazia já deixa "alex: " pronto, com o
-  // cursor na frente; sair sem escrever nada limpa, para o placeholder voltar.
-  const primeiroNome = assinatura.split(".")[0] || assinatura;
-  const prefixo = `${primeiroNome}: `;
   const semAssinatura = texto.startsWith(prefixo) ? texto.slice(prefixo.length) : texto;
   const temConteudo = semAssinatura.trim().length > 0;
 

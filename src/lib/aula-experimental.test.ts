@@ -1,6 +1,8 @@
 import { describe, expect, test } from "vitest";
 import {
+  comoFalarDoDia,
   dataISO,
+  diaAnterior,
   ehDataISO,
   ehHora,
   ehModalidade,
@@ -9,6 +11,7 @@ import {
   hojeNaAcademia,
   HORAS,
   mensagemAulaExperimental,
+  mensagemRemarcarAula,
 } from "@/lib/aula-experimental";
 
 describe("data como texto", () => {
@@ -66,6 +69,30 @@ describe("validação do que vem do cliente", () => {
     expect(ehHora(23)).toBe(false);
     expect(ehHora(20.5)).toBe(false);
     expect(ehHora("21")).toBe(false);
+  });
+});
+
+describe("convite para remarcar quem faltou", () => {
+  test("volta um dia inclusive virando o mês e o ano", () => {
+    expect(diaAnterior("2026-08-04")).toBe("2026-08-03");
+    expect(diaAnterior("2026-08-01")).toBe("2026-07-31");
+    expect(diaAnterior("2026-01-01")).toBe("2025-12-31");
+    expect(diaAnterior("2028-03-01")).toBe("2028-02-29"); // bissexto
+  });
+
+  test("fala do dia como gente fala", () => {
+    const hoje = "2026-08-04";
+    expect(comoFalarDoDia("2026-08-04", hoje)).toBe("para hoje");
+    expect(comoFalarDoDia("2026-08-03", hoje)).toBe("para ontem");
+    // Aula de uma semana atrás não pode sair como "ontem".
+    expect(comoFalarDoDia("2026-07-28", hoje)).toBe("para o dia 28/07");
+  });
+
+  test("monta o convite com o dia certo", () => {
+    const texto = mensagemRemarcarAula("2026-08-03", "2026-08-04");
+    expect(texto).toContain("aula experimental agendada para ontem, mas não conseguiu comparecer");
+    expect(texto.startsWith("Olá! Tudo bem?")).toBe(true);
+    expect(texto.endsWith("Ficamos no aguardo. Até breve!")).toBe(true);
   });
 });
 

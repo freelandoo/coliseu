@@ -7,6 +7,7 @@ import { Card } from "@/components/ui/primitives";
 import { assinarMensagens } from "@/lib/whatsapp/stream-cliente";
 import { ConversaPainel } from "@/components/captacao/ConversaPainel";
 import { cn } from "@/lib/cn";
+import { ehDataISO, mensagemRemarcarAula } from "@/lib/aula-experimental";
 import { INTERESSE_LABEL, type ConversaInteresse, type ConversaResumo } from "@/lib/types";
 
 /** Rede de segurança: o SSE atualiza em tempo real; isto cobre um stream caído. */
@@ -99,7 +100,15 @@ export function AtendimentoInbox({
   cabecalho?: ReactNode;
 }) {
   // `?c=<id>` vem do link "Responder" da tabela de leads e do aviso de login.
-  const alvo = useSearchParams().get("c");
+  const params = useSearchParams();
+  const alvo = params.get("c");
+  // `?remarcar=<data da aula>` vem do "Não compareceu" da Captação: abre a
+  // conversa com o convite já escrito na caixa, para a recepção ler e enviar.
+  // A data viaja na URL (e não o texto inteiro) para a mensagem continuar
+  // morando num lugar só, e sair sempre com o dia certo.
+  const remarcar = params.get("remarcar");
+  const textoInicial =
+    remarcar && ehDataISO(remarcar) ? mensagemRemarcarAula(remarcar) : undefined;
   const [conversas, setConversas] = useState(inicial);
   const inicialSelecionada = alvo && inicial.some((c) => c.id === alvo) ? alvo : null;
   const [aba, setAba] = useState<Aba>(
@@ -388,6 +397,9 @@ export function AtendimentoInbox({
                 <ConversaPainel
                   key={atual.id}
                   conversa={atual}
+                  // Só a conversa que veio no link recebe o texto pronto —
+                  // trocar de conversa depois não arrasta o convite junto.
+                  textoInicial={atual.id === alvo ? textoInicial : undefined}
                   assinatura={assinatura}
                   podeResponder={podeResponder}
                   podeApagar={podeApagar}
