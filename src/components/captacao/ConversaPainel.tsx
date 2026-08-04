@@ -70,8 +70,14 @@ export function ConversaPainel({
   // parecer assinada por uma pessoa, e não um login de sistema vazando para o
   // cliente. Focar a caixa vazia já deixa "Alex: " pronto, com o cursor na
   // frente; sair sem escrever nada limpa, para o placeholder voltar.
+  //
+  // Os asteriscos são a marcação de negrito do WhatsApp: na caixa aparecem
+  // crus, mas quem recebe lê "Alex:" destacado do resto da mensagem. Negrito de
+  // verdade aqui dentro exigiria trocar o textarea por um contenteditable — e
+  // não é aqui que o destaque faz falta, é no celular do cliente.
   const primeiroNome = assinatura.split(".")[0] || assinatura;
-  const prefixo = `${primeiroNome.charAt(0).toUpperCase()}${primeiroNome.slice(1).toLowerCase()}: `;
+  const nomeExibido = `${primeiroNome.charAt(0).toUpperCase()}${primeiroNome.slice(1).toLowerCase()}`;
+  const prefixo = `*${nomeExibido}:* `;
 
   const [mensagens, setMensagens] = useState<MensagemItem[]>([]);
   // Texto que veio pronto da Captação já entra assinado, como se tivesse sido
