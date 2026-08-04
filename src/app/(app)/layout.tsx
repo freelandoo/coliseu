@@ -15,7 +15,7 @@ export default async function AppLayout({ children }: { children: ReactNode }) {
   if (user.senhaProvisoria) {
     return (
       <div className="flex min-h-dvh">
-        <main className="flex-1 px-5 pb-8 pt-20 sm:px-8 lg:px-12 lg:pt-8" />
+        <main className="flex-1 px-5 pb-[calc(2rem_+_var(--safe-b))] pt-[calc(5rem_+_var(--safe-t))] sm:px-8 lg:px-12 lg:pt-[calc(2rem_+_var(--safe-t))]" />
         <TrocaSenhaObrigatoria nome={user.nome} />
       </div>
     );
@@ -24,7 +24,7 @@ export default async function AppLayout({ children }: { children: ReactNode }) {
   return (
     <div className="flex min-h-dvh">
       <Sidebar papel={user.role as Papel} desenvolvedor={user.desenvolvedor} />
-      <main className="flex-1 px-5 pb-8 pt-20 sm:px-8 lg:px-12 lg:pt-8">
+      <main className="flex-1 px-5 pb-[calc(2rem_+_var(--safe-b))] pt-[calc(5rem_+_var(--safe-t))] sm:px-8 lg:px-12 lg:pt-[calc(2rem_+_var(--safe-t))]">
         <div className="mx-auto max-w-6xl">{children}</div>
       </main>
       {/* Sino: só para quem atende lead — técnico não recebe notificação. */}

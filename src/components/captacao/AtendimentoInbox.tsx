@@ -242,7 +242,9 @@ export function AtendimentoInbox({
       <div className="grid gap-4 lg:grid-cols-[300px_1fr]">
         <Card
           className={cn(
-            "h-[calc(100dvh-8rem)] flex-col overflow-hidden",
+            // 100dvh conta a área embaixo da barra de status e da de gestos;
+            // sem descontar os recuos, a lista passaria da tela no app instalado.
+            "h-[calc(100dvh_-_8rem_-_var(--safe-t)_-_var(--safe-b))] flex-col overflow-hidden",
             aberta ? "hidden lg:flex" : "flex",
           )}
         >
@@ -333,7 +335,7 @@ export function AtendimentoInbox({
             cabeçalho da página, ganha um pouco mais de altura que no desktop. */}
         <Card
           className={cn(
-            "h-[calc(100dvh-7rem)] overflow-hidden lg:h-[calc(100dvh-8rem)]",
+            "h-[calc(100dvh_-_7rem_-_var(--safe-t)_-_var(--safe-b))] overflow-hidden lg:h-[calc(100dvh_-_8rem_-_var(--safe-t)_-_var(--safe-b))]",
             aberta ? "block" : "hidden lg:block",
           )}
         >

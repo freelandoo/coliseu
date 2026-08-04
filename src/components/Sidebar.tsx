@@ -107,7 +107,7 @@ export function Sidebar({ papel, desenvolvedor = false }: { papel: Papel; desenv
         type="button"
         onClick={() => setAberto(true)}
         aria-label="Abrir menu"
-        className="fixed left-4 top-4 z-50 flex h-10 w-10 items-center justify-center rounded-lg border border-border bg-surface/90 text-ink backdrop-blur transition-colors hover:bg-surface-2 lg:hidden"
+        className="fixed left-4 top-[calc(1rem_+_var(--safe-t))] z-50 flex h-10 w-10 items-center justify-center rounded-lg border border-border bg-surface/90 text-ink backdrop-blur transition-colors hover:bg-surface-2 lg:hidden"
       >
         <svg width="18" height="18" viewBox="0 0 18 18" fill="none" aria-hidden>
           <path d="M2 4.5h14M2 9h14M2 13.5h14" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" />
@@ -126,6 +126,9 @@ export function Sidebar({ papel, desenvolvedor = false }: { papel: Papel; desenv
       <aside
         className={cn(
           "fixed inset-y-0 left-0 z-50 flex h-dvh w-64 shrink-0 flex-col border-r border-border bg-surface/95 backdrop-blur transition-transform duration-300",
+          // O drawer vai de ponta a ponta: o cabeçalho não pode nascer debaixo
+          // do relógio nem o rodapé sumir atrás da barra de gestos.
+          "pt-[var(--safe-t)] pb-[var(--safe-b)]",
           "lg:sticky lg:top-0 lg:z-auto lg:translate-x-0 lg:bg-surface/60",
           aberto ? "translate-x-0" : "-translate-x-full",
         )}

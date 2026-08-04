@@ -80,7 +80,7 @@ export function NotificationBell() {
         }}
         aria-label={total > 0 ? `Notificações (${total})` : "Notificações"}
         aria-expanded={aberto}
-        className="fixed right-4 top-4 z-30 flex h-10 w-10 items-center justify-center rounded-lg border border-border bg-surface/90 text-ink backdrop-blur transition-colors hover:bg-surface-2"
+        className="fixed right-4 top-[calc(1rem_+_var(--safe-t))] z-30 flex h-10 w-10 items-center justify-center rounded-lg border border-border bg-surface/90 text-ink backdrop-blur transition-colors hover:bg-surface-2"
       >
         <svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden>
           <path
@@ -101,7 +101,7 @@ export function NotificationBell() {
       {aberto && (
         <>
           <div onClick={() => setAberto(false)} aria-hidden className="fixed inset-0 z-30" />
-          <div className="fixed right-4 top-16 z-40 w-80 max-w-[calc(100vw-2rem)] rounded-xl border border-border bg-surface shadow-xl">
+          <div className="fixed right-4 top-[calc(4rem_+_var(--safe-t))] z-40 w-80 max-w-[calc(100vw-2rem)] rounded-xl border border-border bg-surface shadow-xl">
             <div className="border-b border-border px-4 py-3">
               <p className="font-display text-sm font-semibold uppercase tracking-wide text-ink">
                 {total === 0 ? "Notificações" : total === 1 ? "1 lead novo" : `${total} leads novos`}

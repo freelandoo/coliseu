@@ -42,6 +42,13 @@
 
 :root {
   color-scheme: dark;
+
+  /* Instalado na tela de início, o app desenha de ponta a ponta e a barra de
+     status (relógio, bateria) fica POR CIMA do conteúdo — Android 15+ e iOS com
+     `black-translucent`. Estes recuos afastam a barra fixa do topo e a de
+     gestos do rodapé; no navegador comum valem 0 e nada muda. */
+  --safe-t: env(safe-area-inset-top, 0px);
+  --safe-b: env(safe-area-inset-bottom, 0px);
 }
 
 html {

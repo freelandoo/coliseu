@@ -49,7 +49,9 @@ export function Modal({
   if (typeof document === "undefined") return null;
 
   return createPortal(
-    <div className="fixed inset-0 z-50 flex overflow-y-auto bg-black/70 p-4">
+    // Diálogo alto no celular encosta nas bordas: os recuos mantêm o topo
+    // longe do relógio e o rodapé longe da barra de gestos.
+    <div className="fixed inset-0 z-50 flex overflow-y-auto bg-black/70 px-4 pt-[calc(1rem_+_var(--safe-t))] pb-[calc(1rem_+_var(--safe-b))]">
       <div
         role="dialog"
         aria-modal="true"
