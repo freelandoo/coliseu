@@ -21,6 +21,8 @@ async function main() {
   await prisma.membership.deleteMany();
   await prisma.despesa.deleteMany();
   await prisma.session.deleteMany();
+  // Lixeira de conversas: as mensagens vão junto por cascade.
+  await prisma.conversaBackup.deleteMany();
   // Domínio de acesso (Fase 3): limpar antes de Person/Unit para não violar FK
   // (tabelas criadas por testes de integração ficam pendentes entre execuções).
   await prisma.deviceCommand.deleteMany();
@@ -46,19 +48,22 @@ async function main() {
   });
 
   const usuarios = [
-    { email: "admin@coliseu.local", nome: "Administrador", senha: "coliseu123", role: "ADMIN" as const },
-    { email: "alex.rodriguus@gmail.com", nome: "Alex Rodrigues", senha: "coliseu123", role: "ADMIN" as const },
+    // `desenvolvedor`: conta de manutenção — a única que abre /backup, a lixeira
+    // de conversas apagadas. Em produção ela nasce pelo `npm run db:dev-user`.
+    { email: "admin@coliseu.local", nome: "Administrador", senha: "coliseu123", role: "ADMIN" as const, desenvolvedor: true },
+    { email: "alex.rodriguus@gmail.com", nome: "Alex Rodrigues", senha: "coliseu123", role: "ADMIN" as const, desenvolvedor: false },
   ];
   for (const u of usuarios) {
     await prisma.user.upsert({
       where: { email: u.email },
-      update: {},
+      update: { desenvolvedor: u.desenvolvedor },
       create: {
         login: u.email.split("@")[0],
         email: u.email,
         nome: u.nome,
         passwordHash: await hash(u.senha),
         role: u.role,
+        desenvolvedor: u.desenvolvedor,
         unitId: unit.id,
       },
     });

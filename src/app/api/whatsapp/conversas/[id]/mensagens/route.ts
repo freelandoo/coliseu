@@ -51,14 +51,15 @@ export async function GET(req: Request, { params }: { params: Promise<{ id: stri
 
 /**
  * DELETE — limpa o histórico de mensagens, mantendo a conversa, o vínculo com o
- * lead e os registros de atendimento. Só ADMIN.
+ * lead e os registros de atendimento. Só ADMIN. O histórico vai para a lixeira
+ * antes de ser apagado.
  */
 export async function DELETE(_req: Request, { params }: { params: Promise<{ id: string }> }) {
   const g = await exigirAdminApi();
-  if (g.erro) return g.erro;
+  if (g.erro || !g.user) return g.erro;
 
   const { id } = await params;
-  const apagadas = await limparMensagensRepo(id);
+  const apagadas = await limparMensagensRepo(id, { id: g.user.id, nome: g.user.nome });
   return NextResponse.json({ ok: true, apagadas });
 }
 

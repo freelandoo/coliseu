@@ -43,13 +43,14 @@ export async function GET(_req: Request, ctx: { params: Promise<{ id: string }> 
 /**
  * DELETE — remove a conversa e todo o histórico dela. Só ADMIN: apaga registro
  * de atendimento, que é trilha de auditoria. O lead continua no funil.
+ * A conversa e as mensagens vão para a lixeira antes de sair daqui.
  */
 export async function DELETE(_req: Request, ctx: { params: Promise<{ id: string }> }) {
   const g = await exigirAdminApi();
-  if (g.erro) return g.erro;
+  if (g.erro || !g.user) return g.erro;
 
   const { id } = await ctx.params;
-  const removida = await removerConversaRepo(id);
+  const removida = await removerConversaRepo(id, { id: g.user.id, nome: g.user.nome });
   if (!removida) return NextResponse.json({ erro: "conversa não encontrada" }, { status: 404 });
 
   return NextResponse.json({ ok: true });

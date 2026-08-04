@@ -63,30 +63,33 @@ model Unit {
   people    Person[]
   plans     Plan[]
 
-  devices    AccessDevice[]
-  policies   AccessPolicy[]
+  devices  AccessDevice[]
+  policies AccessPolicy[]
 
   whatsappInstances WhatsappInstance[]
   conversas         Conversa[]
 }
 
 model User {
-  id           String   @id @default(cuid())
+  id              String     @id @default(cuid())
   /// Nome de acesso. O admin cria colaborador sem exigir e-mail.
-  login        String   @unique
-  email        String?  @unique
-  nome         String
-  passwordHash String
-  role         Role     @default(RECEPCAO)
+  login           String     @unique
+  email           String?    @unique
+  nome            String
+  passwordHash    String
+  role            Role       @default(RECEPCAO)
   /// Desativar em vez de apagar: preserva a trilha de quem fez o quê.
-  ativo        Boolean  @default(true)
+  ativo           Boolean    @default(true)
   /// Senha definida pelo admin — força a troca no primeiro acesso.
-  senhaProvisoria Boolean @default(false)
-  unit         Unit     @relation(fields: [unitId], references: [id])
-  unitId       String
-  createdAt    DateTime @default(now())
-  sessions     Session[]
-  apiTokens    ApiToken[]
+  senhaProvisoria Boolean    @default(false)
+  /// Conta de manutenção do sistema. Não é um papel: é um recorte à parte, e o
+  /// único que abre a lixeira de conversas (/backup). Nem ADMIN entra lá.
+  desenvolvedor   Boolean    @default(false)
+  unit            Unit       @relation(fields: [unitId], references: [id])
+  unitId          String
+  createdAt       DateTime   @default(now())
+  sessions        Session[]
+  apiTokens       ApiToken[]
 
   /// Colaborador que também é cadastro da academia (aluno virou recepcionista).
   person   Person? @relation(fields: [personId], references: [id], onDelete: SetNull)
@@ -95,7 +98,7 @@ model User {
   conversasAtendidas Conversa[]
   mensagensEnviadas  Mensagem[]
   atendimentos       AtendimentoRegistro[]
-  matriculasFeitas   Membership[] @relation("MatriculadoPor")
+  matriculasFeitas   Membership[]          @relation("MatriculadoPor")
   pushSubscriptions  PushSubscription[]
   respostasProntas   RespostaPronta[]
 }
@@ -139,42 +142,42 @@ model Person {
   estagio        LeadEstagio?
   motivoPerdido  String?
   dataNascimento String?
-  cep     String?
-  estado  String?
-  cidade  String?
-  rua     String?
-  numero  String?
-  criadoEm DateTime @default(now())
+  cep            String?
+  estado         String?
+  cidade         String?
+  rua            String?
+  numero         String?
+  criadoEm       DateTime     @default(now())
 
   unit   Unit   @relation(fields: [unitId], references: [id])
   unitId String
 
-  memberships Membership[]
-  cobrancas   Cobranca[]
+  memberships     Membership[]
+  cobrancas       Cobranca[]
   billingCustomer BillingCustomer?
 
-  credentials      AccessCredential[]
-  deviceMappings   DeviceUserMapping[]
-  accessEvents     AccessEvent[]
-  enrollments      EnrollmentSession[]
-  overrides        ManualAccessOverride[]
+  credentials    AccessCredential[]
+  deviceMappings DeviceUserMapping[]
+  accessEvents   AccessEvent[]
+  enrollments    EnrollmentSession[]
+  overrides      ManualAccessOverride[]
 
-  conversas        Conversa[]
-  usuario          User?
+  conversas Conversa[]
+  usuario   User?
 
   @@index([unitId, fase])
   @@index([nome])
 }
 
 model Plan {
-  id          String @id @default(cuid())
+  id          String  @id @default(cuid())
   nome        String
   valorMensal Float
   /// Vigência do contrato em dias — o balcão pensa em dias (30, 90, 365),
   /// e o vencimento sai de soma de dias, sem a ambiguidade de "mês".
   duracaoDias Int
-  ativo        Boolean @default(true)
-  descricao    String?
+  ativo       Boolean @default(true)
+  descricao   String?
 
   unit   Unit   @relation(fields: [unitId], references: [id])
   unitId String
@@ -219,7 +222,7 @@ model Cobranca {
   assinaturaId  String?
   linkPagamento String?
   metodo        String? // venda de balcão: dinheiro | pix | debito | credito
-  updatedAt     DateTime @default(now()) @updatedAt
+  updatedAt     DateTime       @default(now()) @updatedAt
 
   @@index([personId, status])
   @@index([asaasId])
@@ -280,15 +283,15 @@ model BillingCustomer {
 }
 
 model BillingSubscription {
-  id                   String          @id @default(cuid())
-  asaasSubscriptionId  String          @unique
-  externalReference    String?
-  customer             BillingCustomer @relation(fields: [customerId], references: [id], onDelete: Cascade)
-  customerId           String
-  cycle                String          @default("MONTHLY")
-  value                Float
-  status               String          @default("ACTIVE")
-  createdAt            DateTime         @default(now())
+  id                  String          @id @default(cuid())
+  asaasSubscriptionId String          @unique
+  externalReference   String?
+  customer            BillingCustomer @relation(fields: [customerId], references: [id], onDelete: Cascade)
+  customerId          String
+  cycle               String          @default("MONTHLY")
+  value               Float
+  status              String          @default("ACTIVE")
+  createdAt           DateTime        @default(now())
 
   payments Payment[]
 
@@ -383,7 +386,7 @@ model AccessCredential {
   personId   String
   type       CredentialType
   status     EnrollmentStatus @default(NOT_STARTED)
-  deviceRef  String?          // id no dispositivo (NUNCA template bruto)
+  deviceRef  String? // id no dispositivo (NUNCA template bruto)
   enrolledAt DateTime?
   revokedAt  DateTime?
   createdAt  DateTime         @default(now())
@@ -407,35 +410,35 @@ model DeviceUserMapping {
 }
 
 model AccessPolicy {
-  id              String   @id @default(cuid())
-  unit            Unit     @relation(fields: [unitId], references: [id])
-  unitId          String
-  plan            Plan?    @relation(fields: [planId], references: [id])
-  planId          String?
-  graceDays       Int      @default(5)
+  id               String   @id @default(cuid())
+  unit             Unit     @relation(fields: [unitId], references: [id])
+  unitId           String
+  plan             Plan?    @relation(fields: [planId], references: [id])
+  planId           String?
+  graceDays        Int      @default(5)
   maxEntriesPerDay Int?
-  timeZones       Json?    // janelas de horário (livre)
-  createdAt       DateTime @default(now())
+  timeZones        Json? // janelas de horário (livre)
+  createdAt        DateTime @default(now())
 
   @@index([unitId, planId])
 }
 
 model AccessEvent {
-  id               String   @id @default(cuid())
+  id               String       @id @default(cuid())
   device           AccessDevice @relation(fields: [deviceId], references: [id], onDelete: Cascade)
   deviceId         String
-  person           Person?  @relation(fields: [personId], references: [id], onDelete: SetNull)
+  person           Person?      @relation(fields: [personId], references: [id], onDelete: SetNull)
   personId         String?
   unitId           String
   deviceEventId    String?
   deviceTime       DateTime
-  serverTime       DateTime @default(now())
-  direction        String   @default("ENTRY")
+  serverTime       DateTime     @default(now())
+  direction        String       @default("ENTRY")
   credentialType   String?
-  decision         String   // ALLOWED | DENIED
+  decision         String // ALLOWED | DENIED
   reason           String?
-  physicallyPassed Boolean  @default(false)
-  mode             String   @default("ONLINE")
+  physicallyPassed Boolean      @default(false)
+  mode             String       @default("ONLINE")
   deviceCursor     String?
 
   @@unique([deviceId, deviceEventId])
@@ -448,7 +451,7 @@ model DeviceCommand {
   device       AccessDevice        @relation(fields: [deviceId], references: [id], onDelete: Cascade)
   deviceId     String
   personId     String?
-  type         String              // UPSERT_USER | ENABLE | DISABLE | REMOVE_USER | ENROLL | OPEN | SYNC_RULES | SHUTDOWN
+  type         String // UPSERT_USER | ENABLE | DISABLE | REMOVE_USER | ENROLL | OPEN | SYNC_RULES | SHUTDOWN
   payload      Json?
   status       DeviceCommandStatus @default(PENDING)
   attempts     Int                 @default(0)
@@ -488,21 +491,21 @@ model EnrollmentSession {
 }
 
 model ManualAccessOverride {
-  id             String        @id @default(cuid())
-  person         Person        @relation(fields: [personId], references: [id], onDelete: Cascade)
-  personId       String
-  action         OverrideAction
-  reason         String
-  expiresAt      DateTime?
+  id              String         @id @default(cuid())
+  person          Person         @relation(fields: [personId], references: [id], onDelete: Cascade)
+  personId        String
+  action          OverrideAction
+  reason          String
+  expiresAt       DateTime?
   createdByUserId String?
-  createdAt      DateTime      @default(now())
+  createdAt       DateTime       @default(now())
 
   @@index([personId, expiresAt])
 }
 
 model AuditLog {
   id        String   @id @default(cuid())
-  actorType String   // USER | AGENT | SYSTEM | WEBHOOK
+  actorType String // USER | AGENT | SYSTEM | WEBHOOK
   actorId   String?
   action    String
   entity    String
@@ -518,7 +521,7 @@ model AuditLog {
 model ApiToken {
   id          String    @id @default(cuid())
   provider    String    @unique // "freelandoo"
-  tokenHash   String    // sha256 hex do token em claro — nunca o token
+  tokenHash   String // sha256 hex do token em claro — nunca o token
   createdAt   DateTime  @default(now())
   createdBy   User      @relation(fields: [createdById], references: [id])
   createdById String
@@ -579,7 +582,7 @@ model Conversa {
   remoteJid  String
   telefone   String // só dígitos; vazio quando o JID não expõe o número (@lid) ou é grupo
   pushName   String? // pessoa: nome do perfil de quem escreve; grupo: assunto do grupo
-  ehGrupo    Boolean @default(false) // JID @g.us: conversa coletiva, não vira lead
+  ehGrupo    Boolean          @default(false) // JID @g.us: conversa coletiva, não vira lead
 
   person      Person? @relation(fields: [personId], references: [id], onDelete: SetNull)
   personId    String?
@@ -616,6 +619,72 @@ model Mensagem {
   erro        String?
 
   @@index([conversaId, enviadaEm])
+}
+
+/// O que motivou a cópia de segurança: "limpar" apagou só as mensagens e
+/// deixou a conversa na lista; "remover" apagou a conversa inteira.
+enum BackupMotivo {
+  limpar
+  remover
+}
+
+/// Lixeira do atendimento. Antes de apagar, "limpar" e "remover" copiam a
+/// conversa e todo o histórico para cá — de propósito **sem** chave estrangeira
+/// para Conversa/User/Person, senão a cópia morreria junto com o original.
+/// Só o usuário desenvolvedor enxerga e restaura o que está aqui.
+model ConversaBackup {
+  id          String  @id @default(cuid())
+  /// Id da conversa original — a restauração tenta recriá-la com o mesmo id.
+  conversaId  String
+  unitId      String
+  instanceId  String
+  remoteJid   String
+  telefone    String
+  pushName    String?
+  ehGrupo     Boolean @default(false)
+  personId    String?
+  atendenteId String?
+
+  interesse             ConversaInteresse @default(nao_classificado)
+  ultimaMensagemEm      DateTime
+  ultimaMensagemPreview String            @default("")
+  /// Quando a conversa original nasceu (não a data do backup).
+  conversaCriadaEm      DateTime
+
+  motivo          BackupMotivo
+  excluidoEm      DateTime     @default(now())
+  excluidoPorId   String?
+  /// Nome copiado no ato: o backup precisa dizer quem apagou mesmo depois de
+  /// o colaborador sair e a conta sumir.
+  excluidoPorNome String
+  restauradoEm    DateTime?
+
+  mensagens MensagemBackup[]
+
+  @@index([excluidoEm])
+  @@index([conversaId])
+}
+
+/// Mensagem copiada junto com a conversa. `waMessageId` aqui não é único: a
+/// mesma mensagem pode ser apagada, restaurada e apagada de novo.
+model MensagemBackup {
+  id       String         @id @default(cuid())
+  backup   ConversaBackup @relation(fields: [backupId], references: [id], onDelete: Cascade)
+  backupId String
+
+  /// Id da mensagem original — a restauração recria com ele quando está livre.
+  mensagemId  String
+  waMessageId String
+  direcao     MensagemDirecao
+  autor       MensagemAutor
+  autorUserId String?
+  remetente   String?
+  texto       String
+  tipoMidia   String          @default("texto")
+  enviadaEm   DateTime
+  erro        String?
+
+  @@index([backupId, enviadaEm])
 }
 
 /// Resposta pronta do atendimento: texto cadastrado uma vez e compartilhado

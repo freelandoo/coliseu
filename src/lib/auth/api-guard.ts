@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { usuarioAtual } from "@/lib/auth/session";
-import { podePapel, type Papel } from "@/lib/auth/rbac";
+import { podeBackup, podePapel, type Papel } from "@/lib/auth/rbac";
 
 /**
  * Guard de sessão para rotas /api. Uso:
@@ -22,6 +22,22 @@ export async function exigirAdminApi() {
   if (g.erro || !g.user) return g;
   if (!podePapel(g.user.role as Papel, ["ADMIN"])) {
     return { user: null as null, erro: NextResponse.json({ erro: "apenas ADMIN" }, { status: 403 }) };
+  }
+  return g;
+}
+
+/**
+ * Como exigirSessaoApi, mas exige a conta de manutenção — a lixeira de
+ * conversas é dela, e ser ADMIN não basta.
+ */
+export async function exigirDesenvolvedorApi() {
+  const g = await exigirSessaoApi();
+  if (g.erro || !g.user) return g;
+  if (!podeBackup(g.user)) {
+    return {
+      user: null as null,
+      erro: NextResponse.json({ erro: "acesso restrito ao desenvolvedor" }, { status: 403 }),
+    };
   }
   return g;
 }

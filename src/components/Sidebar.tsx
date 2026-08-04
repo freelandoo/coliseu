@@ -56,9 +56,24 @@ const IconAcesso = (
   </svg>
 );
 
+const IconBackup = (
+  <svg width="15" height="15" viewBox="0 0 15 15" fill="none" aria-hidden>
+    <path
+      d="M2.5 4.5h10l-.9 8.1a1 1 0 01-1 .9H4.4a1 1 0 01-1-.9L2.5 4.5z"
+      stroke="currentColor"
+      strokeWidth="1.3"
+      strokeLinejoin="round"
+    />
+    <path d="M1.5 4.5h12M6 2h3" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" />
+  </svg>
+);
+
 const NAV: {
   href: string;
-  modulo: Modulo;
+  /** Sem módulo = item fora do mapa de papéis (ver `dev`). */
+  modulo?: Modulo;
+  /** Só para a conta de manutenção — nem o ADMIN vê. */
+  dev?: boolean;
   step?: number;
   icon?: ReactNode;
   label: string;
@@ -72,13 +87,16 @@ const NAV: {
   { href: "/custos", modulo: "custos", icon: IconCustos, label: "Custos", hint: "Despesas e lucro" },
   { href: "/acesso", modulo: "acesso", icon: IconAcesso, label: "Acesso", hint: "Catracas e credenciais" },
   { href: "/relatorios", modulo: "relatorios", icon: IconBarras, label: "Relatórios", hint: "Indicadores do negócio" },
+  { href: "/backup", dev: true, icon: IconBackup, label: "Backup", hint: "Conversas excluídas e restauração" },
 ];
 
-export function Sidebar({ papel }: { papel: Papel }) {
+export function Sidebar({ papel, desenvolvedor = false }: { papel: Papel; desenvolvedor?: boolean }) {
   const pathname = usePathname();
   // O menu mostra só o que o papel abre — o guard de cada página é quem
   // realmente barra o acesso; aqui é para não oferecer porta fechada.
-  const itens = NAV.filter((item) => podeModulo(papel, item.modulo));
+  const itens = NAV.filter((item) =>
+    item.dev ? desenvolvedor : item.modulo !== undefined && podeModulo(papel, item.modulo),
+  );
   const [aberto, setAberto] = useState(false);
   // O drawer fecha ao clicar num link, no backdrop ou no X (mobile).
 

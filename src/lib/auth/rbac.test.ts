@@ -1,5 +1,5 @@
 import { expect, test } from "vitest";
-import { podeModulo, podePapel, rotaInicial } from "@/lib/auth/modulos";
+import { podeBackup, podeModulo, podePapel, rotaInicial } from "@/lib/auth/modulos";
 
 test("ADMIN pode tudo; RECEPCAO não é TECNICO", () => {
   expect(podePapel("ADMIN", ["ADMIN"])).toBe(true);
@@ -17,6 +17,13 @@ test("colaborador só abre matrícula, captação, atendimento e catraca", () =>
     expect(podeModulo("RECEPCAO", m)).toBe(false);
     expect(podeModulo("ADMIN", m)).toBe(true);
   }
+});
+
+test("a lixeira de conversas é só do desenvolvedor — nem ADMIN entra", () => {
+  expect(podeBackup({ desenvolvedor: true })).toBe(true);
+  expect(podeBackup({ desenvolvedor: false })).toBe(false);
+  expect(podeBackup({})).toBe(false);
+  expect(podeBackup(null)).toBe(false);
 });
 
 test("tela inicial segue o papel", () => {

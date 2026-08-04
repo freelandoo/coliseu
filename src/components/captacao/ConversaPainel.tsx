@@ -524,8 +524,8 @@ function ConfirmarExclusao({
       </p>
       <p className="mt-2 text-xs text-faint">
         {limpando
-          ? "Não dá para desfazer."
-          : "Não dá para desfazer. Se a pessoa escrever de novo, uma conversa nova aparece."}
+          ? "Não dá para desfazer por aqui — fica uma cópia no backup do sistema."
+          : "Não dá para desfazer por aqui — fica uma cópia no backup do sistema. Se a pessoa escrever de novo, uma conversa nova aparece."}
       </p>
       <div className="mt-5 flex gap-3">
         <button

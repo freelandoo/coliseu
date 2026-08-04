@@ -291,3 +291,22 @@ export interface RespostaProntaItem {
   autor: string | null; // nome de quem cadastrou; null quando o usuário saiu
   criadoEm: string; // ISO
 }
+
+/** O que apagou a conversa: "limpar" levou só as mensagens; "remover", tudo. */
+export type BackupMotivo = "limpar" | "remover";
+
+/** Linha da lixeira de conversas — só o desenvolvedor enxerga. */
+export interface ConversaBackupItem {
+  id: string;
+  conversaId: string;
+  nome: string; // mesmo rótulo da lista de atendimento, congelado no ato
+  telefone: string; // formatado; vazio em grupo
+  ehGrupo: boolean;
+  interesse: ConversaInteresse;
+  motivo: BackupMotivo;
+  excluidoEm: string; // ISO
+  excluidoPor: string;
+  restauradoEm: string | null; // preenchido = já voltou para o atendimento
+  mensagens: number;
+  preview: string;
+}

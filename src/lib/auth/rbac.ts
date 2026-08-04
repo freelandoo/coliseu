@@ -1,11 +1,12 @@
 import { redirect } from "next/navigation";
 import { usuarioAtual } from "@/lib/auth/session";
-import { podeModulo, podePapel, rotaInicial, type Modulo, type Papel } from "@/lib/auth/modulos";
+import { podeBackup, podeModulo, podePapel, rotaInicial, type Modulo, type Papel } from "@/lib/auth/modulos";
 
 // Reexporta o mapa de papéis/módulos para quem já importava tudo daqui.
 export {
   podePapel,
   podeModulo,
+  podeBackup,
   modulosDoPapel,
   rotaInicial,
   type Papel,
@@ -28,5 +29,12 @@ export async function requireRole(exigidos: Papel[]) {
 export async function requireModulo(modulo: Modulo) {
   const user = await requireUser();
   if (!podeModulo(user.role as Papel, modulo)) redirect(rotaInicial(user.role as Papel));
+  return user;
+}
+
+/** Guard da lixeira: só a conta de manutenção; nem o ADMIN passa. */
+export async function requireDesenvolvedor() {
+  const user = await requireUser();
+  if (!podeBackup(user)) redirect(rotaInicial(user.role as Papel));
   return user;
 }

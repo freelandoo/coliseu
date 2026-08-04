@@ -4,6 +4,7 @@ import { chaveTelefone, formatarTelefone, telefoneDoJid } from "@/lib/whatsapp/t
 import { publicarMensagem } from "@/lib/whatsapp/eventos";
 import { notificarMensagemRecebida } from "@/lib/push/notificar";
 import { proximoCodigoRepo } from "@/lib/repositories/pessoas";
+import { arquivarConversaRepo } from "@/lib/repositories/whatsapp-backup";
 import {
   INTERESSE_ESTAGIO,
   type AtendimentoItem,
@@ -12,6 +13,9 @@ import {
   type MensagemItem,
 } from "@/lib/types";
 import type { Prisma, WhatsappStatus } from "@prisma/client";
+
+/** Quem apagou — vai congelado na lixeira, para a trilha sobreviver à conta. */
+type Ator = { id: string; nome: string } | null;
 
 /** Violação de unique — usada para tratar reentrega do webhook como no-op. */
 function ehDuplicata(e: unknown): boolean {
@@ -365,25 +369,38 @@ export async function registrarMensagemRepo(input: {
 /**
  * Apaga só as mensagens, preservando a conversa, o vínculo com o lead e o
  * histórico de atendimento. Serve para limpar teste sem perder a classificação.
+ *
+ * Antes de apagar, o histórico vai inteiro para a lixeira (/backup) — cópia e
+ * exclusão na mesma transação, para nunca sobrar uma sem a outra.
  */
-export async function limparMensagensRepo(conversaId: string): Promise<number> {
-  const { count } = await prisma.mensagem.deleteMany({ where: { conversaId } });
-  await prisma.conversa.update({
-    where: { id: conversaId },
-    data: { ultimaMensagemPreview: "", naoLidas: 0 },
+export async function limparMensagensRepo(conversaId: string, ator: Ator = null): Promise<number> {
+  return prisma.$transaction(async (tx) => {
+    await arquivarConversaRepo(tx, { conversaId, motivo: "limpar", ator });
+    const { count } = await tx.mensagem.deleteMany({ where: { conversaId } });
+    await tx.conversa.update({
+      where: { id: conversaId },
+      data: { ultimaMensagemPreview: "", naoLidas: 0 },
+    });
+    return count;
   });
-  return count;
 }
 
 /**
  * Remove a conversa inteira (mensagens e registros de atendimento vão junto por
  * cascade). O lead **não** é apagado: ele é cadastro do CRM e continua no funil.
  * Se a pessoa escrever de novo, uma conversa nova nasce e revincula no mesmo lead.
+ *
+ * A conversa e o histórico ficam guardados na lixeira (/backup) — o registro de
+ * atendimento, não: ele é trilha de auditoria e some junto com a conversa.
  */
-export async function removerConversaRepo(conversaId: string): Promise<boolean> {
+export async function removerConversaRepo(conversaId: string, ator: Ator = null): Promise<boolean> {
   try {
-    await prisma.conversa.delete({ where: { id: conversaId } });
-    return true;
+    return await prisma.$transaction(async (tx) => {
+      const backupId = await arquivarConversaRepo(tx, { conversaId, motivo: "remover", ator });
+      if (!backupId) return false; // conversa já removida
+      await tx.conversa.delete({ where: { id: conversaId } });
+      return true;
+    });
   } catch {
     return false; // já removida
   }

@@ -16,8 +16,25 @@ App: Next.js 16 + Prisma 6 + Postgres. Alvo recomendado: **Railway** (app sempre
 | `npm run db:migrate:deploy` | Aplica as pendentes (idempotente, com lock) | ANTES de subir a versão nova do app |
 | `npm run build && npm start` | Build e boot de produção | Após o migrate |
 | `npm run db:seed` | **NUNCA em produção** (apaga e recria dados de demo) | só dev |
+| `npm run db:dev-user` | Garante a conta de manutenção (a única que abre `/backup`) | roda sozinho no preDeploy do Railway |
 
 Ordem de release: `db:migrate:status` → `db:migrate:deploy` → deploy do app → `db:migrate:status` de novo → smoke.
+
+### Conta de manutenção (`/backup`)
+
+`/backup` é a lixeira do atendimento: tudo que "limpar" e "remover" apagam fica
+guardado lá e pode ser restaurado. A tela é exclusiva da conta marcada como
+`desenvolvedor` no banco — **ser ADMIN não dá acesso**.
+
+O `preDeployCommand` roda `npm run db:dev-user` depois do migrate. Ele é
+idempotente e só cria a conta quando ela não existe (padrão `admin`/`admin123`;
+`DEV_USER_LOGIN` e `DEV_USER_SENHA` sobrescrevem). Se o login já existia, o
+script **não** mexe na senha — só libera o acesso ao backup. Para forçar a senha
+padrão numa conta existente: `npm run db:dev-user -- --redefinir-senha`.
+
+> Credencial conhecida numa URL pública é risco real. Em produção, defina
+> `DEV_USER_SENHA` (ou troque a senha pelo perfil no primeiro acesso) em vez de
+> deixar `admin123` de pé.
 
 ## Variáveis de ambiente (produção)
 

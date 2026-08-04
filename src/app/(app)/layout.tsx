@@ -23,7 +23,7 @@ export default async function AppLayout({ children }: { children: ReactNode }) {
 
   return (
     <div className="flex min-h-dvh">
-      <Sidebar papel={user.role as Papel} />
+      <Sidebar papel={user.role as Papel} desenvolvedor={user.desenvolvedor} />
       <main className="flex-1 px-5 pb-8 pt-20 sm:px-8 lg:px-12 lg:pt-8">
         <div className="mx-auto max-w-6xl">{children}</div>
       </main>

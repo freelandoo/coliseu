@@ -40,6 +40,15 @@ export function podeModulo(papel: Papel, modulo: Modulo): boolean {
   return modulosDoPapel(papel).includes(modulo);
 }
 
+/**
+ * A lixeira de conversas (/backup) é da manutenção do sistema, não do negócio:
+ * ela expõe conversa que o admin mandou apagar. Por isso não é um módulo de
+ * papel — é a flag `desenvolvedor` na conta, e ADMIN não passa por ela.
+ */
+export function podeBackup(user: { desenvolvedor?: boolean } | null | undefined): boolean {
+  return user?.desenvolvedor === true;
+}
+
 /** Para onde mandar o usuário depois do login (ou quando bate numa tela vedada). */
 export function rotaInicial(papel: Papel): string {
   return `/${modulosDoPapel(papel)[0] ?? "perfil"}`;
