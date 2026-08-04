@@ -80,14 +80,14 @@ export function CustosView({
             <button
               key={cat}
               onClick={() => setModalCategoria(cat)}
-              className="rounded-lg border border-border bg-surface px-4 py-2.5 text-sm font-medium text-ink transition-colors hover:border-red/40 hover:bg-surface-2"
+              className="rounded-lg border border-border bg-surface px-3 py-2 text-xs font-medium text-ink transition-colors hover:border-red/40 hover:bg-surface-2 sm:px-4 sm:py-2.5 sm:text-sm"
             >
               + {cat}
             </button>
           ))}
           <button
             onClick={() => setModalCategoria("")}
-            className="rounded-lg border border-dashed border-border-strong px-4 py-2.5 text-sm font-medium text-muted transition-colors hover:text-ink"
+            className="rounded-lg border border-dashed border-border-strong px-3 py-2 text-xs font-medium text-muted transition-colors hover:text-ink sm:px-4 sm:py-2.5 sm:text-sm"
           >
             + Outra despesa
           </button>
@@ -105,7 +105,44 @@ export function CustosView({
               Nenhuma despesa lançada ainda.
             </p>
           ) : (
-            <div className="overflow-x-auto">
+            <>
+            {/* mobile: cards empilhados, sem scroll horizontal */}
+            <div className="divide-y divide-border sm:hidden">
+              {despesas.map((d) => (
+                <div key={d.id} className="flex flex-col gap-1.5 px-4 py-3">
+                  <div className="flex items-start justify-between gap-2">
+                    <div className="min-w-0">
+                      <p className="text-sm font-medium text-ink">
+                        {d.categoria}
+                        {d.recorrente && (
+                          <span className="ml-2 text-[11px] uppercase tracking-wide text-warn">
+                            fixa
+                          </span>
+                        )}
+                      </p>
+                      {d.descricao && (
+                        <p className="text-xs text-muted">{d.descricao}</p>
+                      )}
+                      <p className="text-xs text-faint">{formatData(d.data)}</p>
+                    </div>
+                    <span className="shrink-0 text-sm font-semibold text-red-bright">
+                      {formatBRL(d.valor)}
+                    </span>
+                  </div>
+                  <div className="text-right">
+                    <button
+                      onClick={() => excluir(d.id)}
+                      className="text-xs font-medium text-faint transition-colors hover:text-red-bright"
+                    >
+                      Excluir
+                    </button>
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            {/* desktop: tabela */}
+            <div className="hidden overflow-x-auto sm:block">
               <table className="w-full min-w-[640px] border-collapse text-sm">
                 <thead>
                   <tr className="border-b border-border text-left">
@@ -148,6 +185,7 @@ export function CustosView({
                 </tbody>
               </table>
             </div>
+            </>
           )}
         </Card>
       </section>

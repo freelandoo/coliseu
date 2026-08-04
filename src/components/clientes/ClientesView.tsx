@@ -79,6 +79,27 @@ export function ClientesView({
     return c;
   }, [pessoas]);
 
+  // Botão de renovação/pagamento — compartilhado entre a tabela (desktop)
+  // e os cards (mobile). Pendente vira checkout de balcão: confirma o
+  // pagamento, ativa e libera a catraca.
+  function botaoRenovacao(p: Pessoa) {
+    const plano = p.planoId ? planoById.get(p.planoId) : undefined;
+    if (!plano) return null;
+    const pendente = p.status === "pendente";
+    return (
+      <button
+        onClick={(e) => {
+          e.stopPropagation();
+          if (pendente) setPagando(p);
+          else setRenovando(p);
+        }}
+        className="rounded-md border border-red/50 px-3 py-1.5 text-xs font-semibold uppercase tracking-wide text-red-bright transition-colors hover:bg-red-ghost"
+      >
+        {pendente ? "Confirmar pgto" : "Renovar"}
+      </button>
+    );
+  }
+
   const visiveis = useMemo(() => {
     const q = busca.trim().toLowerCase();
     const qd = soDigitos(busca);
@@ -106,7 +127,7 @@ export function ClientesView({
         <NovoCadastro planos={planos} />
       </div>
 
-      <div className="flex flex-wrap gap-2">
+      <div className="flex flex-wrap gap-1.5 sm:gap-2">
         {CHIPS.map((chip) => {
           const ativo = filtro === chip.key;
           return (
@@ -114,7 +135,7 @@ export function ClientesView({
               key={chip.key}
               onClick={() => setFiltro(chip.key)}
               className={cn(
-                "flex items-center gap-2 rounded-lg border px-3.5 py-2 text-sm font-medium transition-colors",
+                "flex items-center gap-1.5 rounded-lg border px-2.5 py-1.5 text-xs font-medium transition-colors sm:gap-2 sm:px-3.5 sm:py-2 sm:text-sm",
                 ativo
                   ? "border-red/60 bg-red-ghost text-ink"
                   : "border-border bg-surface text-muted hover:border-border-strong hover:text-ink",
@@ -123,7 +144,7 @@ export function ClientesView({
               <span className="uppercase tracking-wide">{chip.label}</span>
               <span
                 className={cn(
-                  "flex h-5 min-w-5 items-center justify-center rounded-md px-1 text-xs font-semibold",
+                  "flex h-4 min-w-4 items-center justify-center rounded-md px-1 text-[10px] font-semibold sm:h-5 sm:min-w-5 sm:text-xs",
                   ativo ? "bg-red text-white" : "bg-surface-2 text-faint",
                 )}
               >
@@ -140,7 +161,41 @@ export function ClientesView({
             Nenhuma pessoa nesta categoria.
           </p>
         ) : (
-          <div className="overflow-x-auto">
+          <>
+          {/* mobile: cards empilhados, sem scroll horizontal */}
+          <div className="divide-y divide-border sm:hidden">
+            {visiveis.map((p) => {
+              const s = situacaoDe(p);
+              return (
+                <div
+                  key={p.id}
+                  onClick={() => router.push(`/matriculados/${p.id}`)}
+                  className="flex cursor-pointer flex-col gap-2 px-4 py-3 transition-colors hover:bg-surface-2"
+                >
+                  <div className="flex items-start justify-between gap-2">
+                    <div className="min-w-0">
+                      <p className="truncate text-sm font-medium text-ink">{p.nome}</p>
+                      <p className="text-xs text-muted">
+                        {p.telefone || p.email || "—"}
+                        <span className="ml-2 font-mono text-faint">{p.codigo}</span>
+                      </p>
+                    </div>
+                    <Badge tone={s.tone}>{s.rotulo}</Badge>
+                  </div>
+                  <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-1.5">
+                    <Badge>{ORIGEM_LABEL[p.origem]}</Badge>
+                    <span className="flex items-center gap-3">
+                      {botaoRenovacao(p)}
+                      <RemoverPessoa id={p.id} nome={p.nome} />
+                    </span>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+
+          {/* desktop: tabela */}
+          <div className="hidden overflow-x-auto sm:block">
             <table className="w-full min-w-[720px] border-collapse text-sm">
               <thead>
                 <tr className="border-b border-border text-left">
@@ -156,7 +211,6 @@ export function ClientesView({
               <tbody>
                 {visiveis.map((p) => {
                   const s = situacaoDe(p);
-                  const plano = p.planoId ? planoById.get(p.planoId) : undefined;
                   return (
                     <tr
                       key={p.id}
@@ -174,31 +228,7 @@ export function ClientesView({
                       <td className="px-4 py-3">
                         <Badge tone={s.tone}>{s.rotulo}</Badge>
                       </td>
-                      <td className="px-4 py-3">
-                        {plano && (p.status === "pendente" ? (
-                          // Pagamento pendente: em vez de renovar, oferece o checkout de
-                          // balcão — confirma o pagamento, ativa e libera a catraca.
-                          <button
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              setPagando(p);
-                            }}
-                            className="rounded-md border border-red/50 px-3 py-1.5 text-xs font-semibold uppercase tracking-wide text-red-bright transition-colors hover:bg-red-ghost"
-                          >
-                            Confirmar pgto
-                          </button>
-                        ) : (
-                          <button
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              setRenovando(p);
-                            }}
-                            className="rounded-md border border-red/50 px-3 py-1.5 text-xs font-semibold uppercase tracking-wide text-red-bright transition-colors hover:bg-red-ghost"
-                          >
-                            Renovar
-                          </button>
-                        ))}
-                      </td>
+                      <td className="px-4 py-3">{botaoRenovacao(p)}</td>
                       <td className="px-4 py-3">
                         <RemoverPessoa id={p.id} nome={p.nome} />
                       </td>
@@ -208,6 +238,7 @@ export function ClientesView({
               </tbody>
             </table>
           </div>
+          </>
         )}
       </Card>
 

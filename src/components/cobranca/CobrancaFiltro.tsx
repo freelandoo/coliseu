@@ -58,7 +58,7 @@ export function CobrancaFiltro({ linhas }: { linhas: LinhaCobranca[] }) {
   return (
     <div className="flex flex-col gap-5">
       {/* filtros */}
-      <div className="flex flex-wrap gap-2">
+      <div className="flex flex-wrap gap-1.5 sm:gap-2">
         {CHIPS.map((chip) => {
           const ativo = filtro === chip.key;
           return (
@@ -66,7 +66,7 @@ export function CobrancaFiltro({ linhas }: { linhas: LinhaCobranca[] }) {
               key={chip.key}
               onClick={() => setFiltro(chip.key)}
               className={cn(
-                "flex items-center gap-2 rounded-lg border px-3.5 py-2 text-sm font-medium transition-colors",
+                "flex items-center gap-1.5 rounded-lg border px-2.5 py-1.5 text-xs font-medium transition-colors sm:gap-2 sm:px-3.5 sm:py-2 sm:text-sm",
                 ativo
                   ? "border-red/60 bg-red-ghost text-ink"
                   : "border-border bg-surface text-muted hover:border-border-strong hover:text-ink",
@@ -75,7 +75,7 @@ export function CobrancaFiltro({ linhas }: { linhas: LinhaCobranca[] }) {
               <span className="uppercase tracking-wide">{chip.label}</span>
               <span
                 className={cn(
-                  "flex h-5 min-w-5 items-center justify-center rounded-md px-1 text-xs font-semibold",
+                  "flex h-4 min-w-4 items-center justify-center rounded-md px-1 text-[10px] font-semibold sm:h-5 sm:min-w-5 sm:text-xs",
                   ativo ? "bg-red text-white" : "bg-surface-2 text-faint",
                 )}
               >
@@ -93,7 +93,40 @@ export function CobrancaFiltro({ linhas }: { linhas: LinhaCobranca[] }) {
             Nada nesta categoria.
           </p>
         ) : (
-          <div className="overflow-x-auto">
+          <>
+          {/* mobile: cards empilhados, sem scroll horizontal */}
+          <div className="divide-y divide-border sm:hidden">
+            {visiveis.map((l) => {
+              const s = situacao(l);
+              const fone = l.telefone.replace(/\D/g, "");
+              const acao =
+                l.categoria === "arenovar" ? "Oferecer renovação" : "Cobrar";
+              return (
+                <div key={l.id} className="flex flex-col gap-2 px-4 py-3">
+                  <div className="flex items-start justify-between gap-2">
+                    <div className="min-w-0">
+                      <p className="truncate text-sm font-medium text-ink">{l.nome}</p>
+                      <p className="text-xs text-muted">{l.detalhe}</p>
+                    </div>
+                    <Badge tone={s.tone}>{s.rotulo}</Badge>
+                  </div>
+                  <div className="text-right">
+                    <a
+                      href={`https://wa.me/55${fone}`}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="text-xs font-medium text-red-bright hover:underline"
+                    >
+                      {acao} →
+                    </a>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+
+          {/* desktop: tabela */}
+          <div className="hidden overflow-x-auto sm:block">
             <table className="w-full min-w-[720px] border-collapse text-sm">
               <thead>
                 <tr className="border-b border-border text-left">
@@ -135,6 +168,7 @@ export function CobrancaFiltro({ linhas }: { linhas: LinhaCobranca[] }) {
               </tbody>
             </table>
           </div>
+          </>
         )}
       </Card>
     </div>
