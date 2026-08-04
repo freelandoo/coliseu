@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { Modal } from "@/components/ui/Modal";
 import { Bandeira } from "@/components/ui/Bandeira";
 import { RespostasProntas } from "@/components/captacao/RespostasProntas";
+import { AulaExperimentalPainel } from "@/components/captacao/AulaExperimentalPainel";
 import { assinarMensagens } from "@/lib/whatsapp/stream-cliente";
 import { cn } from "@/lib/cn";
 import { ROTULO_MIDIA } from "@/lib/whatsapp/payload";
@@ -67,6 +68,12 @@ export function ConversaPainel({
   const [classificando, setClassificando] = useState(false);
   // Gaveta de respostas prontas, em cima da caixa de texto.
   const [mostrandoRespostas, setMostrandoRespostas] = useState(false);
+  // Gaveta de aula experimental — mesma região, uma de cada vez: duas abertas
+  // empurrariam a caixa de texto para fora da tela no celular. O contador vira
+  // `key` do painel: cada abertura monta um agendamento novo, sem sobra do
+  // anterior.
+  const [mostrandoAula, setMostrandoAula] = useState(false);
+  const [aberturasAula, setAberturasAula] = useState(0);
   const fim = useRef<HTMLDivElement>(null);
   const inputArquivo = useRef<HTMLInputElement>(null);
   const router = useRouter();
@@ -320,6 +327,7 @@ export function ConversaPainel({
               <button
                 onClick={() => {
                   setMostrandoRespostas((a) => !a);
+                  setMostrandoAula(false);
                   setClassificando(false);
                 }}
                 aria-expanded={mostrandoRespostas}
@@ -391,6 +399,40 @@ export function ConversaPainel({
             setMostrandoRespostas(false);
           }}
         />
+      )}
+
+      {/* Marcar aula experimental é conversa de grupo nenhuma: é um compromisso
+          com uma pessoa. */}
+      {podeResponder && !conversa.ehGrupo && (
+        <>
+          <AulaExperimentalPainel
+            key={aberturasAula}
+            aberto={mostrandoAula}
+            conversaId={conversa.id}
+            onAgendada={(_aula, msgs) => {
+              setMensagens(msgs);
+              setMostrandoAula(false);
+            }}
+          />
+          <button
+            onClick={() => {
+              const abrindo = !mostrandoAula;
+              setMostrandoAula(abrindo);
+              if (abrindo) setAberturasAula((n) => n + 1);
+              setMostrandoRespostas(false);
+            }}
+            aria-expanded={mostrandoAula}
+            className="flex shrink-0 items-center gap-1.5 border-t border-border px-4 py-1.5 text-[11px] font-medium text-faint transition-colors hover:text-ink"
+          >
+            <span
+              aria-hidden
+              className={cn("text-[9px] transition-transform", mostrandoAula && "rotate-180")}
+            >
+              ▼
+            </span>
+            aula experimental
+          </button>
+        </>
       )}
 
       <div className="border-t border-border px-4 py-3">

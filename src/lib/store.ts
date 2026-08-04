@@ -14,9 +14,10 @@ import {
   listarDespesasRepo, criarDespesaRepo, removerDespesaRepo, totalDespesasRepo,
 } from "@/lib/repositories/despesas";
 import { mapaConversaPorPessoaRepo } from "@/lib/repositories/whatsapp";
+import { listarAulasExperimentaisRepo } from "@/lib/repositories/aulas-experimentais";
 import {
   LEAD_ESTAGIO_LABEL, ORIGEM_LABEL,
-  type Aluno, type Candidato, type Cobranca, type Despesa, type Lead,
+  type Aluno, type AulaExperimentalItem, type Candidato, type Cobranca, type Despesa, type Lead,
   type LeadEstagio, type NovaDespesa, type NovaPessoa, type NovoPlano, type Pessoa, type Plano,
 } from "@/lib/types";
 import type { AsaasMatricula } from "@/lib/asaas";
@@ -51,6 +52,10 @@ export const listarDespesas = (): Promise<Despesa[]> => listarDespesasRepo();
 export const criarDespesa = (input: NovaDespesa): Promise<Despesa> => criarDespesaRepo(input);
 export const removerDespesa = (id: string): Promise<boolean> => removerDespesaRepo(id);
 export const totalDespesas = (): Promise<number> => totalDespesasRepo();
+
+/* ---------- aulas experimentais ---------- */
+export const listarAulasExperimentais = (): Promise<AulaExperimentalItem[]> =>
+  listarAulasExperimentaisRepo();
 
 /* ---------- derivados ---------- */
 export async function listarAlunos(): Promise<Aluno[]> {

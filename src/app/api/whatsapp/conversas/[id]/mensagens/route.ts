@@ -3,18 +3,21 @@ import { NextResponse } from "next/server";
 import { exigirAdminApi, exigirSessaoApi } from "@/lib/auth/api-guard";
 import { podePapel, type Papel } from "@/lib/auth/rbac";
 import {
-  assumirConversaRepo,
-  dadosEnvioConversaRepo,
   limparMensagensRepo,
   listarMensagensRepo,
   registrarMensagemRepo,
 } from "@/lib/repositories/whatsapp";
-import { configEvolution, enviarMidia, enviarTexto, EvolutionError } from "@/lib/whatsapp/evolution";
+import { enviarMidia, EvolutionError } from "@/lib/whatsapp/evolution";
+import {
+  contextoEnvio,
+  ehFalhaEnvio,
+  enviarTextoNaConversa,
+  LIMITE_TEXTO,
+} from "@/lib/whatsapp/responder";
 import { ROTULO_MIDIA } from "@/lib/whatsapp/payload";
 
 export const dynamic = "force-dynamic";
 
-const LIMITE_TEXTO = 4096; // limite prático de uma mensagem de texto do WhatsApp
 const LIMITE_MIDIA = 16 * 1024 * 1024; // 16 MB — teto prático de anexo do WhatsApp
 
 /** Só imagem e PDF: o que a recepção precisa mandar, e o que a bolha sabe exibir. */
@@ -76,30 +79,11 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
 
   const { id } = await params;
 
-  const cfg = configEvolution();
-  if (!cfg) return NextResponse.json({ erro: "WhatsApp não configurado." }, { status: 503 });
+  // Config, conexão e destino — vale para texto e anexo.
+  const ctx = await contextoEnvio(id, g.user.id);
+  if (ehFalhaEnvio(ctx)) return NextResponse.json({ erro: ctx.erro }, { status: ctx.status });
 
-  const conversa = await dadosEnvioConversaRepo(id);
-  if (!conversa) return NextResponse.json({ erro: "conversa não encontrada" }, { status: 404 });
-  if (conversa.instance.status !== "CONNECTED") {
-    return NextResponse.json({ erro: "WhatsApp desconectado. Conecte antes de responder." }, { status: 409 });
-  }
-  // Grupo se endereça pelo JID; pessoa, pelo telefone.
-  const destino = conversa.ehGrupo ? conversa.remoteJid : conversa.telefone;
-  if (!destino) {
-    return NextResponse.json(
-      { erro: "Esta conversa não expõe o número; responda pelo aparelho." },
-      { status: 409 },
-    );
-  }
-
-  const instancia = conversa.instance.evolutionInstance;
   const ehMidia = (req.headers.get("content-type") ?? "").includes("multipart/form-data");
-
-  // Quem responde primeiro assume o atendimento — vale para texto e anexo.
-  async function assumir() {
-    if (!conversa!.atendenteId) await assumirConversaRepo(id, g.user!.id).catch(() => undefined);
-  }
 
   if (ehMidia) {
     const form = await req.formData().catch(() => null);
@@ -120,9 +104,9 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
     const base64 = Buffer.from(await arquivo.arrayBuffer()).toString("base64");
     const fileName = arquivo.name || (info.mediatype === "image" ? "imagem" : "arquivo");
 
-    await assumir();
+    await ctx.assumir();
     try {
-      const waId = await enviarMidia(cfg, instancia, destino, {
+      const waId = await enviarMidia(ctx.cfg, ctx.instancia, ctx.destino, {
         mediatype: info.mediatype,
         mimetype: arquivo.type,
         base64,
@@ -164,36 +148,15 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
     return NextResponse.json({ erro: "Mensagem longa demais." }, { status: 400 });
   }
 
-  await assumir();
-  try {
-    const waId = await enviarTexto(cfg, instancia, destino, texto);
-    // Sem id do WhatsApp não há como deduplicar o eco do webhook; o prefixo
-    // "local:" deixa isso explícito no banco.
-    await registrarMensagemRepo({
-      conversaId: id,
-      waMessageId: waId ?? `local:${randomUUID()}`,
-      direcao: "OUT",
-      autor: "ATENDENTE",
-      autorUserId: g.user.id,
-      texto,
-    });
-    return NextResponse.json({ mensagens: await listarMensagensRepo(id) });
-  } catch (e) {
-    // Guarda a bolha marcada como falha em vez de perder o texto digitado.
-    await registrarMensagemRepo({
-      conversaId: id,
-      waMessageId: `local:${randomUUID()}`,
-      direcao: "OUT",
-      autor: "ATENDENTE",
-      autorUserId: g.user.id,
-      texto,
-      erro: e instanceof Error ? e.message.slice(0, 200) : "falha no envio",
-    }).catch(() => undefined);
+  // A bolha com o erro já fica guardada lá dentro — o texto digitado não se
+  // perde quando o envio falha.
+  const falha = await enviarTextoNaConversa({
+    conversaId: id,
+    texto,
+    userId: g.user.id,
+    contexto: ctx,
+  });
+  if (falha) return NextResponse.json({ erro: falha.erro }, { status: falha.status });
 
-    if (e instanceof EvolutionError) {
-      return NextResponse.json({ erro: e.message }, { status: e.status });
-    }
-    console.error("[whatsapp] falha ao enviar", e);
-    return NextResponse.json({ erro: "Falha ao enviar a mensagem." }, { status: 502 });
-  }
+  return NextResponse.json({ mensagens: await listarMensagensRepo(id) });
 }

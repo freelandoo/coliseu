@@ -66,8 +66,9 @@ model Unit {
   devices  AccessDevice[]
   policies AccessPolicy[]
 
-  whatsappInstances WhatsappInstance[]
-  conversas         Conversa[]
+  whatsappInstances  WhatsappInstance[]
+  conversas          Conversa[]
+  aulasExperimentais AulaExperimental[]
 }
 
 model User {
@@ -101,6 +102,7 @@ model User {
   matriculasFeitas   Membership[]          @relation("MatriculadoPor")
   pushSubscriptions  PushSubscription[]
   respostasProntas   RespostaPronta[]
+  aulasAgendadas     AulaExperimental[]
 }
 
 /// Inscrição de Web Push do PWA: cada linha é um navegador/aparelho que aceitou
@@ -164,6 +166,8 @@ model Person {
 
   conversas Conversa[]
   usuario   User?
+
+  aulasExperimentais AulaExperimental[]
 
   @@index([unitId, fase])
   @@index([nome])
@@ -595,8 +599,9 @@ model Conversa {
   ultimaMensagemPreview String            @default("")
   criadoEm              DateTime          @default(now())
 
-  mensagens    Mensagem[]
-  atendimentos AtendimentoRegistro[]
+  mensagens          Mensagem[]
+  atendimentos       AtendimentoRegistro[]
+  aulasExperimentais AulaExperimental[]
 
   @@unique([instanceId, remoteJid])
   @@index([unitId, ultimaMensagemEm])
@@ -715,4 +720,41 @@ model AtendimentoRegistro {
   criadoEm   DateTime          @default(now())
 
   @@index([conversaId, criadoEm])
+}
+
+/// Aula experimental marcada pela recepção durante a conversa. É o compromisso
+/// combinado, não um evento de agenda: guarda a data como "AAAA-MM-DD" e a hora
+/// como inteiro, na hora do relógio da academia. Guardar `DateTime` obrigaria
+/// todo mundo (servidor em UTC, celular da recepção em São Paulo) a concordar
+/// sobre fuso para responder "quem tem aula hoje?" — com data em texto, a
+/// pergunta é uma comparação de string e nunca vira aula no dia errado.
+model AulaExperimental {
+  id     String @id @default(cuid())
+  unit   Unit   @relation(fields: [unitId], references: [id])
+  unitId String
+
+  /// Conversa e cadastro são vínculos frouxos de propósito: apagar a conversa
+  /// (ou o lead) não apaga o compromisso já combinado com a pessoa.
+  conversa   Conversa? @relation(fields: [conversaId], references: [id], onDelete: SetNull)
+  conversaId String?
+  person     Person?   @relation(fields: [personId], references: [id], onDelete: SetNull)
+  personId   String?
+
+  /// Cópia do nome e do telefone no momento do agendamento — a lista continua
+  /// legível mesmo se o cadastro sumir.
+  nome     String
+  telefone String
+
+  modalidade String
+  /// "AAAA-MM-DD" no relógio da academia; ordena por ordem alfabética.
+  data       String
+  /// Hora cheia, 6 a 22.
+  hora       Int
+
+  agendadoPor   User?    @relation(fields: [agendadoPorId], references: [id], onDelete: SetNull)
+  agendadoPorId String?
+  criadoEm      DateTime @default(now())
+
+  @@index([unitId, data])
+  @@index([conversaId])
 }

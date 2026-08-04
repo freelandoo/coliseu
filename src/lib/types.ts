@@ -310,3 +310,21 @@ export interface ConversaBackupItem {
   mensagens: number;
   preview: string;
 }
+
+/**
+ * Aula experimental agendada na conversa — uma linha da aba da Captação.
+ * `data` é "AAAA-MM-DD" e `hora` é hora cheia, no relógio da academia
+ * (ver `@/lib/aula-experimental`).
+ */
+export interface AulaExperimentalItem {
+  id: string;
+  nome: string;
+  telefone: string; // formatado
+  modalidade: string;
+  data: string;
+  hora: number;
+  conversaId: string | null; // permite voltar para a conversa
+  personId: string | null;
+  agendadoPor: string | null; // null quando o colaborador saiu
+  criadoEm: string; // ISO
+}
