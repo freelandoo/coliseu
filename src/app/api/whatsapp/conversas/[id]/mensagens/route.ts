@@ -7,7 +7,7 @@ import {
   listarMensagensRepo,
   registrarMensagemRepo,
 } from "@/lib/repositories/whatsapp";
-import { enviarMidia, EvolutionError } from "@/lib/whatsapp/evolution";
+import { enviarAudio, enviarMidia, EvolutionError } from "@/lib/whatsapp/evolution";
 import {
   contextoEnvio,
   ehFalhaEnvio,
@@ -20,13 +20,22 @@ export const dynamic = "force-dynamic";
 
 const LIMITE_MIDIA = 16 * 1024 * 1024; // 16 MB — teto prático de anexo do WhatsApp
 
-/** Só imagem e PDF: o que a recepção precisa mandar, e o que a bolha sabe exibir. */
-function classificarUpload(
-  mime: string,
-): { mediatype: "image" | "document"; tipoMidia: "imagem" | "documento" } | null {
+/**
+ * Imagem, PDF e áudio: o que a recepção precisa mandar, e o que a bolha sabe
+ * exibir. Áudio sai por outro endpoint da Evolution (mensagem de voz, não
+ * arquivo anexado), por isso é uma categoria à parte e não um `mediatype`.
+ */
+type Upload =
+  | { voz: false; mediatype: "image" | "document"; tipoMidia: "imagem" | "documento" }
+  | { voz: true; tipoMidia: "audio" };
+
+function classificarUpload(mime: string): Upload | null {
   const m = mime.toLowerCase();
-  if (m.startsWith("image/")) return { mediatype: "image", tipoMidia: "imagem" };
-  if (m === "application/pdf") return { mediatype: "document", tipoMidia: "documento" };
+  if (m.startsWith("image/")) return { voz: false, mediatype: "image", tipoMidia: "imagem" };
+  if (m === "application/pdf") return { voz: false, mediatype: "document", tipoMidia: "documento" };
+  // O gravador manda webm/opus, ogg/opus ou mp4/aac, conforme o navegador; o
+  // `;codecs=…` vem junto no mime, então compara-se o prefixo.
+  if (m.startsWith("audio/")) return { voz: true, tipoMidia: "audio" };
   return null;
 }
 
@@ -93,26 +102,35 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
     }
     const info = classificarUpload(arquivo.type);
     if (!info) {
-      return NextResponse.json({ erro: "Tipo não suportado. Envie imagem ou PDF." }, { status: 415 });
+      return NextResponse.json(
+        { erro: "Tipo não suportado. Envie imagem, PDF ou áudio." },
+        { status: 415 },
+      );
     }
     if (arquivo.size > LIMITE_MIDIA) {
       return NextResponse.json({ erro: "Arquivo grande demais (máx. 16 MB)." }, { status: 413 });
     }
 
-    const legenda = String(form?.get("texto") ?? "").trim().slice(0, LIMITE_TEXTO);
+    // Mensagem de voz não leva legenda: o WhatsApp não a mostra, e o que fosse
+    // digitado sumiria sem aviso. O texto na caixa fica lá, para ser enviado à
+    // parte.
+    const legenda = info.voz
+      ? ""
+      : String(form?.get("texto") ?? "").trim().slice(0, LIMITE_TEXTO);
     const rotulo = legenda || ROTULO_MIDIA[info.tipoMidia];
     const base64 = Buffer.from(await arquivo.arrayBuffer()).toString("base64");
-    const fileName = arquivo.name || (info.mediatype === "image" ? "imagem" : "arquivo");
 
     await ctx.assumir();
     try {
-      const waId = await enviarMidia(ctx.cfg, ctx.instancia, ctx.destino, {
-        mediatype: info.mediatype,
-        mimetype: arquivo.type,
-        base64,
-        fileName,
-        caption: legenda || undefined,
-      });
+      const waId = info.voz
+        ? await enviarAudio(ctx.cfg, ctx.instancia, ctx.destino, base64)
+        : await enviarMidia(ctx.cfg, ctx.instancia, ctx.destino, {
+            mediatype: info.mediatype,
+            mimetype: arquivo.type,
+            base64,
+            fileName: arquivo.name || (info.mediatype === "image" ? "imagem" : "arquivo"),
+            caption: legenda || undefined,
+          });
       await registrarMensagemRepo({
         conversaId: id,
         waMessageId: waId ?? `local:${randomUUID()}`,
@@ -137,7 +155,10 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
 
       if (e instanceof EvolutionError) return NextResponse.json({ erro: e.message }, { status: e.status });
       console.error("[whatsapp] falha ao enviar anexo", e);
-      return NextResponse.json({ erro: "Falha ao enviar o anexo." }, { status: 502 });
+      return NextResponse.json(
+        { erro: info.voz ? "Falha ao enviar o áudio." : "Falha ao enviar o anexo." },
+        { status: 502 },
+      );
     }
   }
 

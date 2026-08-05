@@ -24,7 +24,7 @@ export type Modulo =
 /**
  * Colaborador cuida do balcão: matrícula, captação e a catraca (biometria no
  * ato da matrícula). Painel, dinheiro e relatórios ficam com o admin.
- * A ordem importa: o primeiro módulo da lista é a tela inicial do papel.
+ * A ordem é a do menu — a tela inicial é decidida por `rotaInicial`.
  */
 const MODULOS_POR_PAPEL: Record<Papel, Modulo[]> = {
   ADMIN: ["painel", "matriculados", "captacao", "atendimento", "cobranca", "custos", "acesso", "relatorios"],
@@ -49,7 +49,19 @@ export function podeBackup(user: { desenvolvedor?: boolean } | null | undefined)
   return user?.desenvolvedor === true;
 }
 
-/** Para onde mandar o usuário depois do login (ou quando bate numa tela vedada). */
+/**
+ * Para onde mandar o usuário depois do login (ou quando bate numa tela vedada).
+ *
+ * Atendimento na frente porque é a tela que não pode esperar: mensagem de lead
+ * chega o dia inteiro e quem abre o sistema abre para responder. Painel e
+ * matriculados continuam a um toque no menu — quem vai até eles vai de
+ * propósito, quem precisa do atendimento precisa já.
+ *
+ * Quem não tem o módulo (o técnico só enxerga a catraca) cai no primeiro da sua
+ * lista: mandar todo mundo para /atendimento faria o guard de módulo devolver
+ * essa gente para cá em looping.
+ */
 export function rotaInicial(papel: Papel): string {
+  if (podeModulo(papel, "atendimento")) return "/atendimento";
   return `/${modulosDoPapel(papel)[0] ?? "perfil"}`;
 }

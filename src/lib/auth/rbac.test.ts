@@ -26,8 +26,9 @@ test("a lixeira de conversas é só do desenvolvedor — nem ADMIN entra", () =>
   expect(podeBackup(null)).toBe(false);
 });
 
-test("tela inicial segue o papel", () => {
-  expect(rotaInicial("ADMIN")).toBe("/painel");
-  expect(rotaInicial("RECEPCAO")).toBe("/matriculados");
+test("quem atende cai no Atendimento; quem não atende, na sua própria tela", () => {
+  expect(rotaInicial("ADMIN")).toBe("/atendimento");
+  expect(rotaInicial("RECEPCAO")).toBe("/atendimento");
+  // Técnico não tem o módulo: mandá-lo para lá seria um looping de redirect.
   expect(rotaInicial("TECNICO")).toBe("/acesso");
 });

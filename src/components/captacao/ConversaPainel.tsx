@@ -6,6 +6,7 @@ import { Modal } from "@/components/ui/Modal";
 import { Bandeira } from "@/components/ui/Bandeira";
 import { RespostasProntas } from "@/components/captacao/RespostasProntas";
 import { AulaExperimentalPainel } from "@/components/captacao/AulaExperimentalPainel";
+import { GravadorAudio } from "@/components/captacao/GravadorAudio";
 import { assinarMensagens } from "@/lib/whatsapp/stream-cliente";
 import { deveEnviarNoEnter, dicaComposer } from "@/lib/whatsapp/atalho-envio";
 import { cn } from "@/lib/cn";
@@ -92,6 +93,8 @@ export function ConversaPainel({
   // escolhido nas respostas prontas.
   const [texto, setTexto] = useState(textoInicial ? prefixo + textoInicial : "");
   const [anexando, setAnexando] = useState(false);
+  // Gravando, a linha do composer é toda do gravador (ver o bloco lá embaixo).
+  const [gravando, setGravando] = useState(false);
   const [erro, setErro] = useState("");
   const [carregando, setCarregando] = useState(true);
   const [confirmando, setConfirmando] = useState<"limpar" | "remover" | null>(null);
@@ -232,18 +235,20 @@ export function ConversaPainel({
     }
   }
 
-  /** Anexa imagem ou PDF: manda direto ao escolher, com o texto digitado de legenda. */
-  async function enviarArquivo(e: ChangeEvent<HTMLInputElement>) {
-    const arquivo = e.target.files?.[0];
-    e.target.value = ""; // permite reescolher o mesmo arquivo depois
-    if (!arquivo || anexando) return;
+  /**
+   * Sobe o binário e troca a conversa pela versão do servidor. Serve ao anexo
+   * (imagem/PDF, com o texto digitado de legenda) e ao áudio gravado — que vai
+   * sem legenda, porque mensagem de voz do WhatsApp não tem onde mostrá-la.
+   */
+  async function enviarBinario(arquivo: File, { comLegenda }: { comLegenda: boolean }) {
+    if (anexando) return;
     setAnexando(true);
     setErro("");
     try {
       const form = new FormData();
       form.append("arquivo", arquivo);
       // Só assinatura não é legenda — o anexo vai limpo.
-      if (temConteudo) form.append("texto", texto.trim());
+      if (comLegenda && temConteudo) form.append("texto", texto.trim());
       const r = await fetch(`/api/whatsapp/conversas/${conversa.id}/mensagens`, {
         method: "POST",
         body: form,
@@ -251,15 +256,23 @@ export function ConversaPainel({
       const d = await r.json().catch(() => ({}));
       if (r.ok) {
         setMensagens(d.mensagens ?? []);
-        setTexto("");
+        // O texto só se apaga quando foi junto: áudio não leva a caixa embora.
+        if (comLegenda) setTexto("");
       } else {
-        setErro(d?.erro ?? "Não foi possível enviar o anexo.");
+        setErro(d?.erro ?? "Não foi possível enviar.");
       }
     } catch {
       setErro("Falha de conexão.");
     } finally {
       setAnexando(false);
     }
+  }
+
+  async function enviarArquivo(e: ChangeEvent<HTMLInputElement>) {
+    const arquivo = e.target.files?.[0];
+    e.target.value = ""; // permite reescolher o mesmo arquivo depois
+    if (!arquivo) return;
+    await enviarBinario(arquivo, { comLegenda: true });
   }
 
   async function limpar() {
@@ -471,31 +484,45 @@ export function ConversaPainel({
                 onChange={(e) => void enviarArquivo(e)}
                 className="hidden"
               />
-              <button
-                type="button"
-                onClick={() => inputArquivo.current?.click()}
-                disabled={anexando}
-                title="Anexar imagem ou PDF"
-                aria-label="Anexar imagem ou PDF"
-                className={cn(
-                  "shrink-0 self-end rounded-lg border border-border p-2.5 text-muted transition-colors hover:text-ink",
-                  anexando && "cursor-not-allowed opacity-50",
-                )}
-              >
-                <svg
-                  viewBox="0 0 24 24"
-                  width="18"
-                  height="18"
-                  fill="none"
-                  stroke="currentColor"
-                  strokeWidth="2"
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  aria-hidden
+              {/* Gravando, a linha inteira é do gravador: anexo, caixa e enviar
+                  sairiam sobrando, e no celular não caberiam ao lado do
+                  contador. */}
+              {!gravando && (
+                <button
+                  type="button"
+                  onClick={() => inputArquivo.current?.click()}
+                  disabled={anexando}
+                  title="Anexar imagem ou PDF"
+                  aria-label="Anexar imagem ou PDF"
+                  className={cn(
+                    "shrink-0 self-end rounded-lg border border-border p-2.5 text-muted transition-colors hover:text-ink",
+                    anexando && "cursor-not-allowed opacity-50",
+                  )}
                 >
-                  <path d="M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48" />
-                </svg>
-              </button>
+                  <svg
+                    viewBox="0 0 24 24"
+                    width="18"
+                    height="18"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="2"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    aria-hidden
+                  >
+                    <path d="M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48" />
+                  </svg>
+                </button>
+              )}
+
+              <GravadorAudio
+                desabilitado={anexando}
+                onEstado={setGravando}
+                onGravado={(audio) => void enviarBinario(audio, { comLegenda: false })}
+                onErro={setErro}
+              />
+
+              {!gravando && (
               <textarea
                 value={texto}
                 onChange={(e) => setTexto(e.target.value)}
@@ -530,35 +557,38 @@ export function ConversaPainel({
                 placeholder={dicaComposer(enterEnvia)}
                 className={cn(inputCls, "flex-1 resize-none")}
               />
-              <button
-                onClick={() => void responder()}
-                disabled={anexando || !temConteudo}
-                title="Enviar"
-                aria-label="Enviar"
-                className={cn(
-                  "shrink-0 self-end rounded-lg p-2.5 transition-colors",
-                  anexando || !temConteudo
-                    ? "cursor-not-allowed bg-surface-2 text-faint"
-                    : "bg-red text-white hover:bg-red-bright",
-                )}
-              >
-                <svg
-                  viewBox="0 0 24 24"
-                  width="18"
-                  height="18"
-                  fill="none"
-                  stroke="currentColor"
-                  strokeWidth="2"
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  aria-hidden
+              )}
+              {!gravando && (
+                <button
+                  onClick={() => void responder()}
+                  disabled={anexando || !temConteudo}
+                  title="Enviar"
+                  aria-label="Enviar"
+                  className={cn(
+                    "shrink-0 self-end rounded-lg p-2.5 transition-colors",
+                    anexando || !temConteudo
+                      ? "cursor-not-allowed bg-surface-2 text-faint"
+                      : "bg-red text-white hover:bg-red-bright",
+                  )}
                 >
-                  <path d="M22 2L11 13" />
-                  <path d="M22 2l-7 20-4-9-9-4 22-7z" />
-                </svg>
-              </button>
+                  <svg
+                    viewBox="0 0 24 24"
+                    width="18"
+                    height="18"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="2"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    aria-hidden
+                  >
+                    <path d="M22 2L11 13" />
+                    <path d="M22 2l-7 20-4-9-9-4 22-7z" />
+                  </svg>
+                </button>
+              )}
             </div>
-            {anexando && <p className="mt-2 text-xs text-faint">Enviando anexo…</p>}
+            {anexando && <p className="mt-2 text-xs text-faint">Enviando…</p>}
             {erro && <p className="mt-2 text-xs text-red-bright">{erro}</p>}
           </>
         ) : (

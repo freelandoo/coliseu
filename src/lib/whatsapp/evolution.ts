@@ -308,6 +308,37 @@ function extrairChaveId(data: Record<string, unknown>): string | null {
   return chave?.id ?? null;
 }
 
+/**
+ * Envia áudio como mensagem de voz (o "PTT" do WhatsApp: bolha com onda e
+ * play, não um arquivo anexado).
+ *
+ * Endpoint próprio, e não o `sendMedia`: só o `sendWhatsAppAudio` marca a
+ * mensagem como voz e converte o que gravamos para o ogg/opus que o WhatsApp
+ * espera. O navegador entrega webm/opus (Chrome, Android) ou mp4/aac (Safari) —
+ * a conversão fica com a Evolution, que já tem ffmpeg; tentar padronizar isso
+ * no celular da recepção seria empurrar transcodificação para dentro do
+ * atendimento.
+ */
+export async function enviarAudio(
+  cfg: ConfigEvolution,
+  nome: string,
+  destino: string,
+  base64: string,
+): Promise<string | null> {
+  const numero = destinoParaNumero(destino);
+  if (!base64) throw new EvolutionError("Áudio vazio.", 400);
+
+  const data = garantirOk(
+    await chamar(
+      cfg,
+      "POST",
+      `/message/sendWhatsAppAudio/${encodeURIComponent(validarNomeInstancia(nome))}`,
+      { number: numero, audio: base64 },
+    ),
+  );
+  return extrairChaveId(data);
+}
+
 export interface MidiaEnvio {
   /** Categoria que a Evolution espera no sendMedia. */
   mediatype: "image" | "video" | "document";
