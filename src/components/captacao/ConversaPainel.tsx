@@ -7,6 +7,7 @@ import { Bandeira } from "@/components/ui/Bandeira";
 import { RespostasProntas } from "@/components/captacao/RespostasProntas";
 import { AulaExperimentalPainel } from "@/components/captacao/AulaExperimentalPainel";
 import { assinarMensagens } from "@/lib/whatsapp/stream-cliente";
+import { deveEnviarNoEnter, dicaComposer } from "@/lib/whatsapp/atalho-envio";
 import { cn } from "@/lib/cn";
 import { ROTULO_MIDIA } from "@/lib/whatsapp/payload";
 import {
@@ -44,6 +45,7 @@ function hora(iso: string) {
 export function ConversaPainel({
   conversa,
   assinatura,
+  enterEnvia,
   textoInicial,
   podeResponder,
   podeApagar,
@@ -58,6 +60,12 @@ export function ConversaPainel({
   textoInicial?: string;
   /** Login de quem atende — o primeiro nome vira o "alex: " no começo de cada resposta. */
   assinatura: string;
+  /**
+   * Preferência de teclado da conta (Perfil → Preferências): Enter envia a
+   * resposta, ou quebra linha. Chega como prop porque quem sabe quem está
+   * logado é a página, no servidor — a caixa só obedece.
+   */
+  enterEnvia: boolean;
   podeResponder: boolean;
   /** Limpar/remover apagam trilha de atendimento — só ADMIN. */
   podeApagar: boolean;
@@ -497,10 +505,29 @@ export function ConversaPainel({
                 onBlur={() => {
                   if (!temConteudo) setTexto("");
                 }}
+                // O que o Enter faz é escolha de quem atende, guardada na conta:
+                // uns escrevem em parágrafos e não querem disparar meia resposta,
+                // outros vêm do WhatsApp Web e esperam Enter enviando. As regras
+                // (e o atalho que sobra para o outro uso) moram em `atalho-envio`.
+                onKeyDown={(e) => {
+                  const enviar = deveEnviarNoEnter(
+                    {
+                      key: e.key,
+                      shiftKey: e.shiftKey,
+                      ctrlKey: e.ctrlKey,
+                      metaKey: e.metaKey,
+                      isComposing: e.nativeEvent.isComposing,
+                    },
+                    enterEnvia,
+                  );
+                  if (!enviar) return;
+                  // Segura a quebra de linha mesmo com a caixa vazia ou com anexo
+                  // em voo: senão o Enter que não enviou deixaria uma linha solta.
+                  e.preventDefault();
+                  if (!anexando && temConteudo) void responder();
+                }}
                 rows={3}
-                // Enter quebra linha: mensagem longa se escreve em parágrafos sem
-                // disparar meia resposta sem querer. Enviar é só pelo botão.
-                placeholder="Escreva a resposta… (Enter quebra linha; envie no botão)"
+                placeholder={dicaComposer(enterEnvia)}
                 className={cn(inputCls, "flex-1 resize-none")}
               />
               <button

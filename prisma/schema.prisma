@@ -86,6 +86,13 @@ model User {
   /// Conta de manutenção do sistema. Não é um papel: é um recorte à parte, e o
   /// único que abre a lixeira de conversas (/backup). Nem ADMIN entra lá.
   desenvolvedor   Boolean    @default(false)
+  /// Teclado de quem atende: Enter envia a resposta do WhatsApp, ou quebra
+  /// linha. Fica na conta e não no navegador porque o balcão é compartilhado —
+  /// a preferência tem de viajar com quem loga, não com a máquina. Padrão
+  /// `false`: quebrar linha é o comportamento antigo, e o erro dele (mensagem
+  /// parada na caixa) custa menos que o do outro lado (meia resposta no
+  /// celular do cliente).
+  enterEnvia      Boolean    @default(false)
   unit            Unit       @relation(fields: [unitId], references: [id])
   unitId          String
   createdAt       DateTime   @default(now())

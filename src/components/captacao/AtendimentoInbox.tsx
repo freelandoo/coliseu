@@ -94,6 +94,7 @@ function AbaBotao({
 export function AtendimentoInbox({
   inicial,
   assinatura,
+  enterEnvia,
   conectado,
   podeResponder,
   podeApagar,
@@ -102,6 +103,8 @@ export function AtendimentoInbox({
   inicial: ConversaResumo[];
   /** Login de quem está atendendo — assina as respostas na conversa. */
   assinatura: string;
+  /** Preferência da conta: Enter envia a resposta ou quebra linha. */
+  enterEnvia: boolean;
   conectado: boolean;
   podeResponder: boolean;
   podeApagar: boolean;
@@ -507,6 +510,7 @@ export function AtendimentoInbox({
                   // trocar de conversa depois não arrasta o convite junto.
                   textoInicial={atual.id === alvo ? textoInicial : undefined}
                   assinatura={assinatura}
+                  enterEnvia={enterEnvia}
                   podeResponder={podeResponder}
                   podeApagar={podeApagar}
                   onConversaAtualizada={atualizarConversa}

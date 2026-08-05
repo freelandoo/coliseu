@@ -18,6 +18,8 @@ export default async function AtendimentoPage() {
       <AtendimentoInbox
         inicial={conversas}
         assinatura={user.login}
+        // Preferência de teclado da conta (Perfil → Preferências), não da máquina.
+        enterEnvia={user.enterEnvia}
         conectado={whatsapp.status === "CONNECTED"}
         podeResponder={user.role === "ADMIN" || user.role === "RECEPCAO"}
         podeApagar={user.role === "ADMIN"}
