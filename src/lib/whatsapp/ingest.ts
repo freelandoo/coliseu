@@ -9,6 +9,7 @@
 
 import {
   atualizarStatusInstanciaRepo,
+  citacaoPorWaIdRepo,
   garantirConversaRepo,
   instanciaAtualRepo,
   registrarMensagemRepo,
@@ -100,6 +101,17 @@ export async function processarEventoWhatsapp(evento: EventoWebhook): Promise<Re
       ehGrupo: grupo,
     });
 
+    // Respondeu citando: preferimos a nossa própria cópia da original (sabe
+    // quem escreveu) e caímos na prévia que o WhatsApp mandou quando a citada é
+    // anterior ao que o Coliseu guarda.
+    const citada = msg.citacao
+      ? ((await citacaoPorWaIdRepo(conversa.id, msg.citacao.waId)) ?? {
+          waId: msg.citacao.waId,
+          texto: msg.citacao.texto,
+          autor: null,
+        })
+      : null;
+
     // fromMe = respondido pelo celular do dono: entra no histórico como saída
     // sem autor de sistema, para a recepção ver a conversa inteira.
     const novo = await registrarMensagemRepo({
@@ -111,6 +123,7 @@ export async function processarEventoWhatsapp(evento: EventoWebhook): Promise<Re
       texto: msg.texto,
       tipoMidia: msg.tipoMidia,
       enviadaEm: msg.enviadaEm,
+      citada,
     });
 
     if (novo) gravadas++;

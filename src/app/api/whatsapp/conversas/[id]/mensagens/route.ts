@@ -3,6 +3,7 @@ import { NextResponse } from "next/server";
 import { exigirAdminApi, exigirSessaoApi } from "@/lib/auth/api-guard";
 import { podePapel, type Papel } from "@/lib/auth/rbac";
 import {
+  citacaoPorIdRepo,
   limparMensagensRepo,
   listarMensagensRepo,
   registrarMensagemRepo,
@@ -14,6 +15,7 @@ import {
   enviarTextoNaConversa,
   LIMITE_TEXTO,
 } from "@/lib/whatsapp/responder";
+import { assinar } from "@/lib/whatsapp/assinatura";
 import { ROTULO_MIDIA } from "@/lib/whatsapp/payload";
 
 export const dynamic = "force-dynamic";
@@ -75,12 +77,20 @@ export async function DELETE(_req: Request, { params }: { params: Promise<{ id: 
   return NextResponse.json({ ok: true, apagadas });
 }
 
+/** Erro de citação que a recepção entende — a original sumiu, ou nunca foi ao WhatsApp. */
+const ERRO_CITACAO = "A mensagem citada não está mais disponível. Envie sem citar.";
+
 /**
  * POST — resposta manual da recepção. Único caminho de envio da aplicação:
  * exige sessão, e portanto um clique humano.
  *
- * Aceita texto (JSON `{ texto }`) ou anexo (`multipart/form-data` com o campo
- * `arquivo` e um `texto` opcional de legenda) — imagem ou PDF.
+ * Aceita texto (JSON `{ texto, citarId? }`) ou anexo (`multipart/form-data` com
+ * o campo `arquivo`, um `texto` opcional de legenda e um `citarId` opcional) —
+ * imagem ou PDF.
+ *
+ * A assinatura de quem atende é colada aqui, e não na caixa de texto: ninguém
+ * apaga a própria assinatura, e o que sai é sempre o que a recepção escreveu
+ * mais o nome dela na frente (ver `@/lib/whatsapp/assinatura`).
  */
 export async function POST(req: Request, { params }: { params: Promise<{ id: string }> }) {
   const g = await guarda();
@@ -116,21 +126,32 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
     // parte.
     const legenda = info.voz
       ? ""
-      : String(form?.get("texto") ?? "").trim().slice(0, LIMITE_TEXTO);
+      : assinar(String(form?.get("texto") ?? ""), g.user.login).slice(0, LIMITE_TEXTO);
     const rotulo = legenda || ROTULO_MIDIA[info.tipoMidia];
     const base64 = Buffer.from(await arquivo.arrayBuffer()).toString("base64");
 
+    const citarId = String(form?.get("citarId") ?? "").trim();
+    const citada = citarId ? await citacaoPorIdRepo(id, citarId) : null;
+    if (citarId && !citada) return NextResponse.json({ erro: ERRO_CITACAO }, { status: 409 });
+
     await ctx.assumir();
     try {
+      const quoted = citada && { waId: citada.waId, texto: citada.texto };
       const waId = info.voz
-        ? await enviarAudio(ctx.cfg, ctx.instancia, ctx.destino, base64)
-        : await enviarMidia(ctx.cfg, ctx.instancia, ctx.destino, {
-            mediatype: info.mediatype,
-            mimetype: arquivo.type,
-            base64,
-            fileName: arquivo.name || (info.mediatype === "image" ? "imagem" : "arquivo"),
-            caption: legenda || undefined,
-          });
+        ? await enviarAudio(ctx.cfg, ctx.instancia, ctx.destino, base64, quoted)
+        : await enviarMidia(
+            ctx.cfg,
+            ctx.instancia,
+            ctx.destino,
+            {
+              mediatype: info.mediatype,
+              mimetype: arquivo.type,
+              base64,
+              fileName: arquivo.name || (info.mediatype === "image" ? "imagem" : "arquivo"),
+              caption: legenda || undefined,
+            },
+            quoted,
+          );
       await registrarMensagemRepo({
         conversaId: id,
         waMessageId: waId ?? `local:${randomUUID()}`,
@@ -139,6 +160,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
         autorUserId: g.user.id,
         texto: rotulo,
         tipoMidia: info.tipoMidia,
+        citada,
       });
       return NextResponse.json({ mensagens: await listarMensagensRepo(id) });
     } catch (e) {
@@ -150,6 +172,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
         autorUserId: g.user.id,
         texto: rotulo,
         tipoMidia: info.tipoMidia,
+        citada,
         erro: e instanceof Error ? e.message.slice(0, 200) : "falha no envio",
       }).catch(() => undefined);
 
@@ -162,12 +185,18 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
     }
   }
 
-  const body = (await req.json().catch(() => ({}))) as { texto?: string };
-  const texto = String(body.texto ?? "").trim();
-  if (!texto) return NextResponse.json({ erro: "Mensagem vazia." }, { status: 400 });
+  const body = (await req.json().catch(() => ({}))) as { texto?: string; citarId?: string };
+  if (!String(body.texto ?? "").trim()) {
+    return NextResponse.json({ erro: "Mensagem vazia." }, { status: 400 });
+  }
+  const texto = assinar(String(body.texto), g.user.login);
   if (texto.length > LIMITE_TEXTO) {
     return NextResponse.json({ erro: "Mensagem longa demais." }, { status: 400 });
   }
+
+  const citarId = String(body.citarId ?? "").trim();
+  const citada = citarId ? await citacaoPorIdRepo(id, citarId) : null;
+  if (citarId && !citada) return NextResponse.json({ erro: ERRO_CITACAO }, { status: 409 });
 
   // A bolha com o erro já fica guardada lá dentro — o texto digitado não se
   // perde quando o envio falha.
@@ -176,6 +205,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
     texto,
     userId: g.user.id,
     contexto: ctx,
+    citada,
   });
   if (falha) return NextResponse.json({ erro: falha.erro }, { status: falha.status });
 

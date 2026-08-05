@@ -270,6 +270,19 @@ export interface ConversaBuscaItem extends ConversaResumo {
   trecho: string;
 }
 
+/**
+ * A mensagem que uma resposta cita — o "responder" do WhatsApp.
+ *
+ * `texto` e `autor` são a cópia guardada no envio: a citação continua legível
+ * mesmo depois de a original sair da conversa. `id` é a mensagem original aqui
+ * dentro, e só existe enquanto ela existir — é o que permite pular até ela.
+ */
+export interface CitacaoItem {
+  id: string | null;
+  texto: string;
+  autor: string | null;
+}
+
 export interface MensagemItem {
   id: string;
   direcao: "IN" | "OUT";
@@ -280,6 +293,14 @@ export interface MensagemItem {
   tipoMidia: string;
   enviadaEm: string; // ISO
   erro: string | null;
+  /**
+   * Dá para citar? Falso quando o WhatsApp nunca registrou a mensagem (envio
+   * que falhou, ou que saiu sem eco): citar uma dessas mandaria uma resposta
+   * apontando para o nada no celular do cliente.
+   */
+  citavel: boolean;
+  /** A mensagem que esta responde; null quando não é resposta a nada. */
+  citada: CitacaoItem | null;
 }
 
 export interface AtendimentoItem {

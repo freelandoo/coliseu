@@ -178,6 +178,66 @@ test("mídia recebida fica localizável para busca sob demanda", async () => {
   });
 });
 
+test("resposta citando aponta para a mensagem original do histórico", async () => {
+  await processarEventoWhatsapp(evento({ id: "MSG-CIT-1", texto: "Que horas você abre?" }));
+  await processarEventoWhatsapp({
+    event: "messages.upsert",
+    instance: INSTANCIA,
+    data: {
+      key: { id: "MSG-CIT-2", remoteJid: JID, fromMe: false },
+      pushName: "Cliente Teste",
+      messageTimestamp: Math.floor(Date.now() / 1000),
+      message: {
+        extendedTextMessage: {
+          text: "É essa dúvida mesmo",
+          contextInfo: {
+            stanzaId: "MSG-CIT-1",
+            quotedMessage: { conversation: "Que horas você abre?" },
+          },
+        },
+      },
+    },
+  });
+
+  const conversa = await prisma.conversa.findFirst({ where: { remoteJid: JID } });
+  const mensagens = await listarMensagensRepo(conversa!.id);
+  const original = mensagens.find((m) => m.texto === "Que horas você abre?");
+  const resposta = mensagens.at(-1);
+
+  // A citação aponta para a mensagem que está na tela — é o que permite pular
+  // até ela — e sabe dizer quem a escreveu.
+  expect(resposta?.citada).toMatchObject({
+    id: original!.id,
+    texto: "Que horas você abre?",
+    autor: "Cliente Teste",
+  });
+});
+
+test("citação de mensagem que o Coliseu não viu guarda o trecho, sem pulo", async () => {
+  await processarEventoWhatsapp({
+    event: "messages.upsert",
+    instance: INSTANCIA,
+    data: {
+      key: { id: "MSG-CIT-3", remoteJid: JID, fromMe: false },
+      pushName: "Cliente Teste",
+      messageTimestamp: Math.floor(Date.now() / 1000),
+      message: {
+        extendedTextMessage: {
+          text: "Sobre isso aqui",
+          contextInfo: {
+            stanzaId: "MSG-DE-ANTES-DO-COLISEU",
+            quotedMessage: { conversation: "Conversa antiga" },
+          },
+        },
+      },
+    },
+  });
+
+  const conversa = await prisma.conversa.findFirst({ where: { remoteJid: JID } });
+  const [mensagem] = await listarMensagensRepo(conversa!.id);
+  expect(mensagem.citada).toEqual({ id: null, texto: "Conversa antiga", autor: null });
+});
+
 test("texto não tem mídia para buscar", async () => {
   await processarEventoWhatsapp(evento({ id: "MSG-TEXTO" }));
   const conversa = await prisma.conversa.findFirst({ where: { remoteJid: JID } });

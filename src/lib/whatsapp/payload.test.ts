@@ -74,6 +74,64 @@ describe("lerMensagem", () => {
     expect(lerMensagem(null)).toBeNull();
   });
 
+  test("resposta citando traz a original: id e trecho", () => {
+    const m = lerMensagem({
+      ...BASE,
+      message: {
+        extendedTextMessage: {
+          text: "Pode ser às 18h",
+          contextInfo: {
+            stanzaId: "3EB0ORIGINAL",
+            participant: "5511999999999@s.whatsapp.net",
+            quotedMessage: { conversation: "Que horas você pode?" },
+          },
+        },
+      },
+    });
+    expect(m?.texto).toBe("Pode ser às 18h");
+    expect(m?.citacao).toEqual({ waId: "3EB0ORIGINAL", texto: "Que horas você pode?" });
+  });
+
+  test("citação de mídia usa o mesmo rótulo do histórico", () => {
+    const m = lerMensagem({
+      ...BASE,
+      message: {
+        extendedTextMessage: {
+          text: "É essa mesmo",
+          contextInfo: { stanzaId: "3EB0FOTO", quotedMessage: { imageMessage: {} } },
+        },
+      },
+    });
+    expect(m?.citacao).toEqual({ waId: "3EB0FOTO", texto: "📷 Imagem" });
+  });
+
+  test("legenda de imagem também pode citar", () => {
+    const m = lerMensagem({
+      ...BASE,
+      message: {
+        imageMessage: {
+          caption: "Segue o comprovante",
+          contextInfo: { stanzaId: "3EB0COBR", quotedMessage: { conversation: "Faltou o pagamento" } },
+        },
+      },
+    });
+    expect(m).toMatchObject({ texto: "Segue o comprovante", tipoMidia: "imagem" });
+    expect(m?.citacao?.waId).toBe("3EB0COBR");
+  });
+
+  test("mensagem comum não cita ninguém", () => {
+    const m = lerMensagem({ ...BASE, message: { conversation: "oi" } });
+    expect(m?.citacao).toBeNull();
+  });
+
+  test("contexto sem stanzaId (encaminhada, por exemplo) não vira citação", () => {
+    const m = lerMensagem({
+      ...BASE,
+      message: { extendedTextMessage: { text: "oi", contextInfo: { isForwarded: true } } },
+    });
+    expect(m?.citacao).toBeNull();
+  });
+
   test("timestamp ausente cai para agora em vez de 1970", () => {
     const antes = Date.now() - 1000;
     const m = lerMensagem({ ...BASE, messageTimestamp: undefined, message: { conversation: "oi" } });

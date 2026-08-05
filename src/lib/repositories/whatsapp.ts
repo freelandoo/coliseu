@@ -324,6 +324,18 @@ export async function marcarConversaLidaRepo(id: string) {
 
 // ─── Mensagens ────────────────────────────────────────────────────────────────
 
+/**
+ * Quanto do trecho citado é guardado. Cabe a citação inteira que o WhatsApp
+ * mostra em cima da resposta, sem inchar a linha para quem escreveu um texto
+ * longo.
+ */
+const LIMITE_CITACAO = 300;
+
+/** Envio local (sem eco do WhatsApp) ou que falhou não pode ser citado. */
+function podeSerCitada(m: { waMessageId: string; erro: string | null }): boolean {
+  return !m.waMessageId.startsWith("local:") && !m.erro;
+}
+
 export async function listarMensagensRepo(
   conversaId: string,
   depois?: Date,
@@ -336,6 +348,19 @@ export async function listarMensagensRepo(
     orderBy: { enviadaEm: "asc" },
     take: 500,
   });
+
+  // Onde está a original de cada citação. A busca é no histórico inteiro, não
+  // no lote: num delta, a mensagem citada quase sempre é mais antiga que o
+  // cursor — e o painel já a tem na tela para pular até ela.
+  const citados = [...new Set(rows.map((m) => m.citadaWaId).filter((id): id is string => !!id))];
+  const originais = citados.length
+    ? await prisma.mensagem.findMany({
+        where: { conversaId, waMessageId: { in: citados } },
+        select: { id: true, waMessageId: true },
+      })
+    : [];
+  const idPorWaId = new Map(originais.map((o) => [o.waMessageId, o.id]));
+
   return rows.map((m) => ({
     id: m.id,
     direcao: m.direcao,
@@ -346,7 +371,102 @@ export async function listarMensagensRepo(
     tipoMidia: m.tipoMidia,
     enviadaEm: m.enviadaEm.toISOString(),
     erro: m.erro,
+    citavel: podeSerCitada(m),
+    citada: m.citadaWaId
+      ? {
+          // Original apagada da conversa: sobra o trecho copiado, sem o pulo.
+          id: idPorWaId.get(m.citadaWaId) ?? null,
+          texto: m.citadaTexto ?? "",
+          autor: m.citadaAutor,
+        }
+      : null,
   }));
+}
+
+/** O que fica guardado da mensagem citada — cópia, não referência. */
+export interface CitacaoGravada {
+  waId: string;
+  texto: string;
+  autor: string | null;
+}
+
+type MensagemParaCitar = {
+  waMessageId: string;
+  texto: string;
+  erro: string | null;
+  direcao: "IN" | "OUT";
+  remetente: string | null;
+  autorUser: { nome: string } | null;
+  conversa: { pushName: string | null; telefone: string; person: { nome: string } | null };
+};
+
+/**
+ * Quem escreveu a mensagem citada, do jeito que a citação vai mostrar. Saída é
+ * "Você" quando não dá para saber qual atendente respondeu (mensagem mandada
+ * pelo celular do dono); entrada é o nome de quem falou no grupo, ou o da
+ * pessoa da conversa.
+ */
+function autorDaCitacao(m: MensagemParaCitar): string | null {
+  if (m.direcao === "OUT") return m.autorUser?.nome ?? "Você";
+  return (
+    m.remetente ||
+    m.conversa.person?.nome ||
+    m.conversa.pushName ||
+    formatarTelefone(m.conversa.telefone) ||
+    null
+  );
+}
+
+const SELECT_CITACAO = {
+  waMessageId: true,
+  texto: true,
+  erro: true,
+  direcao: true,
+  remetente: true,
+  autorUser: { select: { nome: true } },
+  conversa: { select: { pushName: true, telefone: true, person: { select: { nome: true } } } },
+} as const;
+
+function paraCitacao(m: MensagemParaCitar | null): CitacaoGravada | null {
+  if (!m || !podeSerCitada(m)) return null;
+  return {
+    waId: m.waMessageId,
+    texto: m.texto.slice(0, LIMITE_CITACAO),
+    autor: autorDaCitacao(m),
+  };
+}
+
+/**
+ * A mensagem que a recepção escolheu citar. Amarrada à conversa de propósito:
+ * um id de outra conversa não vira citação, mesmo vindo de sessão válida.
+ * Devolve null quando a mensagem não existe ou não pode ser citada.
+ */
+export async function citacaoPorIdRepo(
+  conversaId: string,
+  mensagemId: string,
+): Promise<CitacaoGravada | null> {
+  const m = await prisma.mensagem.findFirst({
+    where: { id: mensagemId, conversaId },
+    select: SELECT_CITACAO,
+  });
+  return paraCitacao(m);
+}
+
+/**
+ * A citação de uma mensagem que chegou pelo webhook: o WhatsApp manda o `key.id`
+ * da original, e o resto (quem escreveu) sai do nosso próprio histórico.
+ * Original que o Coliseu nunca viu devolve null — o texto da prévia do WhatsApp
+ * ainda é guardado pela ingestão.
+ */
+export async function citacaoPorWaIdRepo(
+  conversaId: string,
+  waId: string,
+): Promise<CitacaoGravada | null> {
+  const m = await prisma.mensagem.findFirst({
+    where: { conversaId, waMessageId: waId },
+    select: SELECT_CITACAO,
+  });
+  return paraCitacao(m);
 }
 
 /**
@@ -365,6 +485,8 @@ export async function registrarMensagemRepo(input: {
   tipoMidia?: string;
   enviadaEm?: Date;
   erro?: string | null;
+  /** Mensagem citada, quando esta é uma resposta a outra. */
+  citada?: CitacaoGravada | null;
 }): Promise<boolean> {
   const enviadaEm = input.enviadaEm ?? new Date();
   try {
@@ -381,6 +503,9 @@ export async function registrarMensagemRepo(input: {
           tipoMidia: input.tipoMidia ?? "texto",
           enviadaEm,
           erro: input.erro ?? null,
+          citadaWaId: input.citada?.waId ?? null,
+          citadaTexto: input.citada?.texto.slice(0, LIMITE_CITACAO) ?? null,
+          citadaAutor: input.citada?.autor ?? null,
         },
       }),
       prisma.conversa.update({

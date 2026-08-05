@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState, type ChangeEvent } from "react";
+import { useCallback, useEffect, useRef, useState, type ChangeEvent, type TouchEvent } from "react";
 import { useRouter } from "next/navigation";
 import { Modal } from "@/components/ui/Modal";
 import { Bandeira } from "@/components/ui/Bandeira";
@@ -9,10 +9,12 @@ import { AulaExperimentalPainel } from "@/components/captacao/AulaExperimentalPa
 import { GravadorAudio } from "@/components/captacao/GravadorAudio";
 import { assinarMensagens } from "@/lib/whatsapp/stream-cliente";
 import { deveEnviarNoEnter, dicaComposer } from "@/lib/whatsapp/atalho-envio";
+import { prefixoAssinatura } from "@/lib/whatsapp/assinatura";
 import { cn } from "@/lib/cn";
 import { ROTULO_MIDIA } from "@/lib/whatsapp/payload";
 import {
   INTERESSE_LABEL,
+  type CitacaoItem,
   type ConversaInteresse,
   type ConversaResumo,
   type LeadEstagio,
@@ -21,6 +23,9 @@ import {
 
 /** Rede de segurança: o SSE traz em tempo real; isto cobre um stream caído. */
 const FALLBACK_THREAD_MS = 60_000;
+
+/** Quanto tempo a mensagem fica acesa depois de pular até ela. */
+const DESTAQUE_MS = 1_600;
 
 const inputCls =
   "w-full rounded-lg border border-border bg-surface px-3 py-2 text-sm text-ink " +
@@ -59,7 +64,12 @@ export function ConversaPainel({
    * Fica só na caixa: enviar continua sendo um clique de quem atende.
    */
   textoInicial?: string;
-  /** Login de quem atende — o primeiro nome vira o "alex: " no começo de cada resposta. */
+  /**
+   * Login de quem atende. A assinatura de verdade é colada no servidor, na hora
+   * de enviar (ver `@/lib/whatsapp/assinatura`); aqui ela serve só para a bolha
+   * otimista já nascer igual ao que vai sair — sem ela, a mensagem apareceria
+   * sem o nome e ganharia a assinatura meio segundo depois, piscando.
+   */
   assinatura: string;
   /**
    * Preferência de teclado da conta (Perfil → Preferências): Enter envia a
@@ -73,25 +83,14 @@ export function ConversaPainel({
   onConversaAtualizada: (c: ConversaResumo) => void;
   onConversaRemovida: (id: string) => void;
 }) {
-  // Assinatura no corpo da mensagem: quem recebe no WhatsApp vê quem atendeu.
-  // Só o primeiro nome do login, escrito como nome de gente — "alex.rodriguus"
-  // vira "Alex". A caixa alta do começo não é enfeite: é o que faz a mensagem
-  // parecer assinada por uma pessoa, e não um login de sistema vazando para o
-  // cliente. Focar a caixa vazia já deixa "Alex: " pronto, com o cursor na
-  // frente; sair sem escrever nada limpa, para o placeholder voltar.
-  //
-  // Os asteriscos são a marcação de negrito do WhatsApp: na caixa aparecem
-  // crus, mas quem recebe lê "Alex:" destacado do resto da mensagem. Negrito de
-  // verdade aqui dentro exigiria trocar o textarea por um contenteditable — e
-  // não é aqui que o destaque faz falta, é no celular do cliente.
-  const primeiroNome = assinatura.split(".")[0] || assinatura;
-  const nomeExibido = `${primeiroNome.charAt(0).toUpperCase()}${primeiroNome.slice(1).toLowerCase()}`;
-  const prefixo = `*${nomeExibido}:* `;
+  // Assinatura de quem atende: quem recebe no WhatsApp vê quem respondeu, já
+  // que o número é o da academia. Ela não passa pela caixa de texto — quem cola
+  // é o servidor, no envio. Aqui só se calcula o mesmo prefixo para a bolha
+  // otimista sair igual à mensagem de verdade.
+  const prefixo = prefixoAssinatura(assinatura);
 
   const [mensagens, setMensagens] = useState<MensagemItem[]>([]);
-  // Texto que veio pronto da Captação já entra assinado, como se tivesse sido
-  // escolhido nas respostas prontas.
-  const [texto, setTexto] = useState(textoInicial ? prefixo + textoInicial : "");
+  const [texto, setTexto] = useState(textoInicial ?? "");
   const [anexando, setAnexando] = useState(false);
   // Gravando, a linha do composer é toda do gravador (ver o bloco lá embaixo).
   const [gravando, setGravando] = useState(false);
@@ -108,12 +107,18 @@ export function ConversaPainel({
   // anterior.
   const [mostrandoAula, setMostrandoAula] = useState(false);
   const [aberturasAula, setAberturasAula] = useState(0);
+  // Mensagem que a próxima resposta cita — o "responder" do WhatsApp. Vale para
+  // o que sair em seguida: texto, anexo ou áudio.
+  const [citando, setCitando] = useState<MensagemItem | null>(null);
+  // Acende por um instante a mensagem para onde a citação levou, senão o pulo
+  // deixa a pessoa perdida no meio do histórico.
+  const [destacada, setDestacada] = useState<string | null>(null);
   const fim = useRef<HTMLDivElement>(null);
   const inputArquivo = useRef<HTMLInputElement>(null);
+  const caixa = useRef<HTMLTextAreaElement>(null);
   const router = useRouter();
 
-  const semAssinatura = texto.startsWith(prefixo) ? texto.slice(prefixo.length) : texto;
-  const temConteudo = semAssinatura.trim().length > 0;
+  const temConteudo = texto.trim().length > 0;
 
   // Carrega o histórico ao montar. Trocar de conversa remonta o componente
   // (a lista passa `key={id}`), então não há estado antigo para limpar aqui.
@@ -184,15 +189,46 @@ export function ConversaPainel({
     fim.current?.scrollIntoView({ block: "end" });
   }, [mensagens.length]);
 
+  /** Quem escreveu a mensagem, do jeito que a citação a apresenta. */
+  function autorDe(m: MensagemItem): string | null {
+    if (m.direcao === "OUT") return m.autorNome ?? "Você";
+    return m.remetente ?? conversa.nome;
+  }
+
+  /** Citar põe a mensagem em cima da caixa e devolve o cursor para quem escreve. */
+  function citar(m: MensagemItem) {
+    setCitando(m);
+    caixa.current?.focus();
+  }
+
+  /** Toque na citação leva até a mensagem original, e a deixa acesa um instante. */
+  function irPara(id: string) {
+    const alvo = document.getElementById(`msg-${id}`);
+    if (!alvo) return;
+    alvo.scrollIntoView({ block: "center", behavior: "smooth" });
+    setDestacada(id);
+    setTimeout(() => setDestacada((a) => (a === id ? null : a)), DESTAQUE_MS);
+  }
+
+  /** A citação como ela vai ficar guardada — para a bolha otimista não mentir. */
+  function citacaoOtimista(): CitacaoItem | null {
+    if (!citando) return null;
+    return { id: citando.id, texto: citando.texto, autor: autorDe(citando) };
+  }
+
   async function responder() {
     const conteudo = texto.trim();
     if (!temConteudo) return;
     setErro("");
-    // Libera o campo na hora, já com a assinatura pronta para a próxima resposta.
-    setTexto(prefixo);
+    const citada = citacaoOtimista();
+    const citarId = citando?.id;
+    // Libera o campo na hora, pronto para a próxima resposta.
+    setTexto("");
+    setCitando(null);
 
     // Bolha otimista: a mensagem aparece na conversa imediatamente; o servidor
-    // confirma em segundo plano. Só marca falha se o envio não completar.
+    // confirma em segundo plano. Só marca falha se o envio não completar. A
+    // assinatura entra aqui porque é ela que o servidor vai colar no envio.
     const tempId = `tmp:${Date.now()}-${Math.random().toString(36).slice(2)}`;
     const otimista: MensagemItem = {
       id: tempId,
@@ -200,10 +236,12 @@ export function ConversaPainel({
       autor: "ATENDENTE",
       autorNome: null,
       remetente: null,
-      texto: conteudo,
+      texto: conteudo.startsWith(prefixo.trimEnd()) ? conteudo : prefixo + conteudo,
       tipoMidia: "texto",
       enviadaEm: new Date().toISOString(),
       erro: null,
+      citavel: false, // ainda não existe no WhatsApp: citar não teria a quem apontar
+      citada,
     };
     setMensagens((antigas) => [...antigas, otimista]);
 
@@ -211,7 +249,7 @@ export function ConversaPainel({
       const r = await fetch(`/api/whatsapp/conversas/${conversa.id}/mensagens`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ texto: conteudo }),
+        body: JSON.stringify({ texto: conteudo, ...(citarId ? { citarId } : {}) }),
       });
       const d = await r.json().catch(() => ({}));
       if (r.ok) {
@@ -247,8 +285,9 @@ export function ConversaPainel({
     try {
       const form = new FormData();
       form.append("arquivo", arquivo);
-      // Só assinatura não é legenda — o anexo vai limpo.
       if (comLegenda && temConteudo) form.append("texto", texto.trim());
+      // A citação vale para o que sair em seguida — inclusive anexo e áudio.
+      if (citando) form.append("citarId", citando.id);
       const r = await fetch(`/api/whatsapp/conversas/${conversa.id}/mensagens`, {
         method: "POST",
         body: form,
@@ -256,6 +295,7 @@ export function ConversaPainel({
       const d = await r.json().catch(() => ({}));
       if (r.ok) {
         setMensagens(d.mensagens ?? []);
+        setCitando(null);
         // O texto só se apaga quando foi junto: áudio não leva a caixa embora.
         if (comLegenda) setTexto("");
       } else {
@@ -420,21 +460,28 @@ export function ConversaPainel({
         ) : (
           <div className="flex flex-col gap-2">
             {mensagens.map((m) => (
-              <Bolha key={m.id} mensagem={m} />
+              <Bolha
+                key={m.id}
+                mensagem={m}
+                destacada={destacada === m.id}
+                onCitar={podeResponder ? () => citar(m) : undefined}
+                onIrPara={irPara}
+              />
             ))}
           </div>
         )}
         <div ref={fim} />
       </div>
 
-      {/* A resposta escolhida cai na caixa já assinada, pronta para ajustar
-          antes de enviar — escolher nunca envia sozinho. */}
+      {/* A resposta escolhida cai na caixa pronta para ajustar antes de enviar —
+          escolher nunca envia sozinho. */}
       {podeResponder && (
         <RespostasProntas
           aberto={mostrandoRespostas}
           onEscolher={(t) => {
-            setTexto(prefixo + t);
+            setTexto(t);
             setMostrandoRespostas(false);
+            caixa.current?.focus();
           }}
         />
       )}
@@ -476,6 +523,33 @@ export function ConversaPainel({
       <div className="border-t border-border px-4 py-3">
         {podeResponder ? (
           <>
+            {/* A mensagem citada fica espelhada em cima da caixa, como no
+                WhatsApp: quem escreve vê o que está respondendo. */}
+            {citando && (
+              <div className="mb-2 flex items-start gap-2 rounded-lg border border-border border-l-2 border-l-red-bright bg-surface-2 px-3 py-1.5">
+                <div className="min-w-0 flex-1">
+                  <p className="text-[11px] font-semibold text-red-bright">
+                    {autorDe(citando) ?? "Mensagem"}
+                  </p>
+                  <p className="truncate text-xs text-muted">{citando.texto}</p>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setCitando(null)}
+                  aria-label="Cancelar citação"
+                  className="-mr-1 shrink-0 rounded p-1 text-faint transition-colors hover:text-ink"
+                >
+                  <svg width="11" height="11" viewBox="0 0 12 12" fill="none" aria-hidden>
+                    <path
+                      d="M3 3l6 6M9 3l-6 6"
+                      stroke="currentColor"
+                      strokeWidth="1.6"
+                      strokeLinecap="round"
+                    />
+                  </svg>
+                </button>
+              </div>
+            )}
             <div className="flex items-end gap-2">
               <input
                 ref={inputArquivo}
@@ -524,13 +598,12 @@ export function ConversaPainel({
 
               {!gravando && (
               <textarea
+                ref={caixa}
                 value={texto}
                 onChange={(e) => setTexto(e.target.value)}
-                onFocus={() => {
-                  if (texto === "") setTexto(prefixo);
-                }}
-                onBlur={() => {
-                  if (!temConteudo) setTexto("");
+                // Escape solta a citação sem tirar a mão do teclado.
+                onKeyUp={(e) => {
+                  if (e.key === "Escape" && citando) setCitando(null);
                 }}
                 // O que o Enter faz é escolha de quem atende, guardada na conta:
                 // uns escrevem em parágrafos e não querem disparar meia resposta,
@@ -728,22 +801,186 @@ function Midia({ mensagem }: { mensagem: MensagemItem }) {
   );
 }
 
-function Bolha({ mensagem }: { mensagem: MensagemItem }) {
+/**
+ * O trecho citado dentro da bolha — a barrinha vermelha com o pedaço da
+ * mensagem respondida. Vira botão quando a original ainda está na conversa;
+ * citação de mensagem já apagada continua legível, só não leva a lugar nenhum.
+ */
+function TrechoCitado({
+  citacao,
+  onIrPara,
+}: {
+  citacao: CitacaoItem;
+  onIrPara?: (id: string) => void;
+}) {
+  const cls =
+    "mb-1.5 block w-full rounded-md border-l-2 border-red-bright bg-bg/50 px-2 py-1 text-left";
+  const conteudo = (
+    <>
+      {citacao.autor && (
+        <span className="block text-[11px] font-semibold text-red-bright">{citacao.autor}</span>
+      )}
+      <span className="line-clamp-2 break-words text-[11px] text-muted">
+        {citacao.texto || "Mensagem"}
+      </span>
+    </>
+  );
+
+  const alvo = citacao.id;
+  if (!alvo || !onIrPara) return <div className={cls}>{conteudo}</div>;
+  return (
+    <button
+      type="button"
+      onClick={() => onIrPara(alvo)}
+      title="Ir para a mensagem citada"
+      className={cn(cls, "transition-colors hover:bg-bg/80")}
+    >
+      {conteudo}
+    </button>
+  );
+}
+
+/** Arrastar do lado: onde começa a valer, o gatilho, e o quanto a bolha anda. */
+const ARRASTO = { minimo: 8, gatilho: 48, teto: 72 };
+
+function Bolha({
+  mensagem,
+  destacada,
+  onCitar,
+  onIrPara,
+}: {
+  mensagem: MensagemItem;
+  /** Acesa por um instante depois de alguém pular até ela por uma citação. */
+  destacada?: boolean;
+  /** Ausente quando o perfil não responde — quem só lê não cita. */
+  onCitar?: () => void;
+  onIrPara?: (id: string) => void;
+}) {
   const saida = mensagem.direcao === "OUT";
   const temMidia = mensagem.tipoMidia !== "texto" && !mensagem.erro;
   // Mídia com legenda mostra as duas coisas; sem legenda, o texto é só o
   // rótulo que a mídia já substitui.
   const legenda = temMidia && ROTULOS.has(mensagem.texto) ? "" : mensagem.texto;
+  const podeCitar = !!onCitar && mensagem.citavel;
+
+  // Arrastar para o lado para responder, como no celular. O toque só vira
+  // arrasto quando anda mais na horizontal que na vertical — senão roubaria a
+  // rolagem da conversa, que é o gesto de longe mais usado aqui.
+  const [arrasto, setArrasto] = useState(0);
+  const [arrastando, setArrastando] = useState(false);
+  const inicio = useRef<{ x: number; y: number } | null>(null);
+  const horizontal = useRef(false);
+
+  function aoTocar(e: TouchEvent) {
+    if (!podeCitar) return;
+    const t = e.touches[0];
+    inicio.current = { x: t.clientX, y: t.clientY };
+    horizontal.current = false;
+  }
+
+  function aoMover(e: TouchEvent) {
+    const p = inicio.current;
+    if (!p) return;
+    const t = e.touches[0];
+    const dx = t.clientX - p.x;
+    const dy = t.clientY - p.y;
+    if (!horizontal.current) {
+      if (Math.abs(dx) < ARRASTO.minimo) return;
+      // Rolagem vertical vence: o dedo desceu mais do que andou de lado.
+      if (Math.abs(dx) <= Math.abs(dy)) {
+        inicio.current = null;
+        return;
+      }
+      horizontal.current = true;
+      setArrastando(true);
+    }
+    // Só para a direita, como o WhatsApp: puxar para o outro lado não faz nada.
+    setArrasto(Math.max(0, Math.min(dx, ARRASTO.teto)));
+  }
+
+  function encerrar(citar: boolean) {
+    if (citar && horizontal.current && arrasto >= ARRASTO.gatilho) onCitar?.();
+    inicio.current = null;
+    horizontal.current = false;
+    setArrastando(false);
+    setArrasto(0);
+  }
 
   return (
-    <div className={cn("flex", saida ? "justify-end" : "justify-start")}>
+    <div
+      id={`msg-${mensagem.id}`}
+      className={cn("group relative flex", saida ? "justify-end" : "justify-start")}
+    >
+      {/* A seta aparece atrás da bolha conforme o dedo puxa — é o retorno de
+          que soltar agora vai citar. */}
+      {arrasto > 0 && (
+        <span
+          aria-hidden
+          className="absolute left-1 top-1/2 -translate-y-1/2 text-red-bright"
+          style={{ opacity: Math.min(1, arrasto / ARRASTO.gatilho) }}
+        >
+          <svg
+            viewBox="0 0 24 24"
+            width="16"
+            height="16"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="2"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+          >
+            <path d="M9 17l-6-6 6-6" />
+            <path d="M3 11h10a8 8 0 0 1 8 8v2" />
+          </svg>
+        </span>
+      )}
       <div
+        onTouchStart={aoTocar}
+        onTouchMove={aoMover}
+        onTouchEnd={() => encerrar(true)}
+        onTouchCancel={() => encerrar(false)}
+        style={{
+          transform: arrasto ? `translateX(${arrasto}px)` : undefined,
+          transition: arrastando ? "none" : "transform 150ms ease-out",
+          // Deixa a rolagem vertical com o navegador; o lado é nosso.
+          touchAction: podeCitar ? "pan-y" : undefined,
+        }}
         className={cn(
-          "max-w-[80%] rounded-xl border px-3.5 py-2",
+          "relative max-w-[80%] rounded-xl border px-3.5 py-2",
           saida ? "border-red/30 bg-red-ghost" : "border-border bg-surface-2",
           mensagem.erro && "border-red/70",
+          destacada && "ring-2 ring-red-bright",
         )}
       >
+        {/* No desktop não há arrasto: o botão aparece ao passar o mouse. */}
+        {podeCitar && (
+          <button
+            type="button"
+            onClick={onCitar}
+            title="Citar esta mensagem"
+            aria-label="Citar esta mensagem"
+            className={cn(
+              "absolute -top-2 hidden rounded-full border border-border bg-surface p-1 text-muted opacity-0 transition-opacity hover:text-ink focus-visible:opacity-100 group-hover:opacity-100 lg:block",
+              saida ? "-left-2" : "-right-2",
+            )}
+          >
+            <svg
+              viewBox="0 0 24 24"
+              width="13"
+              height="13"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              aria-hidden
+            >
+              <path d="M9 17l-6-6 6-6" />
+              <path d="M3 11h10a8 8 0 0 1 8 8v2" />
+            </svg>
+          </button>
+        )}
+        {mensagem.citada && <TrechoCitado citacao={mensagem.citada} onIrPara={onIrPara} />}
         {/* Em grupo, quem falou importa tanto quanto o que foi dito. */}
         {!saida && mensagem.remetente && (
           <p className="mb-0.5 text-[11px] font-semibold text-red-bright">{mensagem.remetente}</p>

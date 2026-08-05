@@ -7,6 +7,16 @@
 
 export type TipoMidia = "texto" | "imagem" | "audio" | "video" | "documento" | "outro";
 
+/**
+ * A mensagem que a recebida está respondendo — o "responder" do WhatsApp.
+ * `waId` é o `key.id` da original (o `stanzaId` do contexto); `texto` é o que o
+ * WhatsApp mandou junto como prévia, e pode vir vazio.
+ */
+export interface CitacaoRecebida {
+  waId: string;
+  texto: string;
+}
+
 export interface MensagemRecebida {
   waMessageId: string;
   remoteJid: string;
@@ -18,6 +28,8 @@ export interface MensagemRecebida {
   texto: string;
   tipoMidia: TipoMidia;
   enviadaEm: Date;
+  /** Preenchida só quando a pessoa respondeu citando uma mensagem. */
+  citacao: CitacaoRecebida | null;
 }
 
 /** Estrutura mínima que consumimos do evento `messages.upsert`. */
@@ -73,6 +85,49 @@ function classificar(message: Record<string, unknown>): { tipo: TipoMidia; legen
   return { tipo: "texto", legenda: "" };
 }
 
+/**
+ * O texto que representa uma mensagem qualquer do Baileys — direto, legenda de
+ * mídia ou o rótulo da mídia sem legenda. Serve à mensagem recebida e à citada,
+ * que tem exatamente a mesma forma.
+ */
+function conteudoDe(message: Record<string, unknown>): { texto: string; tipoMidia: TipoMidia } {
+  const direto =
+    textoDe(message.conversation) ||
+    textoDe(message.extendedTextMessage) ||
+    textoDe(message.buttonsResponseMessage) ||
+    textoDe((message.listResponseMessage as { title?: string } | undefined)?.title);
+
+  const { tipo, legenda } = classificar(message);
+  return {
+    texto: tipo === "texto" ? direto : legenda || direto || ROTULO_MIDIA[tipo],
+    tipoMidia: tipo,
+  };
+}
+
+/**
+ * O `contextInfo` fica dentro do nó da mensagem (`extendedTextMessage`,
+ * `imageMessage`…), e não num lugar fixo — por isso a varredura. Só interessa o
+ * que tem `stanzaId`: é ele que identifica a mensagem citada.
+ */
+function citacaoDe(message: Record<string, unknown>): CitacaoRecebida | null {
+  for (const valor of Object.values(message)) {
+    if (!valor || typeof valor !== "object") continue;
+    const ctx = (valor as { contextInfo?: unknown }).contextInfo as
+      | { stanzaId?: unknown; quotedMessage?: unknown }
+      | undefined;
+    const waId = String(ctx?.stanzaId ?? "").trim();
+    if (!waId) continue;
+
+    const citada = ctx?.quotedMessage;
+    const texto =
+      citada && typeof citada === "object"
+        ? conteudoDe(citada as Record<string, unknown>).texto
+        : "";
+    return { waId, texto };
+  }
+  return null;
+}
+
 /** Timestamp do WhatsApp vem em segundos; ausente ou inválido cai para agora. */
 function instante(valor: number | string | undefined): Date {
   const n = Number(valor);
@@ -96,14 +151,7 @@ export function lerMensagem(bruta: unknown): MensagemRecebida | null {
   const message = msg.message;
   if (!message) return null;
 
-  const textoDireto =
-    textoDe(message.conversation) ||
-    textoDe(message.extendedTextMessage) ||
-    textoDe(message.buttonsResponseMessage) ||
-    textoDe((message.listResponseMessage as { title?: string } | undefined)?.title);
-
-  const { tipo, legenda } = classificar(message);
-  const texto = tipo === "texto" ? textoDireto : legenda || textoDireto || ROTULO_MIDIA[tipo];
+  const { texto, tipoMidia } = conteudoDe(message);
 
   // Mídia sem legenda ainda vale registro; texto vazio sem mídia, não.
   if (!texto) return null;
@@ -117,8 +165,9 @@ export function lerMensagem(bruta: unknown): MensagemRecebida | null {
     // principal é @lid, mesma lógica do remoteJid.
     participante: String(msg.key?.participantAlt || msg.key?.participant || "").trim(),
     texto,
-    tipoMidia: tipo,
+    tipoMidia,
     enviadaEm: instante(msg.messageTimestamp),
+    citacao: citacaoDe(message),
   };
 }
 

@@ -265,6 +265,21 @@ export async function desconectar(cfg: ConfigEvolution, nome: string): Promise<v
 }
 
 /**
+ * Mensagem citada na resposta (o "responder" do WhatsApp). A Evolution amarra
+ * uma na outra pelo `key.id`; o texto vai junto só como conteúdo de exibição.
+ */
+export interface MensagemCitada {
+  waId: string;
+  texto: string;
+}
+
+/** Trecho `quoted` do corpo — vazio quando a resposta não cita ninguém. */
+function corpoCitacao(citada?: MensagemCitada | null) {
+  if (!citada?.waId) return {};
+  return { quoted: { key: { id: citada.waId }, message: { conversation: citada.texto } } };
+}
+
+/**
  * Envia texto. Único ponto de saída de mensagem do sistema — sempre acionado por
  * um clique da recepção, nunca pelo webhook.
  *
@@ -279,6 +294,7 @@ export async function enviarTexto(
   nome: string,
   destino: string,
   texto: string,
+  citada?: MensagemCitada | null,
 ): Promise<string | null> {
   const numero = destinoParaNumero(destino);
   const conteudo = texto.trim();
@@ -288,6 +304,7 @@ export async function enviarTexto(
     await chamar(cfg, "POST", `/message/sendText/${encodeURIComponent(validarNomeInstancia(nome))}`, {
       number: numero,
       text: conteudo,
+      ...corpoCitacao(citada),
     }),
   );
   return extrairChaveId(data);
@@ -324,6 +341,7 @@ export async function enviarAudio(
   nome: string,
   destino: string,
   base64: string,
+  citada?: MensagemCitada | null,
 ): Promise<string | null> {
   const numero = destinoParaNumero(destino);
   if (!base64) throw new EvolutionError("Áudio vazio.", 400);
@@ -333,7 +351,7 @@ export async function enviarAudio(
       cfg,
       "POST",
       `/message/sendWhatsAppAudio/${encodeURIComponent(validarNomeInstancia(nome))}`,
-      { number: numero, audio: base64 },
+      { number: numero, audio: base64, ...corpoCitacao(citada) },
     ),
   );
   return extrairChaveId(data);
@@ -359,6 +377,7 @@ export async function enviarMidia(
   nome: string,
   destino: string,
   midia: MidiaEnvio,
+  citada?: MensagemCitada | null,
 ): Promise<string | null> {
   const numero = destinoParaNumero(destino);
   if (!midia.base64) throw new EvolutionError("Arquivo vazio.", 400);
@@ -371,6 +390,7 @@ export async function enviarMidia(
       media: midia.base64,
       fileName: midia.fileName,
       ...(midia.caption ? { caption: midia.caption } : {}),
+      ...corpoCitacao(citada),
     }),
   );
   return extrairChaveId(data);

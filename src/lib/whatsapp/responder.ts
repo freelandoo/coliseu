@@ -3,6 +3,7 @@ import {
   assumirConversaRepo,
   dadosEnvioConversaRepo,
   registrarMensagemRepo,
+  type CitacaoGravada,
 } from "@/lib/repositories/whatsapp";
 import {
   configEvolution,
@@ -79,13 +80,21 @@ export async function enviarTextoNaConversa(input: {
   userId: string;
   /** Contexto já resolvido pela rota; sem ele, resolve aqui. */
   contexto?: ContextoEnvio;
+  /** Mensagem citada, quando a recepção respondeu uma em especial. */
+  citada?: CitacaoGravada | null;
 }): Promise<null | FalhaEnvio> {
   const ctx = input.contexto ?? (await contextoEnvio(input.conversaId, input.userId));
   if (ehFalhaEnvio(ctx)) return ctx;
 
   await ctx.assumir();
   try {
-    const waId = await enviarTexto(ctx.cfg, ctx.instancia, ctx.destino, input.texto);
+    const waId = await enviarTexto(
+      ctx.cfg,
+      ctx.instancia,
+      ctx.destino,
+      input.texto,
+      input.citada && { waId: input.citada.waId, texto: input.citada.texto },
+    );
     // Sem id do WhatsApp não há como deduplicar o eco do webhook; o prefixo
     // "local:" deixa isso explícito no banco.
     await registrarMensagemRepo({
@@ -95,6 +104,7 @@ export async function enviarTextoNaConversa(input: {
       autor: "ATENDENTE",
       autorUserId: input.userId,
       texto: input.texto,
+      citada: input.citada,
     });
     return null;
   } catch (e) {
@@ -105,6 +115,7 @@ export async function enviarTextoNaConversa(input: {
       autor: "ATENDENTE",
       autorUserId: input.userId,
       texto: input.texto,
+      citada: input.citada,
       erro: e instanceof Error ? e.message.slice(0, 200) : "falha no envio",
     }).catch(() => undefined);
 

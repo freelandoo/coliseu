@@ -102,7 +102,10 @@ export function AtendimentoInbox({
   cabecalho,
 }: {
   inicial: ConversaResumo[];
-  /** Login de quem está atendendo — assina as respostas na conversa. */
+  /**
+   * Login de quem está atendendo. A assinatura das respostas é colada no
+   * servidor; aqui ela só faz a bolha otimista nascer igual ao que vai sair.
+   */
   assinatura: string;
   /**
    * Preferência da conta (Enter envia ou quebra linha) como o servidor a

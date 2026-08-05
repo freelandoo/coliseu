@@ -630,7 +630,16 @@ model Mensagem {
   enviadaEm   DateTime        @default(now())
   erro        String?
 
+  /// Citação — a mensagem que esta responde, o "responder" do WhatsApp.
+  /// Guardamos o `key.id` (é por ele que o WhatsApp liga uma na outra) e uma
+  /// **cópia** do trecho e de quem escreveu: a citação tem de continuar legível
+  /// mesmo depois de a original ser apagada da conversa.
+  citadaWaId  String?
+  citadaTexto String?
+  citadaAutor String?
+
   @@index([conversaId, enviadaEm])
+  @@index([citadaWaId])
 }
 
 /// O que motivou a cópia de segurança: "limpar" apagou só as mensagens e
@@ -695,6 +704,11 @@ model MensagemBackup {
   tipoMidia   String          @default("texto")
   enviadaEm   DateTime
   erro        String?
+
+  /// Citação copiada junto — ver `Mensagem`.
+  citadaWaId  String?
+  citadaTexto String?
+  citadaAutor String?
 
   @@index([backupId, enviadaEm])
 }

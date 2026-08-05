@@ -64,6 +64,9 @@ export async function arquivarConversaRepo(
           tipoMidia: m.tipoMidia,
           enviadaEm: m.enviadaEm,
           erro: m.erro,
+          citadaWaId: m.citadaWaId,
+          citadaTexto: m.citadaTexto,
+          citadaAutor: m.citadaAutor,
         })),
       },
     },
@@ -158,6 +161,12 @@ export async function obterMensagensBackupRepo(backupId: string) {
     tipoMidia: m.tipoMidia,
     enviadaEm: m.enviadaEm.toISOString(),
     erro: m.erro,
+    // Na lixeira ninguém responde: citar está fora, e a citação vale só como
+    // leitura — sem pulo para a original, que pode nem existir mais.
+    citavel: false,
+    citada: m.citadaWaId
+      ? { id: null, texto: m.citadaTexto ?? "", autor: m.citadaAutor }
+      : null,
   }));
 }
 
@@ -269,6 +278,9 @@ export async function restaurarBackupRepo(backupId: string): Promise<Restauracao
           tipoMidia: m.tipoMidia,
           enviadaEm: m.enviadaEm,
           erro: m.erro,
+          citadaWaId: m.citadaWaId,
+          citadaTexto: m.citadaTexto,
+          citadaAutor: m.citadaAutor,
         })),
         skipDuplicates: true,
       });
