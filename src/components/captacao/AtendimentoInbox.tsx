@@ -6,6 +6,7 @@ import { useSearchParams } from "next/navigation";
 import { Card } from "@/components/ui/primitives";
 import { assinarMensagens } from "@/lib/whatsapp/stream-cliente";
 import { ConversaPainel } from "@/components/captacao/ConversaPainel";
+import { ChaveQuebraLinha } from "@/components/captacao/ChaveQuebraLinha";
 import { cn } from "@/lib/cn";
 import { casaConversa, trechoAoRedor } from "@/lib/whatsapp/busca";
 import { ehDataISO, mensagemRemarcarAula } from "@/lib/aula-experimental";
@@ -94,7 +95,7 @@ function AbaBotao({
 export function AtendimentoInbox({
   inicial,
   assinatura,
-  enterEnvia,
+  enterEnviaInicial,
   conectado,
   podeResponder,
   podeApagar,
@@ -103,8 +104,12 @@ export function AtendimentoInbox({
   inicial: ConversaResumo[];
   /** Login de quem está atendendo — assina as respostas na conversa. */
   assinatura: string;
-  /** Preferência da conta: Enter envia a resposta ou quebra linha. */
-  enterEnvia: boolean;
+  /**
+   * Preferência da conta (Enter envia ou quebra linha) como o servidor a
+   * conhecia. Só o valor de partida: a chave logo abaixo do título muda o
+   * comportamento da caixa na hora, e salva em segundo plano.
+   */
+  enterEnviaInicial: boolean;
   conectado: boolean;
   podeResponder: boolean;
   podeApagar: boolean;
@@ -132,6 +137,11 @@ export function AtendimentoInbox({
   // No mobile decide qual tela aparece: a lista (false) ou a conversa (true).
   // Quem chega pelo link "Responder" já cai direto na conversa.
   const [aberta, setAberta] = useState(inicialSelecionada !== null);
+  // Preferência do Enter: vale na caixa na hora do clique e salva na conta em
+  // segundo plano. Falhou o salvamento, a chave volta ao que era — chave que
+  // fica ligada sem ter salvo mentiria no próximo login.
+  const [enterEnvia, setEnterEnvia] = useState(enterEnviaInicial);
+  const [salvandoEnter, setSalvandoEnter] = useState(false);
   // Se abrimos uma entrada no histórico, o "voltar" precisa desfazê-la; sem a
   // flag, um voltar em conversa aberta por deep link sairia da página.
   const empurrouHistorico = useRef(false);
@@ -296,6 +306,26 @@ export function AtendimentoInbox({
     }
   }
 
+  /** A chave fala em "quebra de linha"; o banco guarda o inverso. */
+  async function mudarQuebraLinha(quebraLinha: boolean) {
+    const novo = !quebraLinha;
+    const anterior = enterEnvia;
+    setEnterEnvia(novo);
+    setSalvandoEnter(true);
+    try {
+      const r = await fetch("/api/perfil/preferencias", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ enterEnvia: novo }),
+      });
+      if (!r.ok) setEnterEnvia(anterior);
+    } catch {
+      setEnterEnvia(anterior);
+    } finally {
+      setSalvandoEnter(false);
+    }
+  }
+
   function voltar() {
     // Com entrada empurrada, volta pelo histórico (o popstate fecha a tela);
     // sem ela, só fecha — history.back() aqui sairia da página.
@@ -320,8 +350,20 @@ export function AtendimentoInbox({
 
   return (
     <>
-      {/* Conversa aberta no mobile toma a tela toda: até o cabeçalho da página sai. */}
-      {cabecalho && <div className={cn(aberta && "hidden lg:block")}>{cabecalho}</div>}
+      {/* Conversa aberta no mobile toma a tela toda: até o cabeçalho da página
+          sai — e a chave do Enter vai junto, que ali o espaço é da conversa. */}
+      <div className={cn(aberta && "hidden lg:block")}>
+        {cabecalho}
+        {podeResponder && (
+          <div className="-mt-1 mb-3">
+            <ChaveQuebraLinha
+              ligada={!enterEnvia}
+              salvando={salvandoEnter}
+              onMudar={(v) => void mudarQuebraLinha(v)}
+            />
+          </div>
+        )}
+      </div>
 
       <div className="grid gap-4 lg:grid-cols-[300px_1fr]">
         <Card

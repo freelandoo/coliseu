@@ -4,7 +4,6 @@ import { kitDisponivel, kitInfo } from "@/lib/agent/kit";
 import { Badge, Card } from "@/components/ui/primitives";
 import { Reveal } from "@/components/ui/Reveal";
 import { AlterarSenhaCard } from "@/components/perfil/AlterarSenhaCard";
-import { PreferenciasCard } from "@/components/perfil/PreferenciasCard";
 import { AgentKitCard } from "@/components/perfil/AgentKitCard";
 import { ColaboradoresCard } from "@/components/perfil/ColaboradoresCard";
 import { BotaoSair } from "@/components/perfil/BotaoSair";
@@ -67,10 +66,6 @@ export default async function PerfilPage() {
         </Reveal>
 
         <Reveal delay={0.1}>
-          <PreferenciasCard enterEnvia={user.enterEnvia} />
-        </Reveal>
-
-        <Reveal delay={0.12}>
           <AlterarSenhaCard />
         </Reveal>
 
