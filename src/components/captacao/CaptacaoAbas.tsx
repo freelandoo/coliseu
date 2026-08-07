@@ -3,16 +3,18 @@
 import { useState } from "react";
 import { LeadsFiltro } from "@/components/captacao/LeadsFiltro";
 import { AulasExperimentais } from "@/components/captacao/AulasExperimentais";
+import { CalendarioAulas } from "@/components/captacao/CalendarioAulas";
 import { cn } from "@/lib/cn";
 import type { AulaExperimentalItem, Lead, Plano } from "@/lib/types";
 
-type Aba = "leads" | "aulas";
+type Aba = "leads" | "aulas" | "calendario";
 
 /**
- * As duas leituras da Captação: o funil de leads e a agenda de aulas
- * experimentais. São listas com regras próprias (uma filtra por estágio, a
- * outra por data), então cada uma fica na sua aba em vez de virar mais um chip
- * na mesma barra de filtros.
+ * As três leituras da Captação: o funil de leads, a agenda de aulas
+ * experimentais em lista e a mesma agenda vista como mês. São recortes com
+ * regras próprias (uma filtra por estágio, outra por data, a última desenha o
+ * mês inteiro), então cada uma fica na sua aba em vez de virar mais um chip na
+ * mesma barra de filtros.
  */
 export function CaptacaoAbas({
   leads,
@@ -41,13 +43,16 @@ export function CaptacaoAbas({
           // de que alguém vai bater na porta.
           badge={aulasHoje > 0 ? aulasHoje : undefined}
         />
+        <AbaBotao
+          ativa={aba === "calendario"}
+          onClick={() => setAba("calendario")}
+          label="Calendário"
+        />
       </div>
 
-      {aba === "leads" ? (
-        <LeadsFiltro leads={leads} planos={planos} />
-      ) : (
-        <AulasExperimentais aulas={aulas} hoje={hoje} />
-      )}
+      {aba === "leads" && <LeadsFiltro leads={leads} planos={planos} />}
+      {aba === "aulas" && <AulasExperimentais aulas={aulas} hoje={hoje} />}
+      {aba === "calendario" && <CalendarioAulas aulas={aulas} hoje={hoje} />}
     </div>
   );
 }

@@ -13,6 +13,7 @@ type Linha = {
   conversaId: string | null;
   personId: string | null;
   agendadoPor: { nome: string } | null;
+  observacao: string | null;
   criadoEm: Date;
 };
 
@@ -27,6 +28,7 @@ function toItem(a: Linha): AulaExperimentalItem {
     conversaId: a.conversaId,
     personId: a.personId,
     agendadoPor: a.agendadoPor?.nome ?? null,
+    observacao: a.observacao,
     criadoEm: a.criadoEm.toISOString(),
   };
 }
@@ -40,6 +42,7 @@ const SELECT = {
   hora: true,
   conversaId: true,
   personId: true,
+  observacao: true,
   criadoEm: true,
   agendadoPor: { select: { nome: true } },
 } as const;
@@ -82,6 +85,30 @@ export async function criarAulaExperimentalRepo(input: {
       hora: input.hora,
       agendadoPorId: input.agendadoPorId,
     },
+    select: SELECT,
+  });
+  return toItem(aula);
+}
+
+/**
+ * Reescreve a observação da aula. Só esse campo se mexe: data, hora e
+ * modalidade são o que foi combinado com a pessoa por mensagem, e mudar isso
+ * pela agenda deixaria a lista dizendo uma coisa e o WhatsApp dela outra —
+ * remarcar continua sendo agendar de novo pela conversa.
+ *
+ * `null` quando a aula não existe mais (alguém apagou entre abrir a tela e
+ * salvar), para a rota responder 404 em vez de estourar.
+ */
+export async function salvarObservacaoAulaRepo(
+  id: string,
+  observacao: string | null,
+): Promise<AulaExperimentalItem | null> {
+  const existe = await prisma.aulaExperimental.findUnique({ where: { id }, select: { id: true } });
+  if (!existe) return null;
+
+  const aula = await prisma.aulaExperimental.update({
+    where: { id },
+    data: { observacao },
     select: SELECT,
   });
   return toItem(aula);

@@ -355,5 +355,6 @@ export interface AulaExperimentalItem {
   conversaId: string | null; // permite voltar para a conversa
   personId: string | null;
   agendadoPor: string | null; // null quando o colaborador saiu
+  observacao: string | null; // recado da recepção, escrito no calendário
   criadoEm: string; // ISO
 }

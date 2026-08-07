@@ -28,6 +28,30 @@ export const HORAS: number[] = Array.from(
   (_, i) => HORA_MIN + i,
 );
 
+/**
+ * Teto da observação da aula: é recado de balcão ("veio com a mãe", "quer
+ * treinar de manhã"), não prontuário. Curto de propósito — o histórico da
+ * pessoa mora na conversa do WhatsApp.
+ */
+export const OBSERVACAO_MAX = 500;
+
+/**
+ * O que veio do campo de observação, pronto para o banco: espaço sobrando sai,
+ * texto vazio vira `null` (apagar a observação é o mesmo que não ter uma) e o
+ * que passa do teto é recusado em vez de cortado — cortar entregaria à recepção
+ * um recado pela metade sem avisar.
+ */
+export function normalizarObservacao(
+  v: unknown,
+): { ok: true; valor: string | null } | { ok: false } {
+  if (v === null || v === undefined) return { ok: true, valor: null };
+  if (typeof v !== "string") return { ok: false };
+  const texto = v.trim();
+  if (!texto) return { ok: true, valor: null };
+  if (texto.length > OBSERVACAO_MAX) return { ok: false };
+  return { ok: true, valor: texto };
+}
+
 export function ehModalidade(v: unknown): v is Modalidade {
   return typeof v === "string" && (MODALIDADES as readonly string[]).includes(v);
 }

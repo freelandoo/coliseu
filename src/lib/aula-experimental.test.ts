@@ -12,6 +12,8 @@ import {
   HORAS,
   mensagemAulaExperimental,
   mensagemRemarcarAula,
+  normalizarObservacao,
+  OBSERVACAO_MAX,
 } from "@/lib/aula-experimental";
 
 describe("data como texto", () => {
@@ -111,5 +113,32 @@ describe("mensagem de confirmação", () => {
         "Qualquer dúvida antes da aula, estou à disposição. Nos vemos em breve!",
       ].join("\n"),
     );
+  });
+});
+
+describe("observação da aula", () => {
+  test("apagar o campo é o mesmo que não ter observação", () => {
+    expect(normalizarObservacao("")).toEqual({ ok: true, valor: null });
+    expect(normalizarObservacao("   \n ")).toEqual({ ok: true, valor: null });
+    expect(normalizarObservacao(null)).toEqual({ ok: true, valor: null });
+    expect(normalizarObservacao(undefined)).toEqual({ ok: true, valor: null });
+  });
+
+  test("guarda o recado sem o espaço sobrando", () => {
+    expect(normalizarObservacao("  vem com a mãe  ")).toEqual({
+      ok: true,
+      valor: "vem com a mãe",
+    });
+  });
+
+  test("recusa o que não é texto e o que passa do teto", () => {
+    expect(normalizarObservacao(42)).toEqual({ ok: false });
+    expect(normalizarObservacao({ texto: "oi" })).toEqual({ ok: false });
+    expect(normalizarObservacao("a".repeat(OBSERVACAO_MAX))).toEqual({
+      ok: true,
+      valor: "a".repeat(OBSERVACAO_MAX),
+    });
+    // Recusa em vez de cortar: recado pela metade sem aviso é pior que erro.
+    expect(normalizarObservacao("a".repeat(OBSERVACAO_MAX + 1))).toEqual({ ok: false });
   });
 });

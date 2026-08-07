@@ -772,6 +772,11 @@ model AulaExperimental {
   /// Hora cheia, 6 a 22.
   hora       Int
 
+  /// Recado da recepção sobre essa visita, escrito no calendário da Captação:
+  /// o que combinaram fora do horário ("vem com a mãe", "só depois das 19h").
+  /// Fica na aula e não na conversa porque quem lê é quem abre a agenda do dia.
+  observacao String?
+
   agendadoPor   User?    @relation(fields: [agendadoPorId], references: [id], onDelete: SetNull)
   agendadoPorId String?
   criadoEm      DateTime @default(now())
