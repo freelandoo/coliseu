@@ -16,7 +16,10 @@ const CHIPS: { key: Filtro; label: string }[] = [
 ];
 
 /**
- * As aulas experimentais marcadas na conversa.
+ * As aulas experimentais marcadas na conversa, em lista.
+ *
+ * É a segunda aba da tela: o calendário mostra o mês e responde "que dias já
+ * estão cheios?"; a lista é a leitura corrida, com filtro e histórico.
  *
  * "Hoje" é o filtro que a recepção usa de manhã para saber quem vai aparecer;
  * "Próximas" é a agenda daqui para frente; "Todas" guarda o histórico, inclusive
@@ -25,7 +28,7 @@ const CHIPS: { key: Filtro; label: string }[] = [
  * `hoje` vem pronto do servidor, no fuso da academia — calcular aqui faria o
  * HTML do servidor e o do navegador discordarem sobre que dia é hoje.
  */
-export function AulasExperimentais({
+export function ListaAulas({
   aulas,
   hoje,
 }: {

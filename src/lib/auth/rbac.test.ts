@@ -8,8 +8,8 @@ test("ADMIN pode tudo; RECEPCAO não é TECNICO", () => {
   expect(podePapel("RECEPCAO", ["RECEPCAO", "ADMIN"])).toBe(true);
 });
 
-test("colaborador só abre matrícula, captação, atendimento e catraca", () => {
-  for (const m of ["matriculados", "captacao", "atendimento", "acesso"] as const) {
+test("colaborador só abre matrícula, captação, aula experimental, atendimento e catraca", () => {
+  for (const m of ["matriculados", "captacao", "aula-experimental", "atendimento", "acesso"] as const) {
     expect(podeModulo("RECEPCAO", m)).toBe(true);
   }
   // Painel, dinheiro e indicadores do negócio são do admin.

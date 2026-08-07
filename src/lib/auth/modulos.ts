@@ -10,11 +10,17 @@ export function podePapel(papel: Papel, exigidos: Papel[]): boolean {
   return exigidos.includes(papel);
 }
 
-/** Módulos do menu — a raiz de cada área do sistema. */
+/**
+ * Módulos do menu — a raiz de cada área do sistema.
+ *
+ * O nome é o caminho da rota (`/captacao`, `/aula-experimental`): `rotaInicial`
+ * conta com isso para mandar quem não tem atendimento à primeira tela da lista.
+ */
 export type Modulo =
   | "painel"
   | "matriculados"
   | "captacao"
+  | "aula-experimental"
   | "atendimento"
   | "cobranca"
   | "custos"
@@ -27,8 +33,8 @@ export type Modulo =
  * A ordem é a do menu — a tela inicial é decidida por `rotaInicial`.
  */
 const MODULOS_POR_PAPEL: Record<Papel, Modulo[]> = {
-  ADMIN: ["painel", "matriculados", "captacao", "atendimento", "cobranca", "custos", "acesso", "relatorios"],
-  RECEPCAO: ["matriculados", "captacao", "atendimento", "acesso"],
+  ADMIN: ["painel", "matriculados", "captacao", "aula-experimental", "atendimento", "cobranca", "custos", "acesso", "relatorios"],
+  RECEPCAO: ["matriculados", "captacao", "aula-experimental", "atendimento", "acesso"],
   TECNICO: ["acesso"],
 };
 

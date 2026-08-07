@@ -56,6 +56,14 @@ const IconAcesso = (
   </svg>
 );
 
+const IconCalendario = (
+  <svg width="15" height="15" viewBox="0 0 15 15" fill="none" aria-hidden>
+    <rect x="1.8" y="3" width="11.4" height="10.2" rx="1.4" stroke="currentColor" strokeWidth="1.3" />
+    <path d="M1.8 6.2h11.4M5 1.8v2.4M10 1.8v2.4" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" />
+    <rect x="4.2" y="8" width="2.2" height="2.2" rx=".6" fill="currentColor" />
+  </svg>
+);
+
 const IconBackup = (
   <svg width="15" height="15" viewBox="0 0 15 15" fill="none" aria-hidden>
     <path
@@ -82,6 +90,7 @@ const NAV: {
   { href: "/painel", modulo: "painel", label: "Painel", hint: "Visão geral" },
   { href: "/matriculados", modulo: "matriculados", icon: IconPessoas, label: "Matriculados", hint: "Alunos, renovação, retenção e fidelidade" },
   { href: "/captacao", modulo: "captacao", step: 1, label: "Captação", hint: "Leads e funil" },
+  { href: "/aula-experimental", modulo: "aula-experimental", icon: IconCalendario, label: "Aula experimental", hint: "Calendário e visitas marcadas" },
   { href: "/atendimento", modulo: "atendimento", icon: IconChat, label: "Atendimento", hint: "Conversas do WhatsApp" },
   { href: "/cobranca", modulo: "cobranca", step: 3, label: "Cobrança", hint: "Renovação e inadimplência" },
   { href: "/custos", modulo: "custos", icon: IconCustos, label: "Custos", hint: "Despesas e lucro" },
