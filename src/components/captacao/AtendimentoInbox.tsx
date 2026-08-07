@@ -8,7 +8,13 @@ import { assinarMensagens } from "@/lib/whatsapp/stream-cliente";
 import { ConversaPainel } from "@/components/captacao/ConversaPainel";
 import { ChaveQuebraLinha } from "@/components/captacao/ChaveQuebraLinha";
 import { cn } from "@/lib/cn";
-import { casaConversa, trechoAoRedor } from "@/lib/whatsapp/busca";
+import {
+  ORDEM_BANDEIRAS,
+  casaConversa,
+  contarBandeiras,
+  filtrarPorBandeira,
+  trechoAoRedor,
+} from "@/lib/whatsapp/busca";
 import { ehDataISO, mensagemRemarcarAula } from "@/lib/aula-experimental";
 import {
   INTERESSE_LABEL,
@@ -87,6 +93,67 @@ function AbaBotao({
 }
 
 /**
+ * Barra de bandeiras em cima da busca: uma bolinha por estágio, na cor que o
+ * estágio já tem em todo o sistema, com quantas conversas estão nele.
+ *
+ * Fica acima do campo de busca porque é o corte mais grosso — "me mostra só
+ * quem tem interesse" vem antes de "achar o Luís". Marca mais de uma para
+ * juntar estágios (qualificado + com interesse é a fila de quem vale ligar
+ * hoje), e clicar de novo desmarca.
+ */
+function BarraBandeiras({
+  contagem,
+  ativas,
+  onAlternar,
+  onLimpar,
+}: {
+  contagem: Record<ConversaInteresse, number>;
+  ativas: ConversaInteresse[];
+  onAlternar: (bandeira: ConversaInteresse) => void;
+  onLimpar: () => void;
+}) {
+  return (
+    <div className="mb-2 flex flex-wrap items-center gap-1">
+      {ORDEM_BANDEIRAS.map((bandeira) => {
+        const ativa = ativas.includes(bandeira);
+        return (
+          <button
+            key={bandeira}
+            type="button"
+            onClick={() => onAlternar(bandeira)}
+            aria-pressed={ativa}
+            title={`${INTERESSE_LABEL[bandeira]} · ${contagem[bandeira]}`}
+            aria-label={`Filtrar por ${INTERESSE_LABEL[bandeira]} — ${contagem[bandeira]} conversa(s)`}
+            className={cn(
+              "flex items-center gap-1 rounded-full border px-1.5 py-0.5 text-[10px] font-semibold tabular-nums transition-colors",
+              ativa
+                ? "border-red/60 bg-red-ghost text-ink"
+                : "border-border text-faint hover:border-border-strong hover:text-muted",
+            )}
+          >
+            <span
+              className={cn("h-2 w-2 shrink-0 rounded-full", PONTO[bandeira], !ativa && "opacity-70")}
+            />
+            {contagem[bandeira]}
+          </button>
+        );
+      })}
+      {ativas.length > 0 && (
+        // Sem esta saída, desfazer um filtro de três bandeiras seria três
+        // cliques em bolinhas que a essa altura já parecem todas iguais.
+        <button
+          type="button"
+          onClick={onLimpar}
+          className="rounded-full px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-faint transition-colors hover:text-ink"
+        >
+          todas
+        </button>
+      )}
+    </div>
+  );
+}
+
+/**
  * Inbox do WhatsApp: lista à esquerda, conversa à direita no desktop. No mobile
  * é uma tela por vez, como o app do celular: primeiro a lista; tocar numa
  * conversa abre só ela, com botão de voltar.
@@ -157,6 +224,8 @@ export function AtendimentoInbox({
     termo: "",
     itens: [],
   });
+  // Bandeiras marcadas na barra acima da busca. Lista vazia = sem filtro.
+  const [bandeiras, setBandeiras] = useState<ConversaInteresse[]>([]);
 
   const buscarLista = useCallback(async () => {
     try {
@@ -266,9 +335,21 @@ export function AtendimentoInbox({
     );
   }, [conversas, achados, termo]);
 
-  const pessoas = filtradas.filter((c) => !c.ehGrupo);
+  // A contagem das bolinhas sai daqui — da lista já buscada, mas ainda sem o
+  // filtro de bandeira; ver `contarBandeiras`.
+  const pessoasBuscadas = filtradas.filter((c) => !c.ehGrupo);
+  const contagemBandeiras = useMemo(() => contarBandeiras(pessoasBuscadas), [pessoasBuscadas]);
+  const pessoas = filtrarPorBandeira(pessoasBuscadas, bandeiras);
+  // Grupo não entra no funil (ver o schema), então a barra de bandeiras e o
+  // filtro não valem para esta aba.
   const grupos = filtradas.filter((c) => c.ehGrupo);
   const visiveis = aba === "grupos" ? grupos : pessoas;
+
+  function alternarBandeira(bandeira: ConversaInteresse) {
+    setBandeiras((atuais) =>
+      atuais.includes(bandeira) ? atuais.filter((b) => b !== bandeira) : [...atuais, bandeira],
+    );
+  }
 
   function trocarAba(nova: Aba) {
     setAba(nova);
@@ -394,27 +475,38 @@ export function AtendimentoInbox({
             />
           </div>
 
-          {/* Busca: nome, telefone ou palavra que ficou no meio da conversa. */}
-          <div className="relative shrink-0 border-b border-border px-3 py-2">
-            <input
-              value={busca}
-              onChange={(e) => setBusca(e.target.value)}
-              type="search"
-              placeholder="Buscar nome, telefone ou palavra…"
-              aria-label="Buscar conversa por nome, telefone ou palavra"
-              className="w-full rounded-lg border border-border bg-surface px-3 py-1.5 pr-8 text-xs text-ink outline-none transition-colors placeholder:text-faint focus:border-red/60"
-            />
-            {busca && (
-              <button
-                onClick={() => setBusca("")}
-                aria-label="Limpar busca"
-                className="absolute right-5 top-1/2 -translate-y-1/2 rounded p-1 text-faint transition-colors hover:text-ink"
-              >
-                <svg width="11" height="11" viewBox="0 0 12 12" fill="none" aria-hidden>
-                  <path d="M3 3l6 6M9 3l-6 6" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" />
-                </svg>
-              </button>
+          {/* Bandeiras (o corte grosso, por estágio) em cima da busca (o corte
+              fino, por pessoa). */}
+          <div className="shrink-0 border-b border-border px-3 py-2">
+            {aba === "pessoas" && (
+              <BarraBandeiras
+                contagem={contagemBandeiras}
+                ativas={bandeiras}
+                onAlternar={alternarBandeira}
+                onLimpar={() => setBandeiras([])}
+              />
             )}
+            <div className="relative">
+              <input
+                value={busca}
+                onChange={(e) => setBusca(e.target.value)}
+                type="search"
+                placeholder="Buscar nome, telefone ou palavra…"
+                aria-label="Buscar conversa por nome, telefone ou palavra"
+                className="w-full rounded-lg border border-border bg-surface px-3 py-1.5 pr-8 text-xs text-ink outline-none transition-colors placeholder:text-faint focus:border-red/60"
+              />
+              {busca && (
+                <button
+                  onClick={() => setBusca("")}
+                  aria-label="Limpar busca"
+                  className="absolute right-2 top-1/2 -translate-y-1/2 rounded p-1 text-faint transition-colors hover:text-ink"
+                >
+                  <svg width="11" height="11" viewBox="0 0 12 12" fill="none" aria-hidden>
+                    <path d="M3 3l6 6M9 3l-6 6" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" />
+                  </svg>
+                </button>
+              )}
+            </div>
           </div>
 
           <ul className="flex-1 overflow-y-auto">
@@ -423,10 +515,12 @@ export function AtendimentoInbox({
                 {termo
                   ? buscandoServidor
                     ? "Procurando no histórico…"
-                    : `Nada encontrado para “${termo}”. A busca cobre nome, telefone e o que foi escrito nas conversas.`
+                    : `Nada encontrado para “${termo}”${bandeiras.length ? " nas bandeiras marcadas" : ""}. A busca cobre nome, telefone e o que foi escrito nas conversas.`
                   : aba === "grupos"
                     ? "Nenhum grupo por aqui ainda. O grupo entra nesta aba na primeira mensagem nova que chegar nele — conversa anterior não é importada."
-                    : "Nenhuma conversa individual ainda."}
+                    : bandeiras.length
+                      ? "Nenhuma conversa nas bandeiras marcadas. Clique na bolinha de novo (ou em “todas”) para ver a lista inteira."
+                      : "Nenhuma conversa individual ainda."}
               </li>
             )}
             {visiveis.map((c) => {
