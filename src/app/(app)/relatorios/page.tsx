@@ -1,5 +1,6 @@
 import { Reveal } from "@/components/ui/Reveal";
 import { PageHeader } from "@/components/ui/primitives";
+import { ExportarRelatorio } from "@/components/relatorios/ExportarRelatorio";
 import {
   RelatoriosView,
   type RelatoriosData,
@@ -208,6 +209,12 @@ export default async function RelatoriosPage() {
       </Reveal>
 
       <Reveal delay={0.05}>
+        <div className="mb-6">
+          <ExportarRelatorio />
+        </div>
+      </Reveal>
+
+      <Reveal delay={0.1}>
         <RelatoriosView data={data} />
       </Reveal>
     </>
