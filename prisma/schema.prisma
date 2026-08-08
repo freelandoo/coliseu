@@ -110,6 +110,27 @@ model User {
   pushSubscriptions  PushSubscription[]
   respostasProntas   RespostaPronta[]
   aulasAgendadas     AulaExperimental[]
+  presencas          PresencaSlot[]
+}
+
+/// Ponto batido pelo navegador de quem está logado: um bloco de cinco minutos
+/// em que o sistema esteve aberto **e** havia alguém na frente dele — a batida
+/// só sai com a aba visível e mão no aparelho há menos de cinco minutos (ver
+/// `PresencaHeartbeat` e `@/lib/uso`).
+///
+/// É uma linha por bloco, e não um "último visto" no usuário, porque a pergunta
+/// da tela é quanto tempo somado, não quando foi a última vez: com um campo só,
+/// "trabalhou seis horas" seria impossível de responder. O par único (usuário,
+/// bloco) faz a batida repetida cair fora sozinha, sem leitura antes da escrita.
+model PresencaSlot {
+  id     String   @id @default(cuid())
+  user   User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId String
+  /// Início do bloco de cinco minutos, em UTC.
+  slot   DateTime
+
+  @@unique([userId, slot])
+  @@index([slot])
 }
 
 /// Inscrição de Web Push do PWA: cada linha é um navegador/aparelho que aceitou

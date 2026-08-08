@@ -1,6 +1,7 @@
 import type { ReactNode } from "react";
 import { Sidebar } from "@/components/Sidebar";
 import { NotificationBell } from "@/components/NotificationBell";
+import { PresencaHeartbeat } from "@/components/PresencaHeartbeat";
 import { InstallPrompt } from "@/components/pwa/InstallPrompt";
 import { TrocaSenhaObrigatoria } from "@/components/perfil/TrocaSenhaObrigatoria";
 import { podeModulo } from "@/lib/auth/modulos";
@@ -33,6 +34,11 @@ export default async function AppLayout({ children }: { children: ReactNode }) {
       {podeModulo(user.role as Papel, "captacao") && <NotificationBell />}
       {/* Convite de instalação do PWA: só depois do login, nunca na tela pública. */}
       <InstallPrompt />
+      {/* Batida de ponto do tempo em tela (aba Uso do Atendimento). Fica aqui, e
+          não na página do atendimento, porque o expediente não é só a caixa de
+          mensagens — e fica depois da troca de senha obrigatória, que quem não
+          passou dela ainda não começou a trabalhar. */}
+      <PresencaHeartbeat />
     </div>
   );
 }

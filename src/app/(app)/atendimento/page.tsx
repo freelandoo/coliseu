@@ -1,4 +1,5 @@
 import { Reveal } from "@/components/ui/Reveal";
+import { AbasAtendimento } from "@/components/captacao/AbasAtendimento";
 import { AtendimentoInbox } from "@/components/captacao/AtendimentoInbox";
 import { ConectarWhatsapp } from "@/components/captacao/ConectarWhatsapp";
 import { requireRole } from "@/lib/auth/rbac";
@@ -25,14 +26,13 @@ export default async function AtendimentoPage() {
         podeResponder={user.role === "ADMIN" || user.role === "RECEPCAO"}
         podeApagar={user.role === "ADMIN"}
         cabecalho={
-          /* Enxuto: título discreto e o indicador de conexão — assim o inbox
-             sobe e a caixa de resposta cabe na tela. */
-          <div className="mb-3 flex flex-wrap items-center justify-between gap-3">
-            <h1 className="font-display text-sm font-semibold uppercase tracking-widest text-ink">
-              Atendimento
-            </h1>
-            <ConectarWhatsapp inicial={whatsapp} compacto />
-          </div>
+          /* Enxuto: título discreto, as abas e o indicador de conexão — assim o
+             inbox sobe e a caixa de resposta cabe na tela. */
+          <AbasAtendimento
+            ativa="conversas"
+            podeVerUso={user.role === "ADMIN"}
+            acao={<ConectarWhatsapp inicial={whatsapp} compacto />}
+          />
         }
       />
     </Reveal>
