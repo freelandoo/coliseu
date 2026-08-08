@@ -36,6 +36,27 @@ function dia(iso: string): string {
   });
 }
 
+/** No lugar da bolinha de online: o aparelho não fica online, ele só manda. */
+function CelularIcone() {
+  return (
+    <svg
+      viewBox="0 0 24 24"
+      width="12"
+      height="12"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden
+      className="shrink-0 text-faint"
+    >
+      <rect x="6" y="2" width="12" height="20" rx="2" />
+      <path d="M11 18h2" />
+    </svg>
+  );
+}
+
 /* ---------- filtro de período ---------- */
 
 function FiltroPeriodo({ atual }: { atual: Periodo }) {
@@ -142,36 +163,49 @@ function Classificacoes({ porInteresse }: { porInteresse: Record<ConversaInteres
 
 function LinhaColaborador({
   uso,
+  posicao,
   maxMensagens,
   temMedicao,
 }: {
   uso: UsoColaborador;
+  /** Lugar no ranking de uso — a lista já vem ordenada por ele. */
+  posicao: number;
   /** Escala da barra: o maior do período vale 100%, não um teto inventado. */
   maxMensagens: number;
   temMedicao: boolean;
 }) {
+  const aparelho = uso.tipo === "aparelho";
   const semNada =
     uso.mensagens === 0 &&
     uso.classificacoes === 0 &&
     uso.aulas === 0 &&
     uso.matriculas === 0;
+  // No aparelho, zero não é desempenho: é coisa que ele não pode fazer.
+  const naoSeAplica = (valor: number) => (aparelho ? "—" : String(valor));
 
   return (
     <Card className={cn("p-4", semNada && "opacity-70")}>
       <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-1">
         <div className="flex min-w-0 items-center gap-2">
-          <span
-            aria-hidden
-            className={cn(
-              "h-2 w-2 shrink-0 rounded-full",
-              uso.online ? "bg-ok" : "bg-border-strong",
-            )}
-          />
+          <span className="w-4 shrink-0 text-right font-display text-sm font-semibold tabular-nums text-faint">
+            {posicao}
+          </span>
+          {aparelho ? (
+            <CelularIcone />
+          ) : (
+            <span
+              aria-hidden
+              className={cn(
+                "h-2 w-2 shrink-0 rounded-full",
+                uso.online ? "bg-ok" : "bg-border-strong",
+              )}
+            />
+          )}
           <span className="truncate font-display text-sm font-semibold uppercase tracking-wide text-ink">
             {uso.nome}
           </span>
           <span className="shrink-0 text-[10px] uppercase tracking-widest text-faint">
-            {PAPEL_LABEL[uso.role] ?? uso.role}
+            {aparelho ? "fora do sistema" : (uso.role && PAPEL_LABEL[uso.role]) || uso.role}
           </span>
           {!uso.ativo && (
             <span className="shrink-0 text-[10px] uppercase tracking-widest text-warn">
@@ -190,25 +224,31 @@ function LinhaColaborador({
       </div>
 
       {/* Barra do volume de resposta: o único número que compara duas pessoas
-          de relance — o resto pede leitura. */}
+          de relance — o resto pede leitura. O aparelho ganha a barra cinza:
+          entra na comparação sem parecer o campeão de vendas do mês. */}
       <div className="mt-3 h-1.5 overflow-hidden rounded-full bg-surface-2">
         <div
-          className="h-full rounded-full bg-gradient-to-r from-red-deep to-red-bright"
+          className={cn(
+            "h-full rounded-full",
+            aparelho
+              ? "bg-gradient-to-r from-elevated to-border-strong"
+              : "bg-gradient-to-r from-red-deep to-red-bright",
+          )}
           style={{ width: `${maxMensagens > 0 ? (uso.mensagens / maxMensagens) * 100 : 0}%` }}
         />
       </div>
 
       <div className="mt-3 grid grid-cols-3 gap-y-3 sm:grid-cols-4 lg:grid-cols-7">
-        <Celula label="Mensagens" valor={String(uso.mensagens)} destaque />
+        <Celula label="Mensagens" valor={String(uso.mensagens)} destaque={!aparelho} />
         <Celula label="Conversas" valor={String(uso.conversas)} />
-        <Celula label="Classificou" valor={String(uso.classificacoes)}>
+        <Celula label="Classificou" valor={naoSeAplica(uso.classificacoes)}>
           <Classificacoes porInteresse={uso.porInteresse} />
         </Celula>
-        <Celula label="Aulas exp." valor={String(uso.aulas)} />
-        <Celula label="Matrículas" valor={String(uso.matriculas)} />
+        <Celula label="Aulas exp." valor={naoSeAplica(uso.aulas)} />
+        <Celula label="Matrículas" valor={naoSeAplica(uso.matriculas)} />
         <Celula
           label="Em tela"
-          valor={temMedicao ? formatarDuracao(uso.msEmTela) : "—"}
+          valor={temMedicao && !aparelho ? formatarDuracao(uso.msEmTela) : "—"}
         />
         <Celula label="Ativo (est.)" valor={formatarDuracao(uso.msAtivo)} />
       </div>
@@ -251,7 +291,7 @@ export function UsoPainel({ dados }: { dados: UsoAtendimento }) {
         <Total
           label="Mensagens"
           valor={soma((u) => u.mensagens)}
-          hint="respostas enviadas pelo sistema"
+          hint="respostas enviadas, com o aparelho"
         />
         <Total
           label="Conversas"
@@ -281,10 +321,11 @@ export function UsoPainel({ dados }: { dados: UsoAtendimento }) {
             <p className="text-sm text-faint">Nenhum colaborador com acesso ainda.</p>
           </Card>
         ) : (
-          colaboradores.map((u) => (
+          colaboradores.map((u, i) => (
             <LinhaColaborador
               key={u.id}
               uso={u}
+              posicao={i + 1}
               maxMensagens={maxMensagens}
               temMedicao={temMedicao}
             />
@@ -301,8 +342,11 @@ export function UsoPainel({ dados }: { dados: UsoAtendimento }) {
           <div>
             <dt className="font-semibold text-ink">Mensagens e conversas</dt>
             <dd>
-              Só o que saiu pelo sistema, com autor. Resposta dada pelo celular do
-              dono não tem quem assinar e não entra em ninguém.
+              Cada resposta que saiu para o lead. A que sai do celular do dono não
+              tem quem assinar: em vez de sumir, junta-se na linha
+              <span className="text-ink"> Pelo aparelho</span>, que disputa o mesmo
+              ranking — é assim que se enxerga quanto do atendimento passou por
+              fora do sistema.
             </dd>
           </div>
           <div>

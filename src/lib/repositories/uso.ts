@@ -9,15 +9,28 @@ import {
 import type { ConversaInteresse } from "@/lib/types";
 import type { Role } from "@prisma/client";
 
+/**
+ * Id da linha do celular do dono. Não é usuário nenhum: é onde se juntam as
+ * respostas que saíram por fora do sistema — cuid nunca colide com isto.
+ */
+export const ID_APARELHO = "aparelho";
+
 /** Uma linha do quadro de uso — tudo que um colaborador fez no período. */
 export interface UsoColaborador {
   id: string;
+  /**
+   * `aparelho` é a linha do celular do dono, e ela existe para comparação: sem
+   * ela, a conversa respondida por fora do sistema simplesmente sumiria do
+   * quadro, e a recepção pareceria atender menos do que a academia atende.
+   */
+  tipo: "colaborador" | "aparelho";
   nome: string;
   login: string;
-  role: Role;
+  /** Nulo na linha do aparelho — ninguém logou para mandar aquilo. */
+  role: Role | null;
   ativo: boolean;
 
-  /** Respostas enviadas pelo sistema. O que sai do celular do dono não tem autor e não entra. */
+  /** Respostas que saíram para o lead. */
   mensagens: number;
   /** Conversas distintas em que essa pessoa respondeu ao menos uma vez. */
   conversas: number;
@@ -110,8 +123,10 @@ export async function indicadoresUsoRepo(
         select: { id: true, nome: true, login: true, role: true, ativo: true },
         orderBy: { nome: "asc" },
       }),
+      // Sem filtro de autor: o que saiu sem assinatura é do aparelho, e some
+      // do quadro se for descartado aqui.
       prisma.mensagem.findMany({
-        where: { direcao: "OUT", autorUserId: { not: null }, enviadaEm: janela },
+        where: { direcao: "OUT", enviadaEm: janela },
         select: { autorUserId: true, conversaId: true, enviadaEm: true },
       }),
       prisma.atendimentoRegistro.findMany({
@@ -144,8 +159,7 @@ export async function indicadoresUsoRepo(
   };
 
   for (const m of mensagens) {
-    if (!m.autorUserId) continue;
-    const b = balde(m.autorUserId);
+    const b = balde(m.autorUserId ?? ID_APARELHO);
     b.mensagens++;
     b.conversas.add(m.conversaId);
     b.instantes.push(m.enviadaEm.getTime());
@@ -185,6 +199,7 @@ export async function indicadoresUsoRepo(
 
     return {
       id: u.id,
+      tipo: "colaborador",
       nome: u.nome,
       login: u.login,
       role: u.role,
@@ -203,16 +218,52 @@ export async function indicadoresUsoRepo(
     };
   });
 
+  const aparelho = linhaAparelho(baldes.get(ID_APARELHO));
+
   return {
     periodo,
     inicio: inicio.toISOString(),
     fim: fim.toISOString(),
     // Conta desativada só aparece se trabalhou no período: sem isso, cada
     // colaborador que saiu deixaria para sempre uma linha de zeros na tela.
-    colaboradores: linhas
-      .filter((l) => l.ativo || temAtividade(l))
-      .sort(porRelevancia),
+    colaboradores: [...linhas.filter((l) => l.ativo || temAtividade(l)), ...(aparelho ? [aparelho] : [])].sort(
+      porRelevancia,
+    ),
     presencaDesde: primeiraBatida._min.slot?.toISOString() ?? null,
+  };
+}
+
+/**
+ * A linha do celular do dono. Entra no mesmo ranking que todo mundo — é o único
+ * jeito de a comparação responder "quanto do atendimento passou por fora do
+ * sistema", que é a pergunta que ela existe para responder.
+ *
+ * Só tem os números que o aparelho pode ter: mandar mensagem. Classificar lead,
+ * marcar aula e fechar matrícula exigem estar logado, e por isso ficam em zero
+ * de verdade aqui — a tela mostra "—" neles para não parecer desempenho ruim.
+ * Some quando não houve mensagem nenhuma: aparelho parado não é linha.
+ */
+function linhaAparelho(b: Balde | undefined): UsoColaborador | null {
+  if (!b || b.mensagens === 0) return null;
+  return {
+    id: ID_APARELHO,
+    tipo: "aparelho",
+    nome: "Pelo aparelho",
+    login: "",
+    role: null,
+    ativo: true,
+    mensagens: b.mensagens,
+    conversas: b.conversas.size,
+    classificacoes: 0,
+    porInteresse: { ...INTERESSE_ZERO },
+    aulas: 0,
+    matriculas: 0,
+    // Não há presença a medir: ninguém abriu o sistema para mandar isto.
+    msEmTela: 0,
+    msAtivo: estimarTempoAtivo(b.instantes),
+    ultimaAtividadeEm: new Date(Math.max(...b.instantes)).toISOString(),
+    ultimoLoginEm: null,
+    online: false,
   };
 }
 
