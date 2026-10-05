@@ -120,6 +120,47 @@ test("número já cadastrado é vinculado, não duplicado", async () => {
   await prisma.person.delete({ where: { id: existente.id } });
 });
 
+test("ex-aluno do histórico que volta a escrever vira lead novo, sem duplicar", async () => {
+  const exAluno = await prisma.person.create({
+    data: {
+      codigo: await proximoCodigoRepo(),
+      nome: "Ex Aluno CloudGym",
+      telefone: "5511999000111", // mesmo formato que o limpar() apaga
+      origem: "balcao",
+      fase: "exaluno",
+      unitId: await unitIdAtual(),
+    },
+  });
+
+  await processarEventoWhatsapp(evento({ id: "MSG-EX" }));
+
+  const conversa = await prisma.conversa.findFirst({ where: { remoteJid: JID } });
+  expect(conversa?.personId).toBe(exAluno.id);
+  const depois = await prisma.person.findUnique({ where: { id: exAluno.id } });
+  expect(depois?.fase).toBe("lead");
+  expect(depois?.estagio).toBe("novo");
+  expect(await prisma.person.count({ where: { nome: "Cliente Teste" } })).toBe(0);
+});
+
+test("cadastro vivo ganha do ex-aluno com o mesmo número", async () => {
+  const unitId = await unitIdAtual();
+  const exAluno = await prisma.person.create({
+    data: { codigo: await proximoCodigoRepo(), nome: "Ex Aluno", telefone: "5511999000111", origem: "balcao", fase: "exaluno", unitId },
+  });
+  const aluno = await prisma.person.create({
+    data: { codigo: await proximoCodigoRepo(), nome: "Aluno Atual", telefone: "(11) 99900-0111", origem: "balcao", fase: "aluno", unitId },
+  });
+
+  await processarEventoWhatsapp(evento({ id: "MSG-VIVO" }));
+
+  const conversa = await prisma.conversa.findFirst({ where: { remoteJid: JID } });
+  expect(conversa?.personId).toBe(aluno.id);
+  expect((await prisma.person.findUnique({ where: { id: exAluno.id } }))?.fase).toBe("exaluno");
+
+  await prisma.conversa.deleteMany({ where: { personId: aluno.id } });
+  await prisma.person.delete({ where: { id: aluno.id } });
+});
+
 test("mensagem enviada pelo aparelho entra como saída sem autor de sistema", async () => {
   await processarEventoWhatsapp(evento({ id: "MSG-4" }));
   await processarEventoWhatsapp(evento({ id: "MSG-5", fromMe: true, texto: "Bom dia! Custa 99." }));

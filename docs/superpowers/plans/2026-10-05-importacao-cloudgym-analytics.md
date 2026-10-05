@@ -170,3 +170,22 @@ Contagem: **6 continuam ou fundem sem tela nova**, **7 ampliam o que existe**, *
 5. **110 alunos do Coliseu que estão inativos no CloudGym:** marcar a matrícula como EXPIRED? No corte, a catraca bloqueia esses alunos.
 6. **Escopo:** pular Estoque (#20) e deixar PDV/NF (#16, #19) para o fim?
 7. **Camada de relatório:** o híbrido proposto (funções TypeScript + views SQL só onde pesa) ou uma função SQL por relatório, como o prompt pede?
+
+---
+
+## 9. Respostas e decisões de implementação (2026-10-05)
+
+**Respostas do Alex (conferidas no CloudGym):**
+- Formas de pagamento: `CC` Débito Recorrente (só ele é recorrente; `ECC` é a maquininha), `ECD` débito, `BT` PIX/TED/Transf (somado com `PIXA` PIX Automático), `OC` Pendura (fiado), `BL`, `DN`, `CH`, `DC` débito em conta, `LC` local, `GP` Gympass, `TP` TotalPass, `OT` outros. `BT` com cartão/TID existe (2 em setembro): não usar a forma para deduzir se foi online.
+- Tipo da parcela: `i` = mensalidade (desde 08/2020), `e` = taxa de adesão (confirmado: plano "ORFEU Semestral (recorrente) INAUGURAÇÃO" tem adesão R$ 30; "Black Coliseu 3 meses" tem adesão R$ 75 em 2 parcelas), vazio = legado. **Estorno é `status = canceled`**, não tipo.
+- Criar os ativos novos; expirar os que viraram inativos (lista para a recepção em `usuarios/migracao/viraram-inativos.csv`); pular Estoque; NF e PDV no fim (export bruto das NFs fica arquivado: guarda fiscal de 5 anos); relatórios em TypeScript com SQL só nos pesados; gabarito = "Entrada de receita" de setembro nas três visões.
+
+**Decisões tomadas na implementação:**
+- **Mensalidade do plano = `price × months ÷ duration`.** `price` é cobrado a cada `months` meses e o contrato dura `duration`. Confere com todos os preços derivados das vendas em julho (FULL ANUAL 1788×1÷12 = 149).
+- **Ex-alunos entram com a fase nova `exaluno`.** As telas do dia a dia carregam a base inteira em memória e ficam de fora; o Analytics lê direto. Ex-aluno que escreve no WhatsApp volta a ser lead (reativação). Alunos que já estavam no Coliseu e evadiram continuam `aluno` com matrícula EXPIRED.
+- **Leads históricos em `LeadLegado`**, não na Captação (funil vivo).
+- **Staging = os próprios CSVs arquivados**, não uma tabela `stg_*`: evita 500 mil linhas jsonb em produção sem ganho, e o import é idempotente por chave legada.
+- **Matrícula nova nasce com a presença real** (último check-in), senão a regra "presença só avança" nunca corrigiria o padrão `now()`.
+- **Ordem de produção obrigatória:** aplicar a migration `20261005120000_migracao_cloudgym_analytics` **antes** do merge no master. Ela é só aditiva (seguro com o código atual); o código novo sem ela quebra o app.
+
+**Simulação contra produção (só leitura):** 810 clientes casam com quem já existe (CPF 672, celular+nome 128, nome 10) · 13.151 pessoas novas (181 ativos + 12.970 ex-alunos) · 109 matrículas a expirar · 609 matrículas atualizadas + 223 criadas · 0 diferença de preço nos 42 planos existentes · 818 pagamentos espelhados para a catraca (751 pagos, 63 atrasados, 4 a vencer) · 478 presenças atualizadas · check-ins por ano idênticos ao prompt, 99,4% vinculados · 880 issues (nascimento 520, CPF 229, email 131).

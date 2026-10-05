@@ -23,6 +23,10 @@ enum Origem {
 enum PessoaFase {
   lead
   aluno
+  /// Ex-aluno importado do histórico do CloudGym. Fica fora das telas do dia a
+  /// dia (que carregam só lead/aluno); aparece no Analytics. Volta a ser lead se
+  /// mandar mensagem no WhatsApp.
+  exaluno
 }
 
 enum LeadEstagio {
@@ -55,13 +59,24 @@ enum CobrancaTipo {
 }
 
 model Unit {
-  id        String   @id @default(cuid())
-  slug      String   @unique
-  nome      String
-  createdAt DateTime @default(now())
-  users     User[]
-  people    Person[]
-  plans     Plan[]
+  id               String   @id @default(cuid())
+  slug             String   @unique
+  nome             String
+  /// Dados cadastrais vindos do CloudGym (unidade 1668).
+  legacyCloudgymId Int?     @unique
+  razaoSocial      String?
+  cnpj             String?
+  endereco         String?
+  bairro           String?
+  cidade           String?
+  uf               String?
+  cep              String?
+  telefone         String?
+  timezone         String?
+  createdAt        DateTime @default(now())
+  users            User[]
+  people           Person[]
+  plans            Plan[]
 
   devices  AccessDevice[]
   policies AccessPolicy[]
@@ -69,6 +84,11 @@ model Unit {
   whatsappInstances  WhatsappInstance[]
   conversas          Conversa[]
   aulasExperimentais AulaExperimental[]
+
+  contasContabeis ContaContabil[]
+  contasBancarias ContaBancaria[]
+  colaboradores   Colaborador[]
+  aulasGrade      AulaGrade[]
 }
 
 model User {
@@ -159,25 +179,34 @@ model Session {
 }
 
 model Person {
-  id             String       @id @default(cuid())
-  codigo         String       @unique
-  nome           String
-  telefone       String?
-  email          String?
-  cpf            String?
-  rg             String?
-  vendedor       String? // consultor que fez a venda (herdado do CloudGym)
-  origem         Origem
-  fase           PessoaFase   @default(lead)
-  estagio        LeadEstagio?
-  motivoPerdido  String?
-  dataNascimento String?
-  cep            String?
-  estado         String?
-  cidade         String?
-  rua            String?
-  numero         String?
-  criadoEm       DateTime     @default(now())
+  id               String       @id @default(cuid())
+  codigo           String       @unique
+  nome             String
+  telefone         String?
+  email            String?
+  cpf              String?
+  rg               String?
+  vendedor         String? // consultor que fez a venda (herdado do CloudGym)
+  origem           Origem
+  fase             PessoaFase   @default(lead)
+  estagio          LeadEstagio?
+  motivoPerdido    String?
+  dataNascimento   String?
+  cep              String?
+  estado           String?
+  cidade           String?
+  rua              String?
+  numero           String?
+  /// Migração CloudGym: ids legados (upsert idempotente) e campos sem lugar antes.
+  legacyCloudgymId Int?         @unique
+  legacyLeadId     Int?         @unique
+  legacyName       String?
+  genero           String?
+  telefoneFixo     String?
+  origemLegado     String?
+  cadastroLegado   DateTime?    @db.Date
+  inativadoEm      DateTime?    @db.Date
+  criadoEm         DateTime     @default(now())
 
   unit   Unit   @relation(fields: [unitId], references: [id])
   unitId String
@@ -197,6 +226,11 @@ model Person {
 
   aulasExperimentais AulaExperimental[]
 
+  historicoPlanos HistoricoPlano[]
+  parcelas        Parcela[]
+  checkIns        CheckIn[]
+  npsRespostas    NpsResposta[]
+
   @@index([unitId, fase])
   @@index([nome])
 }
@@ -211,10 +245,20 @@ model Plan {
   ativo       Boolean @default(true)
   descricao   String?
 
+  /// Migração CloudGym: valorMensal = price × months ÷ duration; `meses` = duration; adesão em `taxaAdesao`
+  /// dividida em `parcelasAdesao`.
+  legacyCloudgymId Int?           @unique
+  meses            Int?
+  taxaAdesao       Decimal?       @db.Decimal(12, 2)
+  parcelasAdesao   Int?
+  contaContabil    ContaContabil? @relation(fields: [contaContabilId], references: [id], onDelete: SetNull)
+  contaContabilId  String?
+
   unit   Unit   @relation(fields: [unitId], references: [id])
   unitId String
 
   memberships Membership[]
+  historicos  HistoricoPlano[]
 
   accessPolicies AccessPolicy[]
 
@@ -804,4 +848,271 @@ model AulaExperimental {
 
   @@index([unitId, data])
   @@index([conversaId])
+}
+
+// ============================================================
+// Migração CloudGym (export de 2026-10-05) + base do Analytics.
+// Valores em numeric(12,2). Toda linha importada carrega a chave legada
+// (`legacyCloudgymId` ou `chave` determinística) para o import ser idempotente.
+// Plano: docs/superpowers/plans/2026-10-05-importacao-cloudgym-analytics.md
+// ============================================================
+
+/// Árvore do plano de contas (pai → filho), base do DRE e do fluxo de caixa.
+model ContaContabil {
+  id               String          @id @default(cuid())
+  legacyCloudgymId Int             @unique
+  nome             String
+  /// true = conta de débito (saída); false = crédito (entrada).
+  debito           Boolean
+  ativo            Boolean
+  tipo             String?
+  pai              ContaContabil?  @relation("ContaPai", fields: [paiId], references: [id], onDelete: SetNull)
+  paiId            String?
+  filhas           ContaContabil[] @relation("ContaPai")
+  unit             Unit            @relation(fields: [unitId], references: [id])
+  unitId           String
+
+  planos   Plan[]
+  parcelas Parcela[]
+  taxas    TaxaPagamento[]
+
+  @@index([paiId])
+}
+
+/// Contas bancárias da academia. Dado sensível: só ADMIN.
+model ContaBancaria {
+  id               String  @id @default(cuid())
+  legacyCloudgymId Int     @unique
+  codigo           String
+  nome             String
+  agencia          String
+  conta            String
+  saldo            Decimal @db.Decimal(12, 2)
+  unit             Unit    @relation(fields: [unitId], references: [id])
+  unitId           String
+}
+
+/// Equipe do CloudGym (professores, recepção, gerentes). Não dá acesso ao
+/// sistema: vincular a um `User` é decisão manual do admin.
+model Colaborador {
+  id               String      @id @default(cuid())
+  legacyCloudgymId Int         @unique
+  nome             String
+  sobrenome        String?
+  email            String?
+  cargo            String?
+  cadastradoEm     DateTime?   @db.Date
+  unit             Unit        @relation(fields: [unitId], references: [id])
+  unitId           String
+  aulas            AulaGrade[]
+}
+
+/// Histórico de planos do cliente (coluna `plan`, separada por "|"). ordem 0 = mais recente.
+model HistoricoPlano {
+  id        String  @id @default(cuid())
+  person    Person  @relation(fields: [personId], references: [id], onDelete: Cascade)
+  personId  String
+  ordem     Int
+  nomePlano String
+  plan      Plan?   @relation(fields: [planId], references: [id], onDelete: SetNull)
+  planId    String?
+
+  @@unique([personId, ordem])
+}
+
+/// Parcela financeira (paga ou a vencer) — fonte do Entrada de Receita, Fluxo de
+/// Caixa e DRE. `realizadoCaixa` marca o que aparece na visão "Realizado Caixa".
+model Parcela {
+  id              String         @id @default(cuid())
+  legacyPaymentId Int            @unique
+  legacyMemberId  Int
+  person          Person?        @relation(fields: [personId], references: [id], onDelete: SetNull)
+  personId        String?
+  unitId          String
+  vencimento      DateTime       @db.Date
+  pagamento       DateTime?      @db.Date
+  compensacao     DateTime?      @db.Date
+  valorBruto      Decimal        @db.Decimal(12, 2)
+  valorLiquido    Decimal?       @db.Decimal(12, 2)
+  /// Código CloudGym (CC, ECC, ECD, BT, PIXA, OC, BL, DN, CH, DC, LC, GP, TP, OT).
+  forma           String
+  /// Só os 4 últimos dígitos. O número completo nunca é gravado.
+  cartaoFinal     String?
+  bandeira        String?
+  nsu             String?
+  /// stone | pagarme (campo_15 do export).
+  gateway         String?
+  /// paid | canceled (estorno) | error | overdue | null (a vencer / legado sem status).
+  status          String?
+  /// mensalidade (i) | adesao (e) | legado (vazio).
+  tipo            String
+  contaContabil   ContaContabil? @relation(fields: [contaContabilId], references: [id], onDelete: SetNull)
+  contaContabilId String?
+  realizadoCaixa  Boolean        @default(false)
+
+  @@index([personId, vencimento])
+  @@index([unitId, pagamento])
+  @@index([unitId, vencimento])
+}
+
+/// Taxa de adquirência por pagamento (conta "Bancos" do plano de contas).
+model TaxaPagamento {
+  id              String         @id @default(cuid())
+  /// member|data|valor|n — o export não traz id próprio.
+  chave           String         @unique
+  legacyMemberId  Int
+  personId        String?
+  unitId          String
+  data            DateTime       @db.Date
+  valor           Decimal        @db.Decimal(12, 2)
+  contaContabil   ContaContabil? @relation(fields: [contaContabilId], references: [id], onDelete: SetNull)
+  contaContabilId String?
+
+  @@index([unitId, data])
+}
+
+/// Vendas de contratos agregadas por dia × plano × vendedor (relatório Vendas).
+model VendaPlanoDia {
+  id           String   @id @default(cuid())
+  chave        String   @unique
+  unitId       String
+  data         DateTime @db.Date
+  nomePlano    String
+  planId       String?
+  qtdContratos Int
+  total        Decimal  @db.Decimal(12, 2)
+  vendedorId   Int?
+  vendedorNome String?
+
+  @@index([unitId, data])
+}
+
+/// Livro caixa (serviços + operacional). As visões Vendido e Recebido do
+/// CloudGym são quase iguais: uma linha só, com as duas flags.
+model LancamentoCaixa {
+  id             String   @id @default(cuid())
+  chave          String   @unique
+  unitId         String
+  /// servico | operacional
+  categoria      String
+  data           DateTime @db.Date
+  valor          Decimal  @db.Decimal(12, 2)
+  forma          String?
+  legacyMemberId Int?
+  personId       String?
+  descricao      String
+  vendedorNome   String?
+  vendido        Boolean  @default(false)
+  recebido       Boolean  @default(false)
+
+  @@index([unitId, data])
+}
+
+/// Presença (check-in). origem "cloudgym" = relatório de frequência do CloudGym;
+/// os giros da catraca seguem em AccessEvent. O contato bruto só fica guardado
+/// enquanto a linha não tem dono, para vincular num import futuro.
+model CheckIn {
+  id           String   @id @default(cuid())
+  chave        String   @unique
+  unitId       String
+  person       Person?  @relation(fields: [personId], references: [id], onDelete: SetNull)
+  personId     String?
+  ocorridoEm   DateTime
+  origem       String   @default("cloudgym")
+  /// email | celular | nome — por qual chave a linha achou dono.
+  vinculo      String?
+  nomeBruto    String?
+  emailBruto   String?
+  celularBruto String?
+
+  @@index([personId, ocorridoEm])
+  @@index([unitId, ocorridoEm])
+}
+
+model NpsResposta {
+  id           String   @id @default(cuid())
+  chave        String   @unique
+  unitId       String
+  person       Person?  @relation(fields: [personId], references: [id], onDelete: SetNull)
+  personId     String?
+  respondidaEm DateTime
+  score        Int
+  feedback     String?
+
+  @@index([unitId, respondidaEm])
+}
+
+/// Grade semanal de aulas. diaSemana: 0 = domingo … 6 = sábado.
+model AulaGrade {
+  id               String       @id @default(cuid())
+  legacyCloudgymId Int          @unique
+  nome             String
+  diaSemana        Int
+  inicio           String
+  fim              String
+  capacidade       Int
+  professor        Colaborador? @relation(fields: [professorId], references: [id], onDelete: SetNull)
+  professorId      String?
+  unit             Unit         @relation(fields: [unitId], references: [id])
+  unitId           String
+}
+
+/// Auditoria do CloudGym. Separada do AuditLog novo, que tem outro formato.
+model AuditoriaLegado {
+  id             String   @id @default(cuid())
+  chave          String   @unique
+  unitId         String
+  ocorridoEm     DateTime
+  operacaoCod    String
+  descricao      String?
+  usuario        String?
+  legacyMemberId Int?
+  personId       String?
+
+  @@index([unitId, ocorridoEm])
+}
+
+model ImportRun {
+  id          String        @id @default(cuid())
+  iniciadoEm  DateTime      @default(now())
+  terminadoEm DateTime?
+  /// dry-run | apply
+  modo        String
+  origem      String
+  contagens   Json?
+  ok          Boolean       @default(false)
+  issues      ImportIssue[]
+}
+
+model ImportIssue {
+  id      String    @id @default(cuid())
+  run     ImportRun @relation(fields: [runId], references: [id], onDelete: Cascade)
+  runId   String
+  arquivo String
+  linha   Int?
+  chave   String?
+  motivo  String
+  detalhe String?
+
+  @@index([runId, motivo])
+}
+
+/// Audiência e pipeline do CloudGym (2019→2026). Histórico para o Analytics:
+/// não entra na Captação, que é o funil vivo.
+model LeadLegado {
+  id           String    @id @default(cuid())
+  /// audiencia:<lead_id> | pipeline:<lead_id>
+  chave        String    @unique
+  unitId       String
+  nome         String
+  tipo         String?
+  cadastradoEm DateTime?
+  celular      String?
+  email        String?
+  status       String?
+  origem       String?
+  vendedor     String?
+  personId     String?
+
+  @@index([unitId, cadastradoEm])
 }

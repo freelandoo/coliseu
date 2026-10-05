@@ -140,7 +140,7 @@ export interface Endereco {
   numero?: string;
 }
 
-export type PessoaFase = "lead" | "aluno";
+export type PessoaFase = "lead" | "aluno" | "exaluno";
 
 export interface Pessoa {
   id: string;

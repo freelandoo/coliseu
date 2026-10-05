@@ -23,7 +23,13 @@ export async function proximoCodigoRepo(): Promise<string> {
 }
 
 export async function listarPessoasRepo(): Promise<Pessoa[]> {
-  const rows = await prisma.person.findMany({ include: withMemberships, orderBy: { criadoEm: "desc" } });
+  // Ex-alunos do histórico do CloudGym (13 mil) ficam fora das telas do dia a
+  // dia — elas carregam a base inteira em memória. O Analytics lê direto.
+  const rows = await prisma.person.findMany({
+    where: { fase: { not: "exaluno" } },
+    include: withMemberships,
+    orderBy: { criadoEm: "desc" },
+  });
   return rows.map(toPessoa);
 }
 

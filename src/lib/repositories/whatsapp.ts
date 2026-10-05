@@ -71,7 +71,15 @@ async function acharPessoaPorTelefone(telefone: string): Promise<string | null> 
     select: { id: true, telefone: true, fase: true },
     orderBy: { criadoEm: "asc" },
   });
-  return candidatos.find((p) => chaveTelefone(p.telefone) === chave)?.id ?? null;
+  const donos = candidatos.filter((p) => chaveTelefone(p.telefone) === chave);
+  // Cadastro vivo (lead/aluno) ganha do ex-aluno do histórico com o mesmo número.
+  const dono = donos.find((p) => p.fase !== "exaluno") ?? donos[0];
+  if (!dono) return null;
+  if (dono.fase === "exaluno") {
+    // Ex-aluno que voltou a escrever é oportunidade de reativação: volta ao funil.
+    await prisma.person.update({ where: { id: dono.id }, data: { fase: "lead", estagio: "novo" } });
+  }
+  return dono.id;
 }
 
 /**
