@@ -43,9 +43,35 @@ Ver `.env.example`. Obrigatórias em produção:
 - `DATABASE_URL` — Postgres gerenciado (Railway injeta; use `?connection_limit=5` se ficar em serverless)
 - `AUTH_SECRET` — `openssl rand -base64 32`
 - `AGENT_TOKEN` — **obrigatório**: sem ele as rotas `/api/agent/*` respondem 503 em produção; o mesmo valor vai no `.env` do agente na academia
-- `ASAAS_ENV=production` + `ASAAS_API_KEY` + `ASAAS_WEBHOOK_TOKEN` — sem elas o billing fica em modo demonstração
+- `ASAAS_ENV=production` + `ASAAS_API_KEY` + `ASAAS_WEBHOOK_TOKEN` — sem elas o billing fica em modo demonstração (ver **Pagamentos (Asaas)**)
 - `FREELANDOO_API_TOKEN` — fallback opcional; o token da integração Freelandoo agora é gerado/rotacionado pelo ADMIN no card "Integração Freelandoo" do painel (tabela `ApiToken` tem precedência sobre esta env). A env só é usada enquanto nenhum token tiver sido gerado pelo painel.
 - `EVOLUTION_URL` + `EVOLUTION_API_KEY` + `WHATSAPP_WEBHOOK_SECRET` + `PUBLIC_APP_URL` — atendimento no WhatsApp; sem elas a Captação mostra "WhatsApp não configurado" e o resto do app segue normal
+
+## Pagamentos (Asaas)
+
+Toda cobrança nasce `billingType=UNDEFINED`: o link da fatura oferece PIX,
+boleto e cartão e o aluno escolhe. A forma usada volta no webhook e aparece na
+ficha do aluno (card **Pagamentos**).
+
+1. Envs: `ASAAS_ENV` (`sandbox` | `production`), `ASAAS_API_KEY`,
+   `ASAAS_WEBHOOK_TOKEN` (≥ 32 caracteres, `openssl rand -hex 24`) e
+   `PUBLIC_APP_URL`. A chave começa com cifrão: no `.env` escape como
+   `\$aact_...` (o Next expande variáveis); no painel do Railway cole crua.
+2. Registrar o webhook (com as envs do ambiente-alvo):
+   `npx tsx scripts/asaas-webhook.ts` lista; `--aplicar` cria/atualiza o
+   do Coliseu. A conta pode ter webhooks de outros sistemas — o script só mexe
+   no que aponta para a mesma URL.
+3. Smoke no sandbox (banco local): `npx tsx scripts/asaas-smoke.ts` percorre
+   matrícula → webhook → avulsa → baixa de balcão → reconciliação → renovação e
+   limpa o que criou.
+
+Regras que o código garante:
+- Cobrança de cliente que o Coliseu não criou é ignorada (conta compartilhada).
+- Renovação reaproveita o cliente e cancela a assinatura anterior.
+- Venda de balcão sobre cobrança do Asaas dá baixa lá (`receiveInCash`) antes de marcar pago.
+- Estorno/chargeback avisa os ADMIN no sininho e por push (uma vez por fato).
+- Cobrança avulsa e cancelamentos: só ADMIN (card Pagamentos na ficha).
+- Reconciliação (`POST /api/billing/reconcile`, ADMIN) relê os últimos 6 meses.
 
 ## Atendimento WhatsApp (Evolution API)
 

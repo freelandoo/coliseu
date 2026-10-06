@@ -6,7 +6,9 @@ import {
   planoPorId,
   removerPessoa,
 } from "@/lib/store";
-import { linkPagamentoWhatsApp, matricularNoAsaas } from "@/lib/asaas";
+import { AsaasError, linkPagamentoWhatsApp, matricularNoAsaas } from "@/lib/asaas";
+import { cancelarAssinaturasAnteriores } from "@/lib/billing/cobrancas";
+import { prisma } from "@/lib/db";
 import type { Pessoa } from "@/lib/types";
 import { exigirSessaoApi } from "@/lib/auth/api-guard";
 
@@ -51,6 +53,12 @@ export async function PATCH(req: Request, { params }: Ctx) {
       );
     }
 
+    // Renovação reaproveita o cliente do Asaas (não duplica cadastro lá).
+    const clienteAtual = await prisma.billingCustomer.findUnique({
+      where: { personId: pessoaAtual.id },
+      select: { asaasCustomerId: true },
+    });
+
     let asaas;
     try {
       asaas = await matricularNoAsaas({
@@ -63,11 +71,12 @@ export async function PATCH(req: Request, { params }: Ctx) {
         planoNome: plano.nome,
         valorMensal: plano.valorMensal,
         personId: pessoaAtual.id,
+        customerId: clienteAtual?.asaasCustomerId,
       });
     } catch (e) {
       console.error("[asaas] falha ao matricular:", e);
       return NextResponse.json(
-        { erro: "Falha ao criar assinatura no Asaas" },
+        { erro: e instanceof AsaasError ? e.message : "Falha ao criar assinatura no Asaas" },
         { status: 502 },
       );
     }
@@ -75,6 +84,14 @@ export async function PATCH(req: Request, { params }: Ctx) {
     const pessoa = await matricularPessoa(id, planoId, asaas, g.user?.id);
     if (!pessoa) {
       return NextResponse.json({ erro: "Pessoa não encontrada" }, { status: 404 });
+    }
+
+    // A assinatura nova já existe: as anteriores param de cobrar (senão o
+    // aluno pagaria duas mensalidades). Falha aqui não desfaz a matrícula.
+    try {
+      await cancelarAssinaturasAnteriores(id, asaas.assinaturaId);
+    } catch (e) {
+      console.error("[asaas] falha ao cancelar assinatura anterior:", e);
     }
 
     const waLink = pessoaAtual.telefone

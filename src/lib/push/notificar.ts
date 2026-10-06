@@ -71,14 +71,24 @@ export async function notificarMensagemRecebida(conversaId: string): Promise<voi
   const nome =
     conversa.person?.nome || conversa.pushName || formatarTelefone(conversa.telefone);
 
-  webpush.setVapidDetails(cfg.subject, cfg.publicKey, cfg.privateKey);
-  const payload = JSON.stringify({
+  await enviarPush(inscricoes, {
     titulo: nome || "Mensagem nova",
     corpo: conversa.ultimaMensagemPreview || "Nova mensagem no WhatsApp",
     url: `/atendimento?c=${conversaId}`,
     // Mesma tag = a notificação seguinte substitui a anterior da conversa.
     tag: `conversa:${conversaId}`,
   });
+}
+
+type Inscricao = { endpoint: string; p256dh: string; auth: string };
+export type AvisoPush = { titulo: string; corpo: string; url: string; tag: string };
+
+/** Entrega o aviso aos aparelhos; inscrição morta é apagada. No-op sem VAPID. */
+export async function enviarPush(inscricoes: Inscricao[], aviso: AvisoPush): Promise<void> {
+  const cfg = vapid();
+  if (!cfg || inscricoes.length === 0) return;
+  webpush.setVapidDetails(cfg.subject, cfg.publicKey, cfg.privateKey);
+  const payload = JSON.stringify(aviso);
 
   await Promise.allSettled(
     inscricoes.map(async (i) => {

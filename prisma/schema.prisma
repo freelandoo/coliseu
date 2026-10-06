@@ -50,12 +50,15 @@ enum CobrancaStatus {
   pendente
   pago
   atrasado
+  cancelado
+  estornado
 }
 
 enum CobrancaTipo {
   matricula
   mensalidade
   renovacao
+  avulsa
 }
 
 model Unit {
@@ -128,6 +131,7 @@ model User {
   atendimentos       AtendimentoRegistro[]
   matriculasFeitas   Membership[]          @relation("MatriculadoPor")
   pushSubscriptions  PushSubscription[]
+  notificacoes       Notificacao[]
   respostasProntas   RespostaPronta[]
   aulasAgendadas     AulaExperimental[]
   presencas          PresencaSlot[]
@@ -166,6 +170,26 @@ model PushSubscription {
   createdAt DateTime @default(now())
 
   @@index([userId])
+}
+
+/// Aviso para quem administra (sininho + push). Uma linha por destinatário,
+/// para cada um ter o próprio "lido". `chave` identifica o fato que gerou o
+/// aviso: o webhook reentregue não avisa duas vezes.
+model Notificacao {
+  id        String    @id @default(cuid())
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId    String
+  /// pagamento_estornado | pagamento_chargeback
+  tipo      String
+  titulo    String
+  corpo     String
+  url       String?
+  chave     String
+  lidaEm    DateTime?
+  createdAt DateTime  @default(now())
+
+  @@unique([userId, chave])
+  @@index([userId, createdAt])
 }
 
 model Session {
@@ -214,6 +238,7 @@ model Person {
   memberships     Membership[]
   cobrancas       Cobranca[]
   billingCustomer BillingCustomer?
+  payments        Payment[]
 
   credentials    AccessCredential[]
   deviceMappings DeviceUserMapping[]
@@ -380,7 +405,13 @@ model Payment {
   externalReference String?
   subscription      BillingSubscription? @relation(fields: [subscriptionId], references: [id], onDelete: SetNull)
   subscriptionId    String?
+  /// Forma escolhida pelo aluno no link (PIX | BOLETO | CREDIT_CARD). UNDEFINED
+  /// até ele pagar: a cobrança nasce aberta para qualquer forma.
   billingType       String               @default("UNDEFINED")
+  /// Dono da cobrança. Mensalidade também chega pela assinatura; avulsa só por aqui.
+  person            Person?              @relation(fields: [personId], references: [id], onDelete: SetNull)
+  personId          String?
+  descricao         String?
   value             Float
   dueDate           DateTime
   status            PaymentStatus        @default(PENDING)
@@ -391,6 +422,7 @@ model Payment {
 
   @@index([subscriptionId, dueDate])
   @@index([status])
+  @@index([personId, dueDate])
 }
 
 enum EnrollmentStatus {

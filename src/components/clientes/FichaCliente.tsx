@@ -6,6 +6,7 @@ import { useState } from "react";
 import { Badge, Card } from "@/components/ui/primitives";
 import { situacaoDe } from "@/components/clientes/ClientesView";
 import { AcessoDoCadastro, type AcessoDaPessoa } from "@/components/clientes/AcessoDoCadastro";
+import { PagamentosDoAluno } from "@/components/clientes/PagamentosDoAluno";
 import { cn } from "@/lib/cn";
 import { formatBRL, formatData } from "@/lib/mock-data";
 import {
@@ -231,6 +232,10 @@ export function FichaCliente({
           )}
         </div>
       </div>
+
+      {pessoa.fase !== "lead" && (
+        <PagamentosDoAluno personId={pessoa.id} podeGerir={podeGerirAcesso} />
+      )}
 
       <div className="flex justify-end">
         <button

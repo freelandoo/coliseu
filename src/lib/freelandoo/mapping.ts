@@ -25,7 +25,11 @@ export function mapMembershipStatus(s: MembershipStatus): GymMembershipStatus {
   }
 }
 
-export function mapCobrancaStatus(s: CobrancaStatus): GymPaymentStatus {
+/**
+ * null = fora do contrato da Freelandoo (só pending/paid/overdue): cobrança
+ * cancelada ou estornada não é publicada no feed.
+ */
+export function mapCobrancaStatus(s: CobrancaStatus): GymPaymentStatus | null {
   switch (s) {
     case "pago":
       return "paid";
@@ -33,6 +37,9 @@ export function mapCobrancaStatus(s: CobrancaStatus): GymPaymentStatus {
       return "overdue";
     case "pendente":
       return "pending";
+    case "cancelado":
+    case "estornado":
+      return null;
   }
 }
 

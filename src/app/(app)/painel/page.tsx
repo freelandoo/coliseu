@@ -30,7 +30,7 @@ export default async function PainelPage() {
   const ativos = alunos.filter((a) => a.status === "ativo").length;
   const inadimplentes = alunos.filter((a) => a.status === "inadimplente");
   const valorEmAberto = cobrancas
-    .filter((c) => c.status !== "pago")
+    .filter((c) => (c.status === "pendente" || c.status === "atrasado"))
     .reduce((s, c) => s + c.valor, 0);
 
   const ausentes = alunos.filter((a) => faixaAusencia(diasSemPresenca(a)));
@@ -83,7 +83,7 @@ export default async function PainelPage() {
         <section className="grid grid-cols-2 gap-4 lg:grid-cols-4">
           <Stat label="Leads no funil" value={leadsAtivos} hint={`${taxaConversao}% de conversão`} href="/captacao" />
           <Stat label="Alunos ativos" value={ativos} tone="ok" hint={`de ${alunos.length} matrículas`} href="/matriculados" />
-          <Stat label="Em aberto" value={formatBRL(valorEmAberto)} tone="warn" hint={`${cobrancas.filter((c) => c.status !== "pago").length} cobranças`} href="/cobranca" />
+          <Stat label="Em aberto" value={formatBRL(valorEmAberto)} tone="warn" hint={`${cobrancas.filter((c) => (c.status === "pendente" || c.status === "atrasado")).length} cobranças`} href="/cobranca" />
           <Stat label="Risco de evasão" value={ausentes.length} tone="red" hint="ausentes há 7+ dias" href="/matriculados/retencao" />
         </section>
       </Reveal>

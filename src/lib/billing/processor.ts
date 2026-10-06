@@ -1,97 +1,68 @@
-import { prisma } from "@/lib/db";
-import { Prisma } from "@prisma/client";
 import type { PaymentStatus } from "@prisma/client";
-import { sincronizarCobrancaMembership } from "@/lib/billing/apply";
-import { recalcularAcessoDePessoa } from "@/lib/access/outbox";
+import { prisma } from "@/lib/db";
+import { aplicarPagamento, avisarEstorno, statusDoAsaas, type PagamentoAsaas } from "@/lib/billing/aplicar";
 
-interface AsaasEvent {
+export interface AsaasEvent {
   id?: string;
   event: string;
   dateCreated?: string;
-  payment?: {
-    id: string;
-    status?: string;
-    value?: number;
-    dueDate?: string;
-    paymentDate?: string;
-    invoiceUrl?: string;
-    subscription?: string;
-  };
+  payment?: PagamentoAsaas;
+  subscription?: { id: string; status?: string; deleted?: boolean };
 }
 
-function statusDoEvento(event: string): PaymentStatus | null {
-  switch (event) {
+/**
+ * Status que o evento impõe. O `payment.status` do corpo é a verdade do Asaas;
+ * o nome do evento só decide quando o status não basta (cobrança removida
+ * continua PENDING no corpo, com `deleted: true`).
+ */
+function statusDoEvento(ev: AsaasEvent): PaymentStatus | null {
+  if (!ev.event.startsWith("PAYMENT_")) return null;
+  switch (ev.event) {
+    case "PAYMENT_DELETED": return "CANCELED";
+    case "PAYMENT_REFUNDED": return "REFUNDED";
+    case "PAYMENT_CHARGEBACK_REQUESTED":
+    case "PAYMENT_CHARGEBACK_DISPUTE":
+    case "PAYMENT_AWAITING_CHARGEBACK_REVERSAL": return "CHARGEBACK";
     case "PAYMENT_CONFIRMED":
     case "PAYMENT_RECEIVED": return "PAID";
     case "PAYMENT_OVERDUE": return "OVERDUE";
-    case "PAYMENT_REFUNDED": return "REFUNDED";
-    case "PAYMENT_CHARGEBACK_REQUESTED":
-    case "PAYMENT_CHARGEBACK_DISPUTE": return "CHARGEBACK";
-    case "PAYMENT_DELETED": return "CANCELED";
-    default: return null;
   }
+  return ev.payment?.status ? statusDoAsaas(ev.payment.status) : null;
+}
+
+/** Assinatura removida/inativada no painel do Asaas: espelha o status local. */
+async function processarAssinatura(ev: AsaasEvent): Promise<void> {
+  const sub = ev.subscription;
+  if (!sub?.id) return;
+  const status =
+    ev.event === "SUBSCRIPTION_DELETED" || sub.deleted ? "CANCELED"
+    : ev.event === "SUBSCRIPTION_INACTIVATED" ? "INACTIVE"
+    : sub.status;
+  if (!status) return;
+  await prisma.billingSubscription.updateMany({
+    where: { asaasSubscriptionId: sub.id },
+    data: { status },
+  });
 }
 
 export async function processarEvento(ev: AsaasEvent): Promise<void> {
-  const novoStatus = statusDoEvento(ev.event);
-  if (!novoStatus || !ev.payment?.id) return;
+  if (ev.event.startsWith("SUBSCRIPTION_")) return processarAssinatura(ev);
 
   const payment = ev.payment;
-  const asaasPaymentId = payment.id;
-  const eventAt = ev.dateCreated ? new Date(ev.dateCreated) : new Date();
+  if (!payment?.id) return;
+  const eventAt = ev.dateCreated ? new Date(ev.dateCreated.replace(" ", "T")) : new Date();
 
-  let afetadoPersonId: string | null = null;
-
-  await prisma.$transaction(async (tx) => {
-    const existing = await tx.payment.findUnique({ where: { asaasPaymentId } });
-
-    const paidAt = novoStatus === "PAID"
-      ? (payment.paymentDate ? new Date(payment.paymentDate) : eventAt)
-      : null;
-
-    let aplicado = false;
-
-    if (!existing) {
-      try {
-        await tx.payment.create({
-          data: {
-            asaasPaymentId,
-            value: payment.value ?? 0,
-            dueDate: payment.dueDate ? new Date(payment.dueDate) : eventAt,
-            status: novoStatus,
-            paidAt,
-            invoiceUrl: payment.invoiceUrl ?? null,
-            statusUpdatedAt: eventAt,
-          },
-        });
-        aplicado = true;
-      } catch (e) {
-        if (!(e instanceof Prisma.PrismaClientKnownRequestError && e.code === "P2002")) {
-          throw e;
-        }
-        // Criação concorrente já inseriu o registro — cai para o update condicional abaixo.
-        const res = await tx.payment.updateMany({
-          where: { asaasPaymentId, statusUpdatedAt: { lt: eventAt } },
-          data: { status: novoStatus, paidAt, statusUpdatedAt: eventAt },
-        });
-        aplicado = res.count > 0;
-      }
-    } else {
-      const res = await tx.payment.updateMany({
-        where: { asaasPaymentId, statusUpdatedAt: { lt: eventAt } },
-        data: { status: novoStatus, paidAt, statusUpdatedAt: eventAt },
-      });
-      aplicado = res.count > 0;
-    }
-
-    if (aplicado) {
-      await sincronizarCobrancaMembership(tx, asaasPaymentId, novoStatus);
-      const cob = await tx.cobranca.findFirst({ where: { asaasId: asaasPaymentId } });
-      if (cob) afetadoPersonId = cob.personId;
-    }
-  });
-
-  if (afetadoPersonId) {
-    try { await recalcularAcessoDePessoa(afetadoPersonId); } catch (e) { console.error("[outbox] falha ao recalcular acesso:", e); }
+  // Estorno parcial: o pagamento segue valendo (status RECEIVED), só avisa.
+  if (ev.event === "PAYMENT_PARTIALLY_REFUNDED") {
+    const local = await prisma.payment.findUnique({
+      where: { asaasPaymentId: payment.id },
+      select: { personId: true },
+    });
+    if (local?.personId) await avisarEstorno(payment, "PARCIAL", local.personId);
+    return;
   }
+
+  const novoStatus = statusDoEvento(ev);
+  if (!novoStatus) return;
+  await aplicarPagamento(payment, novoStatus, eventAt);
 }

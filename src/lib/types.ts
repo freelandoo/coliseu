@@ -184,13 +184,15 @@ export interface NovaPessoa {
 }
 
 // Cobranças / Asaas (Estágio 2 e 3)
-export type CobrancaStatus = "pendente" | "pago" | "atrasado";
-export type CobrancaTipo = "matricula" | "mensalidade" | "renovacao";
+export type CobrancaStatus = "pendente" | "pago" | "atrasado" | "cancelado" | "estornado";
+export type CobrancaTipo = "matricula" | "mensalidade" | "renovacao" | "avulsa";
 
 export const COBRANCA_STATUS_LABEL: Record<CobrancaStatus, string> = {
   pendente: "Pendente",
   pago: "Pago",
   atrasado: "Atrasado",
+  cancelado: "Cancelada",
+  estornado: "Estornada",
 };
 
 export interface Cobranca {

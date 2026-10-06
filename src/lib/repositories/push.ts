@@ -36,3 +36,11 @@ export async function listarInscricoesAtendimentoRepo() {
 export async function apagarInscricaoPorEndpointRepo(endpoint: string): Promise<void> {
   await prisma.pushSubscription.deleteMany({ where: { endpoint } });
 }
+
+/** Aparelhos dos administradores ativos — destino dos avisos financeiros. */
+export async function listarInscricoesAdminsRepo() {
+  return prisma.pushSubscription.findMany({
+    where: { user: { ativo: true, role: "ADMIN" } },
+    select: { endpoint: true, p256dh: true, auth: true },
+  });
+}

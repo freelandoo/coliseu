@@ -6,6 +6,16 @@ import { formatarTelefone } from "@/lib/whatsapp/telefone";
 import { assinarMensagens } from "@/lib/whatsapp/stream-cliente";
 import { AtivarNotificacoes } from "@/components/pwa/AtivarNotificacoes";
 
+interface Aviso {
+  id: string;
+  tipo: string;
+  titulo: string;
+  corpo: string;
+  url: string | null;
+  lidaEm: string | null;
+  createdAt: string;
+}
+
 interface LeadNovo {
   id: string;
   nome: string;
@@ -19,12 +29,15 @@ const INTERVALO_MINIMO_MS = 60 * 1000;
 
 /**
  * Sininho de notificações (badge de leads não trabalhados + dropdown com
- * atalho pra responder). O contador atualiza ao focar a aba e na hora em que
+ * atalho pra responder). Para admins, também os avisos financeiros (estorno,
+ * chargeback) — esses ficam guardados e saem da contagem ao abrir o sino. O contador atualiza ao focar a aba e na hora em que
  * chega mensagem nova pelo stream SSE — mesmo esquema do aviso de entrada,
  * mas persistente no canto da tela.
  */
 export function NotificationBell() {
   const [leads, setLeads] = useState<LeadNovo[]>([]);
+  const [avisos, setAvisos] = useState<Aviso[]>([]);
+  const [avisosNaoLidos, setAvisosNaoLidos] = useState(0);
   const [aberto, setAberto] = useState(false);
   const ultimaBuscaRef = useRef(0);
 
@@ -33,10 +46,16 @@ export function NotificationBell() {
     if (!forcar && document.hidden) return;
     ultimaBuscaRef.current = Date.now();
     try {
-      const r = await fetch("/api/captacao/leads-novos", { cache: "no-store" });
-      if (!r.ok) return;
-      const d = (await r.json()) as { leads: LeadNovo[] };
-      setLeads(d.leads ?? []);
+      const [rl, ra] = await Promise.all([
+        fetch("/api/captacao/leads-novos", { cache: "no-store" }),
+        fetch("/api/notificacoes", { cache: "no-store" }),
+      ]);
+      if (rl.ok) setLeads(((await rl.json()) as { leads: LeadNovo[] }).leads ?? []);
+      if (ra.ok) {
+        const d = (await ra.json()) as { itens: Aviso[]; naoLidas: number };
+        setAvisos(d.itens ?? []);
+        setAvisosNaoLidos(d.naoLidas ?? 0);
+      }
     } catch {
       /* sem rede: mantém o último contador conhecido */
     }
@@ -68,7 +87,17 @@ export function NotificationBell() {
     };
   }, [carregar]);
 
-  const total = leads.length;
+  const total = leads.length + avisosNaoLidos;
+
+  // Abriu o sino com aviso não lido: marca como lido no servidor antes de
+  // recarregar — senão a releitura traria a contagem antiga de volta.
+  async function abrirSino() {
+    if (avisosNaoLidos > 0) {
+      setAvisosNaoLidos(0);
+      await fetch("/api/notificacoes", { method: "POST" }).catch(() => {});
+    }
+    await carregar(true);
+  }
 
   return (
     <>
@@ -76,7 +105,8 @@ export function NotificationBell() {
         type="button"
         onClick={() => {
           setAberto((v) => !v);
-          void carregar(true);
+          if (aberto) void carregar(true);
+          else void abrirSino();
         }}
         aria-label={total > 0 ? `Notificações (${total})` : "Notificações"}
         aria-expanded={aberto}
@@ -104,13 +134,45 @@ export function NotificationBell() {
           <div className="fixed right-4 top-[calc(4rem_+_var(--safe-t))] z-40 w-80 max-w-[calc(100vw-2rem)] rounded-xl border border-border bg-surface shadow-xl">
             <div className="border-b border-border px-4 py-3">
               <p className="font-display text-sm font-semibold uppercase tracking-wide text-ink">
-                {total === 0 ? "Notificações" : total === 1 ? "1 lead novo" : `${total} leads novos`}
+                {leads.length === 0
+                  ? "Notificações"
+                  : leads.length === 1
+                    ? "1 lead novo"
+                    : `${leads.length} leads novos`}
               </p>
-              {total > 0 && <p className="text-xs text-faint">Ninguém respondeu ainda.</p>}
+              {leads.length > 0 && <p className="text-xs text-faint">Ninguém respondeu ainda.</p>}
             </div>
 
-            {total === 0 ? (
-              <p className="px-4 py-6 text-center text-sm text-muted">Nada novo por aqui.</p>
+            {avisos.length > 0 && (
+              <ul className="max-h-60 divide-y divide-border overflow-y-auto border-b border-border">
+                {avisos.slice(0, 10).map((a) => (
+                  <li key={a.id}>
+                    <Link
+                      href={a.url ?? "/cobranca"}
+                      onClick={() => setAberto(false)}
+                      className="flex gap-3 px-4 py-3 transition-colors hover:bg-surface-2"
+                    >
+                      <span
+                        aria-hidden
+                        className={`mt-1.5 h-2 w-2 shrink-0 rounded-full ${a.lidaEm ? "bg-border" : "bg-red-bright"}`}
+                      />
+                      <span className="min-w-0">
+                        <span className="block truncate text-sm font-medium text-ink">{a.titulo}</span>
+                        <span className="block text-xs text-muted">{a.corpo}</span>
+                        <span className="block text-[11px] text-faint">
+                          {new Date(a.createdAt).toLocaleString("pt-BR", { dateStyle: "short", timeStyle: "short" })}
+                        </span>
+                      </span>
+                    </Link>
+                  </li>
+                ))}
+              </ul>
+            )}
+
+            {leads.length === 0 ? (
+              avisos.length === 0 && (
+                <p className="px-4 py-6 text-center text-sm text-muted">Nada novo por aqui.</p>
+              )
             ) : (
               <ul className="max-h-80 divide-y divide-border overflow-y-auto">
                 {leads.map((l) => (

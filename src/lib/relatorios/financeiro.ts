@@ -36,6 +36,7 @@ const TIPO_LABEL: Record<CobrancaTipo, string> = {
   matricula: "Matrícula",
   mensalidade: "Mensalidade",
   renovacao: "Renovação",
+  avulsa: "Avulsa",
 };
 
 const METODO_LABEL: Record<string, string> = {
@@ -131,7 +132,7 @@ export function relatorioFinanceiro(
   // Quais cobranças estão abertas é a situação de agora (é o que o balcão vai
   // cobrar); o tamanho do atraso é contado até o fim do período, senão um
   // relatório de março reimpresso em agosto envelheceria sozinho.
-  const emAberto = cobrancas.filter((c) => c.status !== "pago");
+  const emAberto = cobrancas.filter((c) => c.status === "pendente" || c.status === "atrasado");
   const atrasadas = emAberto
     .map((c) => ({ cobranca: c, dias: diasAte(periodo, c.vencimento) }))
     .filter((x) => x.dias > 0)

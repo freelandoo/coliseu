@@ -1,13 +1,6 @@
 import { NextResponse } from "next/server";
 import { registrarWebhookEvent, marcarEventoProcessado, marcarEventoFalho } from "@/lib/billing/webhook-store";
-import { processarEvento } from "@/lib/billing/processor";
-
-interface AsaasWebhookBody {
-  id?: string;
-  event: string;
-  dateCreated?: string;
-  payment?: { id: string; status?: string; value?: number; dueDate?: string; paymentDate?: string; invoiceUrl?: string; subscription?: string; dateCreated?: string };
-}
+import { processarEvento, type AsaasEvent } from "@/lib/billing/processor";
 
 export async function POST(req: Request) {
   const expected = process.env.ASAAS_WEBHOOK_TOKEN;
@@ -18,8 +11,9 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: "unauthorized" }, { status: 401 });
   }
 
-  const body = (await req.json()) as AsaasWebhookBody;
-  const asaasEventId = body.id ?? `${body.event}:${body.payment?.id ?? "none"}:${body.dateCreated ?? ""}`;
+  const body = (await req.json()) as AsaasEvent;
+  const alvo = body.payment?.id ?? body.subscription?.id ?? "none";
+  const asaasEventId = body.id ?? `${body.event}:${alvo}:${body.dateCreated ?? ""}`;
 
   const { created, event } = await registrarWebhookEvent(asaasEventId, body);
   if (!created) {

@@ -152,10 +152,12 @@ export async function matricularPessoaRepo(
       asaasSubscriptionId: asaas.assinaturaId, customerId: bc.id, value: plano.valorMensal,
       externalReference: membership?.id ?? null,
     });
+    // statusUpdatedAt no passado: o webhook do Asaas (que pode chegar antes
+    // desta linha) sempre prevalece sobre a criação local.
     await upsertPaymentRepo({
-      asaasPaymentId: asaas.cobrancaId, subscriptionId: bs.id, value: plano.valorMensal,
+      asaasPaymentId: asaas.cobrancaId, subscriptionId: bs.id, personId: id, value: plano.valorMensal,
       dueDate: venc, status: "PENDING", invoiceUrl: asaas.linkPagamento,
-      statusUpdatedAt: new Date(),
+      statusUpdatedAt: new Date(0),
     });
   }
 

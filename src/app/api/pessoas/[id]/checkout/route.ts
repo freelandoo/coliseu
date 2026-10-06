@@ -2,6 +2,8 @@ import { NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { exigirSessaoApi } from "@/lib/auth/api-guard";
 import { processarEvento } from "@/lib/billing/processor";
+import { AsaasError, ehIdAsaasReal } from "@/lib/asaas";
+import { baixarNoAsaas } from "@/lib/billing/cobrancas";
 import {
   upsertBillingCustomerRepo,
   upsertBillingSubscriptionRepo,
@@ -35,6 +37,20 @@ export async function POST(req: Request, { params }: Ctx) {
   });
   if (!cobranca) {
     return NextResponse.json({ erro: "Nenhuma cobrança pendente para esta pessoa" }, { status: 404 });
+  }
+
+  // Cobrança que existe no Asaas: dá baixa lá primeiro. Se o Asaas recusar,
+  // nada muda aqui — senão o aluno seguiria recebendo cobrança já paga.
+  if (ehIdAsaasReal(cobranca.asaasId)) {
+    try {
+      await baixarNoAsaas(cobranca.asaasId, cobranca.valor);
+    } catch (e) {
+      console.error("[checkout] baixa no Asaas falhou:", e);
+      return NextResponse.json(
+        { erro: e instanceof AsaasError ? e.message : "Falha ao dar baixa no Asaas" },
+        { status: 502 },
+      );
+    }
   }
 
   // Registra o método (venda de balcão).
@@ -79,6 +95,11 @@ export async function POST(req: Request, { params }: Ctx) {
       value: cobranca.valor,
       paymentDate: new Date().toISOString(),
     },
+  });
+
+  await prisma.payment.updateMany({
+    where: { asaasPaymentId: cobranca.asaasId },
+    data: { billingType: `BALCAO:${metodo}`, personId: id },
   });
 
   return NextResponse.json({ ok: true, status: "pago", metodo });

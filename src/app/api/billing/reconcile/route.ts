@@ -12,7 +12,9 @@ export async function POST() {
   if (!podePapel(g.user.role as Papel, ["ADMIN"])) {
     return NextResponse.json({ erro: "apenas ADMIN" }, { status: 403 });
   }
-  const payments: AsaasPaymentLike[] = await listarPaymentsAsaas();
+  // Janela de 6 meses: cobre qualquer webhook perdido sem varrer a conta inteira.
+  const desde = new Date(Date.now() - 180 * 86_400_000).toISOString().slice(0, 10);
+  const payments: AsaasPaymentLike[] = await listarPaymentsAsaas(desde);
   const res = await reconciliarPayments(payments);
   return NextResponse.json(res);
 }

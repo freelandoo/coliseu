@@ -108,12 +108,14 @@ export async function paymentsSince(cursorRaw: string | null, limit: number) {
   for (const c of cobrancas) {
     const cpf = normalizarCpf(c.person?.cpf);
     if (cpf.length !== 11) continue;
+    const status = mapCobrancaStatus(c.status);
+    if (!status) continue;
     out.push({
       id: c.id,
       cpf,
       amount_cents: Math.round(c.valor * 100),
       due_date: c.vencimento.toISOString(),
-      status: mapCobrancaStatus(c.status),
+      status,
       paid_at: c.status === "pago" ? c.updatedAt.toISOString() : null,
     });
   }
