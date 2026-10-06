@@ -1,0 +1,22 @@
+[
+  {
+    "version": "0.2.0",
+    "date": "2026-10-06",
+    "itens": [
+      "Alinhado à migração do CloudGym feita no servidor: alunos vinculados pelo id legado, faces já cadastradas no iDFace mantidas (nada é recadastrado) e histórico de giros importado.",
+      "Novos alunos recebem id na catraca acima de 12.000.000, sem colidir com os ids herdados do CloudGym.",
+      "Registro de atualizações: o kit passa a trazer o CHANGELOG.md e o histórico aparece no card do agente em /perfil.",
+      "Programa do agente sem mudança de comportamento desde a 0.1.0 — quem já tem o serviço rodando pode atualizar com o update.bat."
+    ]
+  },
+  {
+    "version": "0.1.0",
+    "date": "2026-07-14",
+    "itens": [
+      "Primeira versão instalável: agente como serviço do Windows (NSSM), com Node.js incluso no kit.",
+      "Driver real do Control iD iDFace, com funcionamento offline e sincronização dos giros quando a internet volta.",
+      "Cadastro de face com captura automática e contagem regressiva.",
+      "Download do kit em /perfil já configurado com servidor, token e catraca."
+    ]
+  }
+]

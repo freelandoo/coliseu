@@ -109,11 +109,23 @@ for (const f of readdirSync(tpl)) {
   writeFileSync(path.join(kit, destName), crlf(src));
 }
 
-// Carimbo de versão do kit — exibido no card do /perfil e vai junto no zip.
+// Registro de atualizações — changelog.json é a fonte; vira CHANGELOG.md no kit.
 const pkg = JSON.parse(readFileSync(path.join(root, "package.json"), "utf8"));
+const changelog = JSON.parse(readFileSync(path.join(root, "changelog.json"), "utf8"));
+if (changelog[0]?.version !== pkg.version) {
+  throw new Error(`changelog.json não tem entrada para a versão ${pkg.version} (package.json)`);
+}
+const dataBR = (iso) => iso.split("-").reverse().join("/");
+const md = ["# Coliseu Agent — Registro de atualizações", ""];
+for (const e of changelog) {
+  md.push(`## ${e.version} — ${dataBR(e.date)}`, "", ...e.itens.map((i) => `- ${i}`), "");
+}
+writeFileSync(path.join(kit, "CHANGELOG.md"), crlf(md.join("\n")));
+
+// Carimbo de versão do kit — exibido no card do /perfil e vai junto no zip.
 writeFileSync(
   path.join(kit, "kit-version.json"),
-  JSON.stringify({ version: pkg.version, commit, builtAt: new Date().toISOString() }, null, 2),
+  JSON.stringify({ version: pkg.version, commit, builtAt: new Date().toISOString(), changelog }, null, 2),
 );
 
 console.log("\nKit pronto em dist/coliseu-agent-kit/:");

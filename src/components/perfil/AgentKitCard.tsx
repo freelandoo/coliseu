@@ -11,7 +11,14 @@ const selectCls =
   "outline-none transition-colors focus:border-red/60";
 
 export type DeviceOpcao = { id: string; name: string };
-export type KitInfoOpcao = { version?: string; commit?: string | null; builtAt: string } | null;
+export type KitInfoOpcao = {
+  version?: string;
+  commit?: string | null;
+  builtAt: string;
+  changelog?: { version: string; date: string; itens: string[] }[];
+} | null;
+
+const dataBR = (iso: string) => iso.split("-").reverse().join("/");
 
 export function AgentKitCard({
   kitDisponivel,
@@ -112,6 +119,28 @@ export function AgentKitCard({
           {kitInfo.commit ? ` (${kitInfo.commit})` : ""} · gerada em{" "}
           {new Date(kitInfo.builtAt).toLocaleString("pt-BR")}
         </p>
+      )}
+
+      {kitInfo?.changelog && kitInfo.changelog.length > 0 && (
+        <details className="mt-3 text-sm" open>
+          <summary className="cursor-pointer font-display text-xs font-semibold uppercase tracking-widest text-muted">
+            Registro de atualizações
+          </summary>
+          <ol className="mt-3 space-y-4">
+            {kitInfo.changelog.map((e) => (
+              <li key={e.version}>
+                <p className="font-mono text-[11px] text-faint">
+                  {e.version} · {dataBR(e.date)}
+                </p>
+                <ul className="mt-1 list-disc space-y-1 pl-5 text-muted">
+                  {e.itens.map((item) => (
+                    <li key={item}>{item}</li>
+                  ))}
+                </ul>
+              </li>
+            ))}
+          </ol>
+        </details>
       )}
     </Card>
   );

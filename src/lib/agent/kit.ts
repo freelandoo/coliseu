@@ -11,7 +11,13 @@ export function kitDisponivel(): boolean {
   return existsSync(path.join(kitDir(), "coliseu-agent.cjs"));
 }
 
-export type KitInfo = { version?: string; commit?: string | null; builtAt: string };
+export type KitChangelogEntry = { version: string; date: string; itens: string[] };
+export type KitInfo = {
+  version?: string;
+  commit?: string | null;
+  builtAt: string;
+  changelog?: KitChangelogEntry[];
+};
 
 /**
  * Versão/data do kit gerado — lê o kit-version.json gravado pelo make-kit.
