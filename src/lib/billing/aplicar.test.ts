@@ -86,7 +86,7 @@ test("estorno avisa cada admin uma vez só, mesmo com o webhook reentregue", asy
 
   const admins = await prisma.user.count({ where: { ativo: true, role: "ADMIN" } });
   expect(admins).toBeGreaterThan(0);
-  const avisos = await prisma.notificacao.findMany({ where: { chave: { endsWith: ":pay_apl_3" } } });
+  const avisos = await prisma.notificacao.findMany({ where: { chave: { endsWith: ":pay_apl_3" }, tipo: "pagamento_estornado" } });
   expect(avisos).toHaveLength(admins);
   expect(avisos[0].tipo).toBe("pagamento_estornado");
   expect(avisos[0].titulo).toContain(p.nome);
@@ -100,8 +100,8 @@ test("chargeback suspende a matrícula e avisa como chargeback", async () => {
   await processarEvento(evento("PAYMENT_CHARGEBACK_REQUESTED", { ...pay, status: "CHARGEBACK_REQUESTED" }, "2026-08-20T10:00:00Z"));
 
   expect((await prisma.membership.findUniqueOrThrow({ where: { id: m.id } })).status).toBe("SUSPENDED");
-  const aviso = await prisma.notificacao.findFirstOrThrow({ where: { chave: { endsWith: ":pay_apl_4" } } });
-  expect(aviso.tipo).toBe("pagamento_chargeback");
+  const aviso = await prisma.notificacao.findFirst({ where: { chave: { endsWith: ":pay_apl_4" }, tipo: "pagamento_chargeback" } });
+  expect(aviso?.titulo).toContain("Chargeback");
 });
 
 test("cobrança removida no Asaas vira 'cancelado' na tela", async () => {
@@ -178,4 +178,21 @@ test("cobrança avulsa recusa valor zero e vencimento no passado", async () => {
   const { p } = await alunoComAssinatura("TAPL11");
   await expect(gerarCobrancaAvulsaParaPessoa(p.id, { valor: 0, vencimento: "2030-01-01", descricao: "x" })).rejects.toThrow(/maior que zero/);
   await expect(gerarCobrancaAvulsaParaPessoa(p.id, { valor: 10, vencimento: "2020-01-01", descricao: "x" })).rejects.toThrow(/passado/);
+});
+
+test("pagamento recebido e vencido também avisam os admins (uma vez por fato)", async () => {
+  await alunoComAssinatura("TAPL12");
+  const pay = { id: "pay_apl_12", customer: "cus_TAPL12", subscription: "sub_TAPL12", value: 129.9, dueDate: "2026-08-10" };
+  await processarEvento(evento("PAYMENT_CREATED", { ...pay, status: "PENDING", billingType: "UNDEFINED" }, "2026-07-31T10:00:00Z"));
+  await processarEvento(evento("PAYMENT_OVERDUE", { ...pay, status: "OVERDUE", billingType: "UNDEFINED" }, "2026-08-11T10:00:00Z"));
+  await processarEvento(evento("PAYMENT_OVERDUE", { ...pay, status: "OVERDUE", billingType: "UNDEFINED" }, "2026-08-11T11:00:00Z"));
+  await processarEvento(evento("PAYMENT_RECEIVED", { ...pay, status: "RECEIVED", billingType: "BOLETO" }, "2026-08-13T10:00:00Z"));
+
+  const admins = await prisma.user.count({ where: { ativo: true, role: "ADMIN" } });
+  const vencidos = await prisma.notificacao.findMany({ where: { tipo: "pagamento_vencido", chave: { endsWith: ":pay_apl_12" } } });
+  const recebidos = await prisma.notificacao.findMany({ where: { tipo: "pagamento_recebido", chave: { endsWith: ":pay_apl_12" } } });
+  expect(vencidos).toHaveLength(admins);
+  expect(recebidos).toHaveLength(admins);
+  expect(recebidos[0].corpo).toContain("via boleto");
+  expect(recebidos[0].corpo).toContain("10/08/2026");
 });

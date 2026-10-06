@@ -92,14 +92,15 @@ export async function POST(req: Request, { params }: Ctx) {
     payment: {
       id: cobranca.asaasId,
       status: "RECEIVED",
+      billingType: `BALCAO:${metodo}`,
       value: cobranca.valor,
       paymentDate: new Date().toISOString(),
     },
   });
 
   await prisma.payment.updateMany({
-    where: { asaasPaymentId: cobranca.asaasId },
-    data: { billingType: `BALCAO:${metodo}`, personId: id },
+    where: { asaasPaymentId: cobranca.asaasId, personId: null },
+    data: { personId: id },
   });
 
   return NextResponse.json({ ok: true, status: "pago", metodo });

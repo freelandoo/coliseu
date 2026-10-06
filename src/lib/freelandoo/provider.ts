@@ -109,7 +109,6 @@ export async function paymentsSince(cursorRaw: string | null, limit: number) {
     const cpf = normalizarCpf(c.person?.cpf);
     if (cpf.length !== 11) continue;
     const status = mapCobrancaStatus(c.status);
-    if (!status) continue;
     out.push({
       id: c.id,
       cpf,

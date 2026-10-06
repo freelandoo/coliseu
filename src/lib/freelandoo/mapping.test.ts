@@ -23,10 +23,12 @@ test("mapMembershipStatus cobre todos os estados do Coliseu", () => {
   expect(mapMembershipStatus("PENDING_PAYMENT")).toBe("pending");
 });
 
-test("mapCobrancaStatus cobre os três estados", () => {
+test("mapCobrancaStatus cobre os cinco estados", () => {
   expect(mapCobrancaStatus("pendente")).toBe("pending");
   expect(mapCobrancaStatus("pago")).toBe("paid");
   expect(mapCobrancaStatus("atrasado")).toBe("overdue");
+  expect(mapCobrancaStatus("cancelado")).toBe("canceled");
+  expect(mapCobrancaStatus("estornado")).toBe("refunded");
 });
 
 test("cursor faz roundtrip e rejeita lixo", () => {

@@ -4,7 +4,7 @@ import { prisma } from "@/lib/db";
 import type { AsaasPaymentLike } from "@/lib/asaas";
 import { cobrancaStatusDe, sincronizarMembership } from "@/lib/billing/apply";
 import { recalcularAcessoDePessoa } from "@/lib/access/outbox";
-import { notificarAdmins } from "@/lib/notificacoes";
+import { notificarAdmins, type TipoNotificacao } from "@/lib/notificacoes";
 
 /**
  * Caminho único para gravar o estado de uma cobrança do Asaas — webhook,
@@ -41,8 +41,16 @@ const NOMES_FORMA: Record<string, string> = {
   CREDIT_CARD: "cartão de crédito",
   DEBIT_CARD: "cartão de débito",
 };
+const NOMES_BALCAO: Record<string, string> = {
+  dinheiro: "dinheiro no balcão",
+  pix: "PIX no balcão",
+  debito: "débito no balcão",
+  credito: "crédito no balcão",
+};
 export function nomeDaForma(billingType: string | null | undefined): string | null {
-  return billingType ? (NOMES_FORMA[billingType] ?? null) : null;
+  if (!billingType) return null;
+  if (billingType.startsWith("BALCAO:")) return NOMES_BALCAO[billingType.slice(7)] ?? "balcão";
+  return NOMES_FORMA[billingType] ?? null;
 }
 
 export interface ResultadoAplicacao {
@@ -188,37 +196,57 @@ export async function aplicarPagamento(
     } catch (e) {
       console.error("[outbox] falha ao recalcular acesso:", e);
     }
-    if ((status === "REFUNDED" || status === "CHARGEBACK") && r.statusAnterior !== status) {
-      await avisarEstorno(p, status, r.personId).catch((e) =>
-        console.error("[notificacoes] falha ao avisar estorno:", e),
+    // Transição de status (reentrega/reconciliação do mesmo status não avisa).
+    const aviso = AVISO_POR_STATUS[status];
+    if (aviso && r.statusAnterior !== status) {
+      await avisarPagamento(p.id, aviso, r.personId).catch((e) =>
+        console.error("[notificacoes] falha ao avisar:", e),
       );
     }
   }
   return r;
 }
 
-/** Estorno total, chargeback ou estorno parcial → aviso para os admins. */
-export async function avisarEstorno(
-  p: PagamentoAsaas,
-  status: PaymentStatus | "PARCIAL",
-  personId: string,
-): Promise<void> {
-  const pessoa = await prisma.person.findUnique({ where: { id: personId }, select: { nome: true } });
-  const valor = (p.value ?? 0).toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
-  const forma = nomeDaForma(p.billingType);
-  const nome = pessoa?.nome ?? "Aluno";
-  const [tipo, titulo, oQue] =
-    status === "CHARGEBACK"
-      ? (["pagamento_chargeback", `Chargeback: ${nome}`, "foi contestado no cartão (chargeback)"] as const)
-      : status === "PARCIAL"
-        ? (["pagamento_estornado", `Estorno parcial: ${nome}`, "teve estorno parcial"] as const)
-        : (["pagamento_estornado", `Estorno: ${nome}`, "foi estornado"] as const);
+type Aviso = "recebido" | "vencido" | "estornado" | "chargeback" | "parcial";
+
+const AVISO_POR_STATUS: Partial<Record<PaymentStatus, Aviso>> = {
+  PAID: "recebido",
+  OVERDUE: "vencido",
+  REFUNDED: "estornado",
+  CHARGEBACK: "chargeback",
+};
+
+const TEXTO_AVISO: Record<Aviso, { tipo: TipoNotificacao; titulo: string; oQue: string; acesso: boolean }> = {
+  recebido: { tipo: "pagamento_recebido", titulo: "Pagamento recebido", oQue: "foi pago", acesso: false },
+  vencido: { tipo: "pagamento_vencido", titulo: "Pagamento vencido", oQue: "venceu sem pagamento", acesso: false },
+  estornado: { tipo: "pagamento_estornado", titulo: "Estorno", oQue: "foi estornado", acesso: true },
+  chargeback: { tipo: "pagamento_chargeback", titulo: "Chargeback", oQue: "foi contestado no cartão (chargeback)", acesso: true },
+  parcial: { tipo: "pagamento_estornado", titulo: "Estorno parcial", oQue: "teve estorno parcial", acesso: false },
+};
+
+/**
+ * Aviso para os admins sobre uma cobrança. Lê valor/forma do que está gravado
+ * (o corpo do webhook de vencimento, por exemplo, não traz a forma escolhida).
+ */
+export async function avisarPagamento(asaasPaymentId: string, aviso: Aviso, personId: string): Promise<void> {
+  const [pessoa, pg] = await Promise.all([
+    prisma.person.findUnique({ where: { id: personId }, select: { nome: true } }),
+    prisma.payment.findUnique({
+      where: { asaasPaymentId },
+      select: { value: true, billingType: true, dueDate: true, descricao: true },
+    }),
+  ]);
+  const t = TEXTO_AVISO[aviso];
+  const valor = (pg?.value ?? 0).toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
+  const forma = nomeDaForma(pg?.billingType);
+  const venc = pg?.dueDate ? ` (venc. ${pg.dueDate.toLocaleDateString("pt-BR", { timeZone: "UTC" })})` : "";
   await notificarAdmins({
-    tipo,
-    titulo,
-    corpo: `Pagamento de ${valor}${forma ? ` via ${forma}` : ""} ${oQue}.` +
-      (status === "PARCIAL" ? "" : " O acesso na catraca foi reavaliado."),
+    tipo: t.tipo,
+    titulo: `${t.titulo}: ${pessoa?.nome ?? "Aluno"}`,
+    corpo:
+      `${pg?.descricao ?? "Cobrança"} de ${valor}${venc}${forma ? ` via ${forma}` : ""} ${t.oQue}.` +
+      (t.acesso ? " O acesso na catraca foi reavaliado." : ""),
     url: `/matriculados/${personId}`,
-    chave: `${tipo}:${status}:${p.id}`,
+    chave: `${t.tipo}:${aviso}:${asaasPaymentId}`,
   });
 }

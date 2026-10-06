@@ -10,7 +10,11 @@ import { listarInscricoesAdminsRepo } from "@/lib/repositories/push";
  * reconciliação que reencontra o mesmo estorno não avisa duas vezes — a linha
  * já existe para aquele admin e o push só sai para quem recebeu linha nova.
  */
-export type TipoNotificacao = "pagamento_estornado" | "pagamento_chargeback";
+export type TipoNotificacao =
+  | "pagamento_recebido"
+  | "pagamento_vencido"
+  | "pagamento_estornado"
+  | "pagamento_chargeback";
 
 export interface NovaNotificacao {
   tipo: TipoNotificacao;

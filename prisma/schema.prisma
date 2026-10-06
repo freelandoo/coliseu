@@ -179,7 +179,7 @@ model Notificacao {
   id        String    @id @default(cuid())
   user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
   userId    String
-  /// pagamento_estornado | pagamento_chargeback
+  /// pagamento_recebido | pagamento_vencido | pagamento_estornado | pagamento_chargeback
   tipo      String
   titulo    String
   corpo     String

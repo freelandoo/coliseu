@@ -69,9 +69,19 @@ Regras que o código garante:
 - Cobrança de cliente que o Coliseu não criou é ignorada (conta compartilhada).
 - Renovação reaproveita o cliente e cancela a assinatura anterior.
 - Venda de balcão sobre cobrança do Asaas dá baixa lá (`receiveInCash`) antes de marcar pago.
-- Estorno/chargeback avisa os ADMIN no sininho e por push (uma vez por fato).
 - Cobrança avulsa e cancelamentos: só ADMIN (card Pagamentos na ficha).
 - Reconciliação (`POST /api/billing/reconcile`, ADMIN) relê os últimos 6 meses.
+- Avisos aos ADMIN (sininho + push, uma vez por fato): pagamento recebido, vencido, estornado (total ou parcial) e chargeback.
+
+### Vencimento automático de matrícula
+
+`EXPIRACAO_MATRICULAS` = `simular` (padrão) | `ativa` | `desligada`. De hora em
+hora o servidor procura matrícula ACTIVE com o vencimento do plano há mais de 5
+dias e sem assinatura real ativa no Asaas. Em `ativa` ela vira EXPIRED e a
+catraca recebe DISABLE; em `simular` só registra no log quantas venceriam. A
+prévia com a lista fica em **Cobrança → Vencimentos**, com botão para vencer na
+hora. **Só ligue `ativa` depois do corte do CloudGym** e de conferir a lista: a
+base adotada tem vencimentos desatualizados.
 
 ## Atendimento WhatsApp (Evolution API)
 

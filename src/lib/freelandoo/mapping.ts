@@ -3,7 +3,7 @@ import type { CobrancaStatus, MembershipStatus } from "@prisma/client";
 /** Contrato Gym Provider API — status de matrícula expostos à Freelandoo. */
 export type GymMembershipStatus = "active" | "overdue" | "canceled" | "expired" | "pending";
 /** Contrato Gym Provider API — status de pagamento expostos à Freelandoo. */
-export type GymPaymentStatus = "pending" | "paid" | "overdue";
+export type GymPaymentStatus = "pending" | "paid" | "overdue" | "canceled" | "refunded";
 
 export function normalizarCpf(raw: string | null | undefined): string {
   return String(raw ?? "").replace(/\D/g, "");
@@ -25,11 +25,8 @@ export function mapMembershipStatus(s: MembershipStatus): GymMembershipStatus {
   }
 }
 
-/**
- * null = fora do contrato da Freelandoo (só pending/paid/overdue): cobrança
- * cancelada ou estornada não é publicada no feed.
- */
-export function mapCobrancaStatus(s: CobrancaStatus): GymPaymentStatus | null {
+/** canceled/refunded entraram no contrato em 2026-10-06 (Freelandoo mig 273). */
+export function mapCobrancaStatus(s: CobrancaStatus): GymPaymentStatus {
   switch (s) {
     case "pago":
       return "paid";
@@ -38,8 +35,9 @@ export function mapCobrancaStatus(s: CobrancaStatus): GymPaymentStatus | null {
     case "pendente":
       return "pending";
     case "cancelado":
+      return "canceled";
     case "estornado":
-      return null;
+      return "refunded";
   }
 }
 

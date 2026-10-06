@@ -1,6 +1,6 @@
 import type { PaymentStatus } from "@prisma/client";
 import { prisma } from "@/lib/db";
-import { aplicarPagamento, avisarEstorno, statusDoAsaas, type PagamentoAsaas } from "@/lib/billing/aplicar";
+import { aplicarPagamento, avisarPagamento, statusDoAsaas, type PagamentoAsaas } from "@/lib/billing/aplicar";
 
 export interface AsaasEvent {
   id?: string;
@@ -58,7 +58,7 @@ export async function processarEvento(ev: AsaasEvent): Promise<void> {
       where: { asaasPaymentId: payment.id },
       select: { personId: true },
     });
-    if (local?.personId) await avisarEstorno(payment, "PARCIAL", local.personId);
+    if (local?.personId) await avisarPagamento(payment.id, "parcial", local.personId);
     return;
   }
 

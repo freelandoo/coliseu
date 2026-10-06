@@ -10,8 +10,9 @@ import {
   GestaoPlanos,
   type PlanoComContagem,
 } from "@/components/cobranca/GestaoPlanos";
+import { VencimentoMatriculas } from "@/components/cobranca/VencimentoMatriculas";
 
-type Aba = "cobrancas" | "planos";
+type Aba = "cobrancas" | "vencimentos" | "planos";
 
 export function CobrancaTabs({
   linhas,
@@ -28,16 +29,17 @@ export function CobrancaTabs({
         <TabBtn ativo={aba === "cobrancas"} onClick={() => setAba("cobrancas")}>
           Cobranças
         </TabBtn>
+        <TabBtn ativo={aba === "vencimentos"} onClick={() => setAba("vencimentos")}>
+          Vencimentos
+        </TabBtn>
         <TabBtn ativo={aba === "planos"} onClick={() => setAba("planos")}>
           Planos
         </TabBtn>
       </div>
 
-      {aba === "cobrancas" ? (
-        <CobrancaFiltro linhas={linhas} />
-      ) : (
-        <GestaoPlanos planos={planos} />
-      )}
+      {aba === "cobrancas" && <CobrancaFiltro linhas={linhas} />}
+      {aba === "vencimentos" && <VencimentoMatriculas />}
+      {aba === "planos" && <GestaoPlanos planos={planos} />}
     </div>
   );
 }
