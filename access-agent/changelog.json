@@ -1,5 +1,15 @@
 [
   {
+    "version": "0.3.0",
+    "date": "2026-10-06",
+    "itens": [
+      "Botão \"Liberar catraca\" no CRM (tela Acesso): libera um giro sem cadastro, com motivo opcional e registro de quem liberou. O agente executa na hora; se estiver offline, a liberação expira em 30 segundos e nunca abre a catraca depois.",
+      "O .env explica a opção IDFACE_DOOR_ID: é a saída que o botão de liberar aciona (padrão 1). Se a catraca não girar ao liberar, ajuste aqui.",
+      "Lado do CRM, sem mudar o agente: vencimento automático de matrícula (em simulação até o corte do CloudGym), cadastro com vendedor automático e mesclagem de planos.",
+      "Programa do agente igual ao da 0.2.0 — quem já está com o serviço rodando não precisa reinstalar; só atualize o .env se a liberação não girar a catraca."
+    ]
+  },
+  {
     "version": "0.2.0",
     "date": "2026-10-06",
     "itens": [
