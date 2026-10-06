@@ -136,6 +136,26 @@ export async function enfileirarShutdown(deviceId: string): Promise<DeviceComman
   });
 }
 
+/**
+ * Liberação manual da catraca (OPEN) sem cadastro — visitante, aluno sem face,
+ * catraca travada. Vale só ABRIR_VALIDADE_MS: se o agente não buscar a tempo
+ * (offline), o comando expira e nunca abre a catraca depois, sem ninguém na
+ * frente dela. Ver entregarComandos.
+ */
+export const ABRIR_VALIDADE_MS = 30_000;
+
+export async function enfileirarAbertura(input: {
+  deviceId: string; solicitadoPor: string; motivo?: string;
+}): Promise<DeviceCommand> {
+  return prisma.deviceCommand.create({
+    data: {
+      deviceId: input.deviceId, type: "OPEN",
+      payload: { direction: "ENTRY", motivo: input.motivo ?? null, solicitadoPor: input.solicitadoPor } as never,
+      dedupeKey: `OPEN:${input.deviceId}:${Date.now()}:${Math.random().toString(36).slice(2, 8)}`,
+    },
+  });
+}
+
 export async function comandosPendentes(deviceId: string): Promise<DeviceCommand[]> {
   return prisma.deviceCommand.findMany({
     where: { deviceId, status: { in: ["PENDING", "DISPATCHED"] } },

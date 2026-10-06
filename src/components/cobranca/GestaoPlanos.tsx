@@ -6,6 +6,7 @@ import { Card } from "@/components/ui/primitives";
 import { cn } from "@/lib/cn";
 import { formatBRL } from "@/lib/mock-data";
 import type { Plano } from "@/lib/types";
+import { ModalMesclarPlanos } from "@/components/cobranca/MesclarPlanos";
 
 export interface PlanoComContagem extends Plano {
   alunos: number;
@@ -59,6 +60,24 @@ export function GestaoPlanos({ planos }: { planos: PlanoComContagem[] }) {
   // Espelha a ordem que o servidor devolve (valorMensal desc).
   const [coluna, setColuna] = useState<Coluna>("valor");
   const [direcao, setDirecao] = useState<Direcao>("desc");
+  // Mesclagem: modo de seleção (vale entre Ativos e Arquivados) + modal.
+  const [mesclando, setMesclando] = useState(false);
+  const [selecionados, setSelecionados] = useState<Set<string>>(new Set());
+  const [modalMescla, setModalMescla] = useState(false);
+  const [aviso, setAviso] = useState("");
+
+  function alternar(id: string) {
+    setSelecionados((atual) => {
+      const novo = new Set(atual);
+      if (novo.has(id)) novo.delete(id);
+      else novo.add(id);
+      return novo;
+    });
+  }
+  function sairDaMescla() {
+    setMesclando(false);
+    setSelecionados(new Set());
+  }
 
   const contagem = useMemo(
     () => ({
@@ -100,13 +119,40 @@ export function GestaoPlanos({ planos }: { planos: PlanoComContagem[] }) {
         <h2 className="font-display text-sm font-semibold uppercase tracking-widest text-faint">
           Planos
         </h2>
-        <button
-          onClick={() => setModalNovo(true)}
-          className="rounded-lg bg-red px-4 py-2.5 font-display text-sm font-semibold uppercase tracking-widest text-white transition-colors hover:bg-red-bright"
-        >
-          + Novo plano
-        </button>
+        <div className="flex gap-2">
+          <button
+            onClick={() => (mesclando ? sairDaMescla() : setMesclando(true))}
+            className="rounded-lg border border-border-strong px-4 py-2.5 font-display text-sm font-semibold uppercase tracking-widest text-muted transition-colors hover:text-ink"
+          >
+            {mesclando ? "Cancelar mescla" : "Mesclar planos"}
+          </button>
+          <button
+            onClick={() => setModalNovo(true)}
+            className="rounded-lg bg-red px-4 py-2.5 font-display text-sm font-semibold uppercase tracking-widest text-white transition-colors hover:bg-red-bright"
+          >
+            + Novo plano
+          </button>
+        </div>
       </div>
+
+      {aviso && <p className="text-sm text-ok">{aviso}</p>}
+
+      {mesclando && (
+        <div className="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-red/40 bg-red-ghost px-4 py-3 text-sm">
+          <span className="text-ink">
+            {selecionados.size === 0
+              ? "Marque os planos que vão virar um só (pode incluir arquivados)."
+              : `${selecionados.size} plano(s) selecionado(s)`}
+          </span>
+          <button
+            onClick={() => setModalMescla(true)}
+            disabled={selecionados.size < 2}
+            className="rounded-lg bg-red px-4 py-2 font-display text-xs font-semibold uppercase tracking-widest text-white transition-colors hover:bg-red-bright disabled:opacity-50"
+          >
+            Mesclar {selecionados.size >= 2 ? selecionados.size : ""}
+          </button>
+        </div>
+      )}
 
       <div className="flex flex-wrap gap-2">
         {(
@@ -157,7 +203,16 @@ export function GestaoPlanos({ planos }: { planos: PlanoComContagem[] }) {
               return (
                 <div key={p.id} className="flex flex-col gap-2 px-4 py-3">
                   <div className="flex items-start justify-between gap-2">
-                    <div className="min-w-0">
+                    {mesclando && !p.mesclado && (
+                      <input
+                        type="checkbox"
+                        checked={selecionados.has(p.id)}
+                        onChange={() => alternar(p.id)}
+                        aria-label={`Selecionar ${p.nome}`}
+                        className="mt-1 accent-red"
+                      />
+                    )}
+                    <div className="min-w-0 flex-1">
                       <p
                         className={cn(
                           "truncate text-sm font-medium",
@@ -193,12 +248,14 @@ export function GestaoPlanos({ planos }: { planos: PlanoComContagem[] }) {
                     >
                       Editar
                     </button>
-                    <button
-                      onClick={() => arquivar(p, inativo)}
-                      className="text-xs font-medium text-faint transition-colors hover:text-ink"
-                    >
-                      {inativo ? "Reativar" : "Arquivar"}
-                    </button>
+                    {!p.mesclado && (
+                      <button
+                        onClick={() => arquivar(p, inativo)}
+                        className="text-xs font-medium text-faint transition-colors hover:text-ink"
+                      >
+                        {inativo ? "Reativar" : "Arquivar"}
+                      </button>
+                    )}
                   </div>
                 </div>
               );
@@ -210,6 +267,7 @@ export function GestaoPlanos({ planos }: { planos: PlanoComContagem[] }) {
             <table className="w-full min-w-[680px] border-collapse text-sm">
               <thead>
                 <tr className="border-b border-border text-left">
+                  {mesclando && <Th className="w-10"> </Th>}
                   <Th coluna="nome" atual={coluna} direcao={direcao} onOrdenar={ordenarPor}>
                     Plano
                   </Th>
@@ -239,6 +297,19 @@ export function GestaoPlanos({ planos }: { planos: PlanoComContagem[] }) {
                       key={p.id}
                       className="border-b border-border last:border-0 transition-colors hover:bg-surface-2"
                     >
+                      {mesclando && (
+                        <td className="px-4 py-3">
+                          {!p.mesclado && (
+                            <input
+                              type="checkbox"
+                              checked={selecionados.has(p.id)}
+                              onChange={() => alternar(p.id)}
+                              aria-label={`Selecionar ${p.nome}`}
+                              className="accent-red"
+                            />
+                          )}
+                        </td>
+                      )}
                       <td className="px-4 py-3">
                         <span
                           className={cn(
@@ -277,12 +348,14 @@ export function GestaoPlanos({ planos }: { planos: PlanoComContagem[] }) {
                           >
                             Editar
                           </button>
-                          <button
-                            onClick={() => arquivar(p, inativo)}
-                            className="text-xs font-medium text-faint transition-colors hover:text-ink"
-                          >
-                            {inativo ? "Reativar" : "Arquivar"}
-                          </button>
+                          {!p.mesclado && (
+                            <button
+                              onClick={() => arquivar(p, inativo)}
+                              className="text-xs font-medium text-faint transition-colors hover:text-ink"
+                            >
+                              {inativo ? "Reativar" : "Arquivar"}
+                            </button>
+                          )}
                         </div>
                       </td>
                     </tr>
@@ -294,6 +367,19 @@ export function GestaoPlanos({ planos }: { planos: PlanoComContagem[] }) {
           </>
         )}
       </Card>
+
+      {modalMescla && (
+        <ModalMesclarPlanos
+          planos={planos.filter((p) => selecionados.has(p.id))}
+          onFechar={() => setModalMescla(false)}
+          onMesclado={(resumo) => {
+            setModalMescla(false);
+            sairDaMescla();
+            setAviso(resumo);
+            router.refresh();
+          }}
+        />
+      )}
 
       {modalNovo && (
         <ModalPlano

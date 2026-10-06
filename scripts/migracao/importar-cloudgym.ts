@@ -167,8 +167,14 @@ async function main() {
 
   /* ------------------------------------------------------------------ planos */
   const planosCG = ler("planos");
-  const planosExistentes = (await prisma.plan.findMany({ select: { id: true, nome: true, valorMensal: true, ...(migrado ? { legacyCloudgymId: true } : {}) } })) as {
+  const planosExistentes = (await prisma.plan.findMany({
+    select: {
+      id: true, nome: true, valorMensal: true, mescladoEmId: true, _count: { select: { mesclados: true } },
+      ...(migrado ? { legacyCloudgymId: true } : {}),
+    },
+  })) as {
     id: string; nome: string; valorMensal: number; legacyCloudgymId?: number | null;
+    mescladoEmId: string | null; _count: { mesclados: number };
   }[];
   const planoPorChave = new Map<string, string>(); // chavePlano → id
   const planoPorLegacy = new Map<number, string>();
@@ -193,6 +199,20 @@ async function main() {
     if (existente) {
       planosAdotados++;
       const atual = planosExistentes.find((x) => x.id === existente);
+      // Mesclagem feita no Coliseu (tela Planos) prevalece sobre o CloudGym:
+      // plano mesclado não volta, e quem estava nele vai para o destino; o
+      // destino mantém nome/valor/duração definidos na mesclagem.
+      if (atual?.mescladoEmId) {
+        planoPorLegacy.set(legacy, atual.mescladoEmId);
+        continue;
+      }
+      if (atual && atual._count.mesclados > 0) {
+        const { nome: _n, valorMensal: _v, duracaoDias: _d, ativo: _a, ...resto } = dados;
+        void _n; void _v; void _d; void _a;
+        if (APPLY) await prisma.plan.update({ where: { id: existente }, data: resto });
+        planoPorLegacy.set(legacy, existente);
+        continue;
+      }
       if (atual && atual.valorMensal > 0 && Math.round(atual.valorMensal * 100) !== preco) {
         diffsPreco.push(`  ${p.name}: Coliseu R$ ${atual.valorMensal.toFixed(2)} → CloudGym R$ ${(preco / 100).toFixed(2)}`);
       }

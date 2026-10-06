@@ -75,6 +75,8 @@ export interface Plano {
   duracaoDias: number;
   ativo?: boolean; // false = arquivado (não oferecido em novas matrículas). undefined = ativo.
   descricao?: string;
+  /** Plano juntado em outro pela mesclagem — arquivado de vez. */
+  mesclado?: boolean;
 }
 
 /** Dados para criar um plano novo pela gestão de planos. */

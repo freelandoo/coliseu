@@ -287,6 +287,13 @@ model Plan {
 
   accessPolicies AccessPolicy[]
 
+  /// Plano mesclado em outro (tela Planos → Mesclar): fica arquivado como
+  /// registro, os alunos foram para o destino. O importador do CloudGym
+  /// respeita — não reativa nem devolve alunos para um plano mesclado.
+  mescladoEm   Plan?   @relation("PlanoMesclado", fields: [mescladoEmId], references: [id], onDelete: SetNull)
+  mescladoEmId String?
+  mesclados    Plan[]  @relation("PlanoMesclado")
+
   @@index([unitId, ativo])
 }
 

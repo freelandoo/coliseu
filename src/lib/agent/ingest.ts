@@ -1,5 +1,6 @@
 import { prisma } from "@/lib/db";
 import type { DeviceCommand } from "@prisma/client";
+import { ABRIR_VALIDADE_MS } from "@/lib/repositories/access";
 
 export async function registrarHeartbeat(input: {
   deviceId: string; firmware?: string; connectivity?: string; clockDriftMs?: number;
@@ -26,6 +27,19 @@ const REDELIVERY_MS = 2 * 60_000;
 const MAX_ATTEMPTS = 10;
 
 export async function entregarComandos(deviceId: string): Promise<DeviceCommand[]> {
+  // Liberação manual (OPEN) é para quem está na frente da catraca AGORA:
+  // pendente além da validade expira, e entregue sem ack não é reentregue —
+  // abrir duas vezes, ou horas depois, deixaria passar quem não devia.
+  await prisma.deviceCommand.updateMany({
+    where: {
+      deviceId, type: "OPEN",
+      OR: [
+        { status: "PENDING", createdAt: { lt: new Date(Date.now() - ABRIR_VALIDADE_MS) } },
+        { status: "DISPATCHED", dispatchedAt: { lt: new Date(Date.now() - REDELIVERY_MS) } },
+      ],
+    },
+    data: { status: "FAILED", lastError: "expirado: o agente não executou a tempo" },
+  });
   // Órfão reentregue MAX_ATTEMPTS vezes sem ack = algo estrutural (agente quebra
   // sempre no mesmo comando). Para de insistir e fica visível para a operação.
   await prisma.deviceCommand.updateMany({

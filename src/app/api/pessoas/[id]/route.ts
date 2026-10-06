@@ -43,6 +43,14 @@ export async function PATCH(req: Request, { params }: Ctx) {
     }
     // aplica campos de cadastro preenchidos no fluxo antes de matricular
     if (Object.keys(campos).length > 0) await atualizarPessoa(id, campos);
+    // Lead que chegou sozinho (WhatsApp) não tem quem cadastrou: o vendedor
+    // passa a ser quem fecha a matrícula. Vendedor já registrado é mantido.
+    if (g.user?.nome) {
+      await prisma.person.updateMany({
+        where: { id, OR: [{ vendedor: null }, { vendedor: "" }] },
+        data: { vendedor: g.user.nome },
+      });
+    }
 
     const pessoaAtual = await obterPessoa(id);
     const plano = await planoPorId(planoId);

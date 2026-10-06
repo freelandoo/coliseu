@@ -23,7 +23,6 @@ interface FormState {
   email: string;
   cpf: string;
   rg: string;
-  vendedor: string;
   dataNascimento: string;
   cep: string;
   estado: string;
@@ -39,7 +38,6 @@ const VAZIO: FormState = {
   email: "",
   cpf: "",
   rg: "",
-  vendedor: "",
   dataNascimento: "",
   cep: "",
   estado: "",
@@ -192,7 +190,6 @@ function ModalCadastro({
       email: form.email,
       cpf: form.cpf,
       rg: form.rg,
-      vendedor: form.vendedor,
       dataNascimento: form.dataNascimento,
       endereco,
     };
@@ -353,12 +350,9 @@ function ModalCadastro({
             value={form.dataNascimento}
             onChange={(v) => set("dataNascimento", v)}
           />
-          <Campo
-            label="Vendedor / consultor"
-            value={form.vendedor}
-            placeholder="Quem fez a venda"
-            onChange={(v) => set("vendedor", v)}
-          />
+          <p className="text-xs text-faint">
+            Vendedor: registrado automaticamente como quem está logado.
+          </p>
 
           <span className="mt-1 text-xs font-semibold uppercase tracking-widest text-faint">
             Endereço (opcional)

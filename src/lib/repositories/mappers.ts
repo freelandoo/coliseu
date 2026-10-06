@@ -26,6 +26,7 @@ export function toPlano(p: PPlan): Plano {
     duracaoDias: p.duracaoDias,
     ativo: p.ativo,
     descricao: p.descricao ?? undefined,
+    mesclado: Boolean(p.mescladoEmId),
   };
 }
 

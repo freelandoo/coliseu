@@ -27,6 +27,8 @@ export async function POST(req: Request) {
     );
   }
 
-  const pessoa = await criarPessoa(body as NovaPessoa);
+  // Vendedor é quem está logado fazendo o cadastro — não um campo livre do
+  // formulário (a ficha ainda permite corrigir depois).
+  const pessoa = await criarPessoa({ ...(body as NovaPessoa), vendedor: g.user?.nome });
   return NextResponse.json(pessoa, { status: 201 });
 }

@@ -4,6 +4,7 @@ import { SimuladorAcesso, type AlunoOpcao } from "@/components/acesso/SimuladorA
 import { CadastroFace } from "@/components/acesso/CadastroFace";
 import { NovaCatraca } from "@/components/acesso/NovaCatraca";
 import { PararAgente } from "@/components/acesso/PararAgente";
+import { LiberarCatraca } from "@/components/acesso/LiberarCatraca";
 
 interface Dados {
   devices: { id: string; name: string; status: string; firmware: string; lastHeartbeatAt: string | null }[];
@@ -32,7 +33,7 @@ export function AcessoDashboard({ dados, podeCriar }: { dados: Dados; podeCriar:
         <h2 className="mb-4 font-display text-sm font-semibold uppercase tracking-widest text-faint">Catracas</h2>
         <div className="grid gap-4 md:grid-cols-2">
           {dados.devices.map((d) => (
-            <Card key={d.id} className="flex items-center justify-between p-5">
+            <Card key={d.id} className="flex flex-wrap items-center justify-between gap-4 p-5">
               <div>
                 <p className="font-medium text-ink">{d.name}</p>
                 <p className="text-xs text-faint">firmware {d.firmware} · heartbeat {fmt(d.lastHeartbeatAt)}</p>
@@ -44,6 +45,7 @@ export function AcessoDashboard({ dados, podeCriar }: { dados: Dados; podeCriar:
                 <Badge tone={d.status === "ONLINE" ? "ok" : d.status === "MAINTENANCE" ? "warn" : "red"}>{d.status}</Badge>
                 {podeCriar && d.status === "ONLINE" && <PararAgente deviceId={d.id} />}
               </div>
+              <LiberarCatraca deviceId={d.id} online={d.status === "ONLINE"} />
             </Card>
           ))}
           {podeCriar && <NovaCatraca />}

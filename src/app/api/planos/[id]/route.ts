@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { atualizarPlano } from "@/lib/store";
 import type { Plano } from "@/lib/types";
 import { exigirAdminApi } from "@/lib/auth/api-guard";
+import { prisma } from "@/lib/db";
 
 type Ctx = { params: Promise<{ id: string }> };
 
@@ -32,7 +33,16 @@ export async function PATCH(req: Request, { params }: Ctx) {
     }
     patch.duracaoDias = d;
   }
-  if (typeof body.ativo === "boolean") patch.ativo = body.ativo;
+  if (typeof body.ativo === "boolean") {
+    // Plano mesclado não volta: os alunos dele já estão no destino.
+    if (body.ativo) {
+      const atual = await prisma.plan.findUnique({ where: { id }, select: { mescladoEmId: true } });
+      if (atual?.mescladoEmId) {
+        return NextResponse.json({ erro: "Este plano foi mesclado em outro e não pode ser reativado." }, { status: 409 });
+      }
+    }
+    patch.ativo = body.ativo;
+  }
   if (typeof body.descricao === "string") {
     patch.descricao = body.descricao.trim() || undefined;
   }
