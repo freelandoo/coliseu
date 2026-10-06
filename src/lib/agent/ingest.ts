@@ -122,12 +122,20 @@ export async function ackComando(input: {
   }
 }
 
+/**
+ * Aberturas sem identificação: o aparelho destravou (botão "Liberar catraca",
+ * interface web, botoeira), mas não há prova de que alguém girou. Agentes até
+ * a 0.3.0 mandavam esses registros como passagem — o servidor corrige aqui.
+ */
+export const MOTIVOS_ABERTURA_REMOTA = ["Interface WEB", "Abertura via API", "Botoeira"];
+
 export async function ingestarEvento(input: {
   deviceId: string; deviceEventId: string; externalUserId?: string; personId?: string;
   deviceTime: string; direction: "ENTRY" | "EXIT";
   decision: "ALLOWED" | "DENIED"; reason?: string; physicallyPassed: boolean;
   mode: "ONLINE" | "OFFLINE" | "CONTINGENCY"; cursor?: string;
 }): Promise<{ created: boolean }> {
+  const passou = input.physicallyPassed && !MOTIVOS_ABERTURA_REMOTA.includes(input.reason ?? "");
   // Resolve a pessoa: personId explícito (ex.: simulador) tem prioridade; senão pelo mapping.
   let personId: string | null = input.personId ?? null;
   if (!personId && input.externalUserId) {
@@ -144,7 +152,7 @@ export async function ingestarEvento(input: {
         deviceId: input.deviceId, deviceEventId: input.deviceEventId, personId,
         unitId: device?.unitId ?? "", deviceTime: new Date(input.deviceTime),
         direction: input.direction, decision: input.decision, reason: input.reason ?? null,
-        physicallyPassed: input.physicallyPassed, mode: input.mode, deviceCursor: input.cursor ?? null,
+        physicallyPassed: passou, mode: input.mode, deviceCursor: input.cursor ?? null,
       },
     });
   } catch (e) {
@@ -158,7 +166,7 @@ export async function ingestarEvento(input: {
 
   // Presença real: só giro autorizado e concluído atualiza ultimaPresenca — e só
   // avança (evento antigo/fora de ordem não pode regredir a presença).
-  if (personId && input.decision === "ALLOWED" && input.physicallyPassed && input.direction === "ENTRY") {
+  if (personId && input.decision === "ALLOWED" && passou && input.direction === "ENTRY") {
     const quando = new Date(input.deviceTime);
     await prisma.membership.updateMany({
       where: {

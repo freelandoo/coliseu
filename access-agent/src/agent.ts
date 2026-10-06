@@ -33,6 +33,8 @@ if (ADAPTER === "controlid") {
     password: process.env.IDFACE_PASS!,
     accessRuleId: process.env.IDFACE_RULE_ID ? Number(process.env.IDFACE_RULE_ID) : undefined,
     doorId: process.env.IDFACE_DOOR_ID ? Number(process.env.IDFACE_DOOR_ID) : undefined,
+    openAction: (process.env.IDFACE_OPEN_ACTION as "auto" | "catra" | "sec_box" | "door" | undefined) || undefined,
+    catraAllow: process.env.IDFACE_CATRA_ALLOW || undefined,
   });
   firmwareTag = "controlid-idface";
   // Loga e propaga o firmware REAL do aparelho (best-effort): aparece no boot do log

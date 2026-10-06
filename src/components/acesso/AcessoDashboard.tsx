@@ -5,6 +5,7 @@ import { CadastroFace } from "@/components/acesso/CadastroFace";
 import { NovaCatraca } from "@/components/acesso/NovaCatraca";
 import { PararAgente } from "@/components/acesso/PararAgente";
 import { LiberarCatraca } from "@/components/acesso/LiberarCatraca";
+import { HistoricoLiberacoes } from "@/components/acesso/HistoricoLiberacoes";
 
 interface Dados {
   devices: { id: string; name: string; status: string; firmware: string; lastHeartbeatAt: string | null }[];
@@ -51,6 +52,8 @@ export function AcessoDashboard({ dados, podeCriar }: { dados: Dados; podeCriar:
           {podeCriar && <NovaCatraca />}
         </div>
       </section>
+
+      <HistoricoLiberacoes />
 
       <CadastroFace alunos={dados.alunos} devices={dados.devices} />
 

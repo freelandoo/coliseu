@@ -47,7 +47,28 @@ test("faz login uma vez e reusa a sessão nas chamadas seguintes", async () => {
   const actions = calls.filter((c) => c.path === "/execute_actions.fcgi");
   assert.equal(actions.length, 2);
   assert.ok(actions[0].url.includes("session=S1"), "sessão vai na query");
-  assert.deepEqual(actions[0].body.actions[0], { action: "door", parameters: "door=1" });
+  assert.deepEqual(actions[0].body.actions[0], { action: "catra", parameters: "allow=both" });
+});
+
+test("liberar: se o aparelho recusa catra, tenta sec_box e memoriza a que funcionou", async () => {
+  installFetch((path, body) => {
+    if (path === "/login.fcgi") return { json: { session: "S1" } };
+    const acao = (body as { actions?: { action: string }[] })?.actions?.[0]?.action;
+    if (path === "/execute_actions.fcgi" && acao === "catra") return { status: 400, text: "invalid action" };
+    return { json: {} };
+  });
+  const a = newAdapter();
+  await a.openTurnstile({ direction: "ENTRY" });
+  await a.openTurnstile({ direction: "ENTRY" });
+  const acoes = calls.filter((c) => c.path === "/execute_actions.fcgi").map((c) => c.body.actions[0].action);
+  assert.deepEqual(acoes, ["catra", "sec_box", "sec_box"]);
+});
+
+test("liberar com ação fixa (IDFACE_OPEN_ACTION=door) usa só ela", async () => {
+  const a = new ControlIdDeviceAdapter({ host: "10.0.0.9", login: "admin", password: "x", doorId: 2, openAction: "door" });
+  await a.openTurnstile({ direction: "ENTRY" });
+  const act = calls.filter((c) => c.path === "/execute_actions.fcgi");
+  assert.deepEqual(act.map((c) => c.body.actions[0]), [{ action: "door", parameters: "door=2" }]);
 });
 
 test("re-loga quando a sessão expira (401) e repete a chamada", async () => {
@@ -186,4 +207,12 @@ test("mapAccessLog: concedido, negado, não-decisão e saída", () => {
     { exitPortalIds: [2] },
   );
   assert.equal(exit?.direction, "EXIT");
+});
+
+test("abertura remota (Interface WEB, API, botoeira) não conta como giro", () => {
+  for (const event of [EVENT.WEB_INTERFACE, EVENT.NON_IDENTIFIED_ACCESS, EVENT.PUSHBUTTON]) {
+    const r = mapAccessLog({ id: 9, time: 1_700_000_000, event });
+    assert.equal(r?.decision, "ALLOWED");
+    assert.equal(r?.physicallyPassed, false, `event ${event} não é passagem`);
+  }
 });

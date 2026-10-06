@@ -30,6 +30,17 @@ export const EVENT = {
   INTERCOM: 15, // exclusivo iDFace
 } as const;
 
+/**
+ * Aberturas sem identificação (API, botoeira, interface web): o aparelho
+ * destravou, mas ninguém foi reconhecido e NÃO há prova de que alguém girou.
+ * Contavam como giro — o botão "Liberar catraca" inflava os giros (06/10/2026).
+ */
+const ABERTURA_REMOTA = new Set<number>([
+  EVENT.NON_IDENTIFIED_ACCESS,
+  EVENT.PUSHBUTTON,
+  EVENT.WEB_INTERFACE,
+]);
+
 const ALLOWED = new Set<number>([
   EVENT.ACCESS_GRANTED,
   EVENT.NON_IDENTIFIED_ACCESS,
@@ -87,7 +98,7 @@ export function mapAccessLog(log: ControlIdAccessLog, opts: MapOptions = {}): Ac
     direction,
     decision: isAllowed ? "ALLOWED" : "DENIED",
     reason: REASON[log.event] ?? `event=${log.event}`,
-    physicallyPassed: isAllowed,
+    physicallyPassed: isAllowed && !ABERTURA_REMOTA.has(log.event),
     mode: "ONLINE",
     cursor: String(log.id),
   };

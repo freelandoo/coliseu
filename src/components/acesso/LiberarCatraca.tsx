@@ -1,5 +1,6 @@
 "use client";
 import { useEffect, useRef, useState } from "react";
+import { EVENTO_LIBERACAO } from "@/components/acesso/HistoricoLiberacoes";
 
 type Estado = "idle" | "enviando" | "aguardando" | "liberada" | "erro";
 
@@ -24,6 +25,7 @@ export function LiberarCatraca({ deviceId, online }: { deviceId: string; online:
         const r = await fetch(`/api/acesso/device/${deviceId}/liberar?cmd=${cmd}`, { cache: "no-store" });
         const d = (await r.json()) as { status?: string; lastError?: string };
         if (d.status === "SUCCEEDED") {
+          window.dispatchEvent(new Event(EVENTO_LIBERACAO));
           setEstado("liberada");
           setMotivo("");
           timer.current = setTimeout(() => setEstado("idle"), 4000);
@@ -62,6 +64,7 @@ export function LiberarCatraca({ deviceId, online }: { deviceId: string; online:
         return;
       }
       setEstado("aguardando");
+      window.dispatchEvent(new Event(EVENTO_LIBERACAO));
       acompanhar(d.comandoId, Date.now());
     } catch {
       setEstado("erro");

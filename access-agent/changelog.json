@@ -1,5 +1,15 @@
 [
   {
+    "version": "0.4.0",
+    "date": "2026-10-06",
+    "itens": [
+      "Correção do botão \"Liberar catraca\": antes o agente acionava o relé de porta (door), que no iDFace da academia registrava a abertura mas NÃO destravava o braço da catraca. Agora usa a ação de catraca (catra, liberando um giro) e, se o aparelho recusar, tenta sec_box e depois door, memorizando a que funcionou.",
+      "Novas opções no .env: IDFACE_OPEN_ACTION (auto | catra | sec_box | door) e IDFACE_CATRA_ALLOW (both | clockwise | anticlockwise), para ajustar sem trocar o programa.",
+      "Abertura remota (botão do CRM, interface web, botoeira) não conta mais como giro: antes cada clique em liberar aparecia como uma passagem sem ninguém ter passado.",
+      "ATUALIZAR na recepção: copie o coliseu-agent.cjs do kit novo como coliseu-agent.new.cjs e rode o update.bat (como administrador). O .env atual continua valendo."
+    ]
+  },
+  {
     "version": "0.3.0",
     "date": "2026-10-06",
     "itens": [

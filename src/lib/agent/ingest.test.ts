@@ -68,3 +68,13 @@ test("ingestarEvento cria AccessEvent (dedupe) e atualiza ultimaPresenca", async
   const m = await prisma.membership.findFirst({ where: { personId }, orderBy: { matriculadoEm: "desc" } });
   expect(m?.ultimaPresenca).toBeTruthy();
 });
+
+test("abertura remota (Interface WEB) não conta como passagem nem presença", async () => {
+  const r = await ingestarEvento({
+    deviceId, deviceEventId: `web-${Date.now()}`, externalUserId, deviceTime: new Date().toISOString(),
+    direction: "ENTRY", decision: "ALLOWED", reason: "Interface WEB", physicallyPassed: true, mode: "ONLINE",
+  });
+  expect(r.created).toBe(true);
+  const ev = await prisma.accessEvent.findFirstOrThrow({ where: { deviceId, reason: "Interface WEB" }, orderBy: { serverTime: "desc" } });
+  expect(ev.physicallyPassed).toBe(false);
+});

@@ -16,6 +16,15 @@ export interface ControlIdAdapterOptions extends ControlIdClientOptions {
   accessRuleId?: number;
   /** portal físico acionado (door=N em execute_actions). Default 1. */
   doorId?: number;
+  /**
+   * Como o botão "Liberar catraca" destrava o giro. "auto" (default) tenta
+   * catra → sec_box → door e fica com a primeira que o aparelho aceitar.
+   * `door` sozinho só aciona o relé de porta — numa catraca ele registra
+   * "Interface WEB" mas NÃO destrava o braço (visto em campo, 06/10/2026).
+   */
+  openAction?: "auto" | "catra" | "sec_box" | "door";
+  /** sentido liberado na ação catra: clockwise | anticlockwise | both. Default both. */
+  catraAllow?: string;
   /** nº máximo de access_logs puxados por ciclo. Default 100. */
   logPageSize?: number;
   /** mapeamento de saída para pullAccessEvents. */
@@ -30,6 +39,10 @@ export class ControlIdDeviceAdapter implements AccessDeviceAdapter {
   private readonly client: ControlIdClient;
   private readonly accessRuleId: number;
   private readonly doorId: number;
+  private readonly openAction: "auto" | "catra" | "sec_box" | "door";
+  private readonly catraAllow: string;
+  /** Ação que funcionou no modo auto — as próximas liberações vão direto nela. */
+  private acaoQueFunciona: "catra" | "sec_box" | "door" | null = null;
   private readonly logPageSize: number;
   private readonly mapOptions: MapOptions;
 
@@ -37,6 +50,8 @@ export class ControlIdDeviceAdapter implements AccessDeviceAdapter {
     this.client = new ControlIdClient(opts);
     this.accessRuleId = opts.accessRuleId ?? 1;
     this.doorId = opts.doorId ?? 1;
+    this.openAction = opts.openAction ?? "auto";
+    this.catraAllow = opts.catraAllow ?? "both";
     this.logPageSize = opts.logPageSize ?? 100;
     this.mapOptions = opts.mapOptions ?? {};
   }
@@ -185,9 +200,34 @@ export class ControlIdDeviceAdapter implements AccessDeviceAdapter {
     return { events, cursor: maxId > lastId ? String(maxId) : cursor };
   }
 
+  private acaoCatraca(tipo: "catra" | "sec_box" | "door") {
+    if (tipo === "catra") return { action: "catra", parameters: `allow=${this.catraAllow}` };
+    // SecBox (módulo de acionamento externo): id fixo 65793, reason 3 = interface/API.
+    if (tipo === "sec_box") return { action: "sec_box", parameters: "id=65793,reason=3" };
+    return { action: "door", parameters: `door=${this.doorId}` };
+  }
+
   async openTurnstile(_direction: AccessDirection): Promise<void> {
-    await this.client.post("/execute_actions.fcgi", {
-      actions: [{ action: "door", parameters: `door=${this.doorId}` }],
-    });
+    const ordem: Array<"catra" | "sec_box" | "door"> =
+      this.openAction !== "auto"
+        ? [this.openAction]
+        : this.acaoQueFunciona
+          ? [this.acaoQueFunciona]
+          : ["catra", "sec_box", "door"];
+    let ultimoErro: unknown = null;
+    for (const tipo of ordem) {
+      try {
+        await this.client.post("/execute_actions.fcgi", { actions: [this.acaoCatraca(tipo)] });
+        if (this.acaoQueFunciona !== tipo) {
+          console.log(`[${new Date().toISOString()}] [liberar] catraca liberada pela ação "${tipo}"`);
+        }
+        this.acaoQueFunciona = tipo;
+        return;
+      } catch (e) {
+        ultimoErro = e;
+        console.log(`[${new Date().toISOString()}] [liberar] ação "${tipo}" recusada pelo aparelho: ${e instanceof Error ? e.message : e}`);
+      }
+    }
+    throw ultimoErro instanceof Error ? ultimoErro : new Error("nenhuma ação de liberação aceita pelo aparelho");
   }
 }
