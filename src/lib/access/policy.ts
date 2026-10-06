@@ -61,6 +61,20 @@ export function evaluateAccessEligibility(ctx: AccessContext): AccessDecision {
     return { allow: true, status: "ALLOWED", reason: "OK", consumirCortesia: false };
   }
 
+  // 8) Matrícula ativa sem nenhuma cobrança no Coliseu (aluno adotado do
+  //    CloudGym, ou pago fora do sistema): vale o contrato — o vencimento do
+  //    plano, com a mesma carência da mensalidade. Antes isto caía no fallback e
+  //    negava a base inteira adotada.
+  if (ctx.membershipStatus === "ACTIVE" && ctx.billingStatus === null && ctx.diasAposVencimentoPlano != null) {
+    if (ctx.diasAposVencimentoPlano <= 0) {
+      return { allow: true, status: "ALLOWED", reason: "OK", consumirCortesia: false };
+    }
+    if (ctx.diasAposVencimentoPlano <= ctx.graceDays) {
+      return { allow: true, status: "GRACE", reason: "EM_CARENCIA", consumirCortesia: false };
+    }
+    return { allow: false, status: "DENIED", reason: "EXPIRADO", consumirCortesia: false };
+  }
+
   // Fallback conservador.
   return { allow: false, status: "DENIED", reason: "INADIMPLENTE", consumirCortesia: false };
 }

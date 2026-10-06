@@ -42,6 +42,9 @@ export async function carregarContextoAcesso(personId: string): Promise<Contexto
     sincronizado,
     overrideAtivo: override ? (override.action as "ALLOW" | "BLOCK") : null,
     agora,
+    diasAposVencimentoPlano: membership
+      ? Math.floor((agora.getTime() - membership.vencimentoPlano.getTime()) / 86_400_000)
+      : null,
   };
 
   return { ctx, membership, mappings };

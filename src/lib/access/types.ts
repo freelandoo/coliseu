@@ -31,6 +31,12 @@ export interface AccessContext {
   sincronizado: boolean;     // pelo menos um DeviceUserMapping IN_SYNC
   overrideAtivo: "ALLOW" | "BLOCK" | null;
   agora: Date;
+  /**
+   * Dias desde o vencimento do PLANO (>0 = vencido; null = sem matrícula).
+   * Decide o aluno que não tem nenhuma cobrança no Coliseu — a base adotada do
+   * CloudGym, que pagou lá e tem o contrato válido até `vencimentoPlano`.
+   */
+  diasAposVencimentoPlano?: number | null;
 }
 
 export interface AccessDecision {

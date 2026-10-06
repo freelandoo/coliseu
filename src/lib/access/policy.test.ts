@@ -89,3 +89,23 @@ test("override ALLOW libera mesmo inadimplente", () => {
   expect(d.allow).toBe(true);
   expect(d.status).toBe("MANUAL_OVERRIDE");
 });
+
+test("ativo SEM cobrança no Coliseu (adotado do CloudGym) com plano em dia → ALLOWED", () => {
+  const d = evaluateAccessEligibility({ ...base, billingStatus: null, diasAposVencimentoPlano: -20 });
+  expect(d).toMatchObject({ allow: true, status: "ALLOWED", reason: "OK" });
+});
+
+test("ativo sem cobrança, plano vencido dentro da carência → GRACE", () => {
+  const d = evaluateAccessEligibility({ ...base, billingStatus: null, diasAposVencimentoPlano: 3 });
+  expect(d).toMatchObject({ allow: true, status: "GRACE" });
+});
+
+test("ativo sem cobrança, plano vencido além da carência → DENIED EXPIRADO", () => {
+  const d = evaluateAccessEligibility({ ...base, billingStatus: null, diasAposVencimentoPlano: 30 });
+  expect(d).toMatchObject({ allow: false, reason: "EXPIRADO" });
+});
+
+test("sem cobrança e sem data de vencimento continua negando (fallback)", () => {
+  const d = evaluateAccessEligibility({ ...base, billingStatus: null, diasAposVencimentoPlano: null });
+  expect(d.allow).toBe(false);
+});
