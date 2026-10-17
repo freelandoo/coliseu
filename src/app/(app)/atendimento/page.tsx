@@ -3,14 +3,31 @@ import { AbasAtendimento } from "@/components/captacao/AbasAtendimento";
 import { AtendimentoInbox } from "@/components/captacao/AtendimentoInbox";
 import { ConectarWhatsapp } from "@/components/captacao/ConectarWhatsapp";
 import { requireRole } from "@/lib/auth/rbac";
-import { listarConversasRepo } from "@/lib/repositories/whatsapp";
+import { idSeguro } from "@/lib/navegacao";
+import { obterConversaRepo, paginaConversasRepo } from "@/lib/repositories/whatsapp";
 import { statusWhatsappLocal } from "@/lib/whatsapp/status";
 
 export const dynamic = "force-dynamic";
 
-export default async function AtendimentoPage() {
+export default async function AtendimentoPage({
+  searchParams,
+}: {
+  /** `c`: conversa pedida por link (sino, Captação, agenda, ficha). */
+  searchParams: Promise<{ c?: string | string[] }>;
+}) {
   const user = await requireRole(["ADMIN", "RECEPCAO"]);
-  const [conversas, whatsapp] = await Promise.all([listarConversasRepo(), statusWhatsappLocal()]);
+  const { c } = await searchParams;
+  const alvo = idSeguro(Array.isArray(c) ? c[0] : c);
+  const [pagina, whatsapp] = await Promise.all([paginaConversasRepo(), statusWhatsappLocal()]);
+
+  // A lista é só a primeira página. Conversa antiga aberta por link entra junto,
+  // senão o link levaria a uma tela que não acha o que pediu. Ler o resumo não
+  // marca como lida — quem marca é a abertura da conversa, no painel.
+  let conversas = pagina.conversas;
+  if (alvo && !conversas.some((x) => x.id === alvo)) {
+    const pedida = await obterConversaRepo(alvo);
+    if (pedida) conversas = [pedida, ...conversas];
+  }
 
   return (
     <Reveal>
@@ -18,6 +35,8 @@ export default async function AtendimentoPage() {
           com uma conversa aberta, o inbox o esconde e fica só a conversa. */}
       <AtendimentoInbox
         inicial={conversas}
+        proximoInicial={pagina.proximo}
+        conta={user.id}
         assinatura={user.login}
         // Preferência de teclado da conta, não da máquina — a chave que a muda
         // fica logo abaixo deste título.

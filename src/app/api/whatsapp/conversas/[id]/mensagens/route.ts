@@ -4,10 +4,13 @@ import { exigirAdminApi, exigirSessaoApi } from "@/lib/auth/api-guard";
 import { podePapel, type Papel } from "@/lib/auth/rbac";
 import {
   citacaoPorIdRepo,
+  deltaLegadoRepo,
   limparMensagensRepo,
-  listarMensagensRepo,
+  mensagemPorWaIdRepo,
+  paginaMensagensRepo,
   registrarMensagemRepo,
 } from "@/lib/repositories/whatsapp";
+import { lerCursor, lerLimite, PAGINA_MENSAGENS, TETO_PAGINA_MENSAGENS } from "@/lib/whatsapp/historico";
 import { enviarAudio, enviarMidia, EvolutionError } from "@/lib/whatsapp/evolution";
 import {
   contextoEnvio,
@@ -50,17 +53,54 @@ async function guarda() {
   return { user: g.user, erro: null };
 }
 
-/** GET — polling da thread aberta. `?depois=<ISO>` devolve só o delta. */
+/**
+ * GET — leitura do histórico em páginas, sempre em ordem cronológica.
+ *
+ * - `?antes=<cursor>`: a página anterior ao cursor (rolar para cima).
+ * - `?apos=<cursor>`: as novidades depois do cursor; `temMais` diz se ainda há.
+ * - `?depois=<ISO>`: delta legado, mantido para quem ainda o usa — `gte`, em
+ *   ordem crescente, até 500; `temMais` avisa quando o teto cortou o delta.
+ * - sem nada: as mais recentes.
+ *
+ * `limite` opcional, até 200. Cursor inválido é 400 — cair silenciosamente na
+ * página mais recente faria a tela "carregar anteriores" e receber o fim.
+ */
 export async function GET(req: Request, { params }: { params: Promise<{ id: string }> }) {
   const g = await guarda();
   if (g.erro) return g.erro;
 
   const { id } = await params;
-  const bruto = new URL(req.url).searchParams.get("depois");
-  const depois = bruto ? new Date(bruto) : undefined;
-  const valido = depois && !Number.isNaN(depois.getTime()) ? depois : undefined;
+  const busca = new URL(req.url).searchParams;
 
-  return NextResponse.json({ mensagens: await listarMensagensRepo(id, valido) });
+  if (busca.has("depois") && !busca.has("antes") && !busca.has("apos")) {
+    const depois = new Date(busca.get("depois") ?? "");
+    // Como antes: `depois` inválido é ignorado e a resposta é a conversa.
+    if (Number.isNaN(depois.getTime())) {
+      return NextResponse.json({ mensagens: (await paginaMensagensRepo(id, { limite: 500 })).mensagens });
+    }
+    return NextResponse.json(await deltaLegadoRepo(id, depois));
+  }
+
+  const antes = busca.has("antes") ? lerCursor(busca.get("antes")) : null;
+  const apos = busca.has("apos") ? lerCursor(busca.get("apos")) : null;
+  if ((busca.has("antes") && !antes) || (busca.has("apos") && !apos) || (antes && apos)) {
+    return NextResponse.json({ erro: "cursor inválido" }, { status: 400 });
+  }
+  const limite = lerLimite(busca.get("limite"), PAGINA_MENSAGENS, TETO_PAGINA_MENSAGENS);
+  return NextResponse.json(await paginaMensagensRepo(id, { antes, apos, limite }));
+}
+
+/**
+ * O que um envio devolve: a mensagem gravada (para a tela trocar só a bolha
+ * dela) e o fim da conversa (para a tela juntar ao que já tem — nunca para
+ * substituir o histórico carregado).
+ */
+async function respostaDoEnvio(conversaId: string, waMessageId: string) {
+  const [mensagem, pagina] = await Promise.all([
+    mensagemPorWaIdRepo(conversaId, waMessageId),
+    paginaMensagensRepo(conversaId),
+  ]);
+  return { mensagem, mensagens: pagina.mensagens, temAnteriores: pagina.temAnteriores };
 }
 
 /**
@@ -152,9 +192,10 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
             },
             quoted,
           );
+      const waMessageId = waId ?? `local:${randomUUID()}`;
       await registrarMensagemRepo({
         conversaId: id,
-        waMessageId: waId ?? `local:${randomUUID()}`,
+        waMessageId,
         direcao: "OUT",
         autor: "ATENDENTE",
         autorUserId: g.user.id,
@@ -162,7 +203,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
         tipoMidia: info.tipoMidia,
         citada,
       });
-      return NextResponse.json({ mensagens: await listarMensagensRepo(id) });
+      return NextResponse.json(await respostaDoEnvio(id, waMessageId));
     } catch (e) {
       await registrarMensagemRepo({
         conversaId: id,
@@ -200,14 +241,18 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
 
   // A bolha com o erro já fica guardada lá dentro — o texto digitado não se
   // perde quando o envio falha.
-  const falha = await enviarTextoNaConversa({
+  const envio = await enviarTextoNaConversa({
     conversaId: id,
     texto,
     userId: g.user.id,
     contexto: ctx,
     citada,
   });
-  if (falha) return NextResponse.json({ erro: falha.erro }, { status: falha.status });
+  if (ehFalhaEnvio(envio)) {
+    // A bolha de erro gravada vai junto: a tela a põe no lugar da otimista.
+    const mensagem = envio.waMessageId ? await mensagemPorWaIdRepo(id, envio.waMessageId) : null;
+    return NextResponse.json({ erro: envio.erro, mensagem }, { status: envio.status });
+  }
 
-  return NextResponse.json({ mensagens: await listarMensagensRepo(id) });
+  return NextResponse.json(await respostaDoEnvio(id, envio.waMessageId));
 }

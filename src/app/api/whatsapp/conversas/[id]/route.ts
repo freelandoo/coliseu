@@ -4,9 +4,9 @@ import { podePapel, type Papel } from "@/lib/auth/rbac";
 import {
   classificarConversaRepo,
   listarAtendimentosRepo,
-  listarMensagensRepo,
   marcarConversaLidaRepo,
   obterConversaRepo,
+  paginaMensagensRepo,
   removerConversaRepo,
 } from "@/lib/repositories/whatsapp";
 import { INTERESSE_LABEL, type ConversaInteresse } from "@/lib/types";
@@ -22,7 +22,11 @@ async function guarda() {
   return { user: g.user, erro: null };
 }
 
-/** GET — conversa + histórico. Abrir a conversa zera o contador de não lidas. */
+/**
+ * GET — conversa + o fim do histórico (as mais recentes, em ordem cronológica).
+ * `temAnteriores` diz se há mais para trás — a tela pede por
+ * `/mensagens?antes=`. Abrir a conversa zera o contador de não lidas.
+ */
 export async function GET(_req: Request, ctx: { params: Promise<{ id: string }> }) {
   const g = await guarda();
   if (g.erro) return g.erro;
@@ -31,13 +35,18 @@ export async function GET(_req: Request, ctx: { params: Promise<{ id: string }> 
   const conversa = await obterConversaRepo(id);
   if (!conversa) return NextResponse.json({ erro: "conversa não encontrada" }, { status: 404 });
 
-  const [mensagens, atendimentos] = await Promise.all([
-    listarMensagensRepo(id),
+  const [pagina, atendimentos] = await Promise.all([
+    paginaMensagensRepo(id),
     listarAtendimentosRepo(id),
   ]);
   await marcarConversaLidaRepo(id).catch(() => undefined);
 
-  return NextResponse.json({ conversa: { ...conversa, naoLidas: 0 }, mensagens, atendimentos });
+  return NextResponse.json({
+    conversa: { ...conversa, naoLidas: 0 },
+    mensagens: pagina.mensagens,
+    temAnteriores: pagina.temAnteriores,
+    atendimentos,
+  });
 }
 
 /**

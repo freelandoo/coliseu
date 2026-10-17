@@ -14,6 +14,12 @@ import {
   type MensagemItem,
 } from "@/lib/types";
 import type { Prisma, WhatsappStatus } from "@prisma/client";
+import {
+  codificarCursor,
+  PAGINA_CONVERSAS,
+  PAGINA_MENSAGENS,
+  type Cursor,
+} from "@/lib/whatsapp/historico";
 
 /** Quem apagou — vai congelado na lixeira, para a trilha sobreviver à conta. */
 type Ator = { id: string; nome: string } | null;
@@ -194,19 +200,48 @@ function toResumo(c: ConversaComResumo): ConversaResumo {
   };
 }
 
-export async function listarConversasRepo(): Promise<ConversaResumo[]> {
+/**
+ * Uma página da inbox, da conversa mais recente para a mais antiga. `antes` é
+ * o cursor da última linha da página anterior: (ultimaMensagemEm, id), com o id
+ * desempatando conversas que receberam mensagem no mesmo instante.
+ */
+export async function paginaConversasRepo(
+  opcoes: { antes?: Cursor | null; limite?: number } = {},
+): Promise<{ conversas: ConversaResumo[]; proximo: string | null }> {
+  const limite = opcoes.limite ?? PAGINA_CONVERSAS;
+  const antes = opcoes.antes;
   const rows = await prisma.conversa.findMany({
+    where: antes
+      ? {
+          OR: [
+            { ultimaMensagemEm: { lt: new Date(antes.em) } },
+            { ultimaMensagemEm: new Date(antes.em), id: { lt: antes.id } },
+          ],
+        }
+      : undefined,
     include: RESUMO_INCLUDE,
-    orderBy: { ultimaMensagemEm: "desc" },
-    take: 200,
+    orderBy: [{ ultimaMensagemEm: "desc" }, { id: "desc" }],
+    take: limite + 1,
   });
-  return rows.map(toResumo);
+  const pagina = rows.slice(0, limite);
+  const ultima = pagina[pagina.length - 1];
+  return {
+    conversas: pagina.map(toResumo),
+    proximo:
+      rows.length > limite && ultima
+        ? codificarCursor({ em: ultima.ultimaMensagemEm.toISOString(), id: ultima.id })
+        : null,
+  };
+}
+
+/** A primeira página da inbox — o que a tela abre. */
+export async function listarConversasRepo(): Promise<ConversaResumo[]> {
+  return (await paginaConversasRepo()).conversas;
 }
 
 /**
- * Conversas em que alguém escreveu o termo — a busca por palavra-chave da
- * inbox. Nome e telefone a tela resolve sozinha na lista que já tem; aqui é o
- * histórico, que só o banco enxerga.
+ * Conversas em que alguém escreveu o termo — a parte da busca que só o banco
+ * enxerga: o histórico.
  *
  * `contains` insensitive vira ILIKE: sem índice de texto, mas a academia tem
  * ordem de dezenas de milhares de mensagens — e o teto de linhas segura o custo
@@ -240,6 +275,46 @@ export async function buscarConversasPorMensagemRepo(
     orderBy: { ultimaMensagemEm: "desc" },
   });
   return rows.map((r) => ({ ...toResumo(r), trecho: trechos.get(r.id) ?? "" }));
+}
+
+/**
+ * A busca inteira da inbox, no servidor: nome (do cadastro ou do perfil),
+ * telefone e histórico. A lista carregada na tela é só a primeira página — a
+ * conversa antiga que a recepção procura pode não estar nela.
+ *
+ * Achado por nome/telefone vem sem trecho (a linha mostra a última mensagem);
+ * achado no histórico traz o pedaço que casou.
+ */
+export async function buscarConversasRepo(termo: string, limite = 30): Promise<ConversaBuscaItem[]> {
+  const alvo = termo.trim();
+  if (alvo.length < 2) return [];
+  const numeros = alvo.replace(/\D/g, "");
+
+  const porNome = await prisma.conversa.findMany({
+    where: {
+      OR: [
+        { pushName: { contains: alvo, mode: "insensitive" } },
+        { person: { nome: { contains: alvo, mode: "insensitive" } } },
+        // O telefone da conversa é guardado só com dígitos; três já separam.
+        ...(numeros.length >= 3 ? [{ telefone: { contains: numeros } }] : []),
+      ],
+    },
+    include: RESUMO_INCLUDE,
+    orderBy: [{ ultimaMensagemEm: "desc" }, { id: "desc" }],
+    take: limite,
+  });
+  const porMensagem = await buscarConversasPorMensagemRepo(alvo, limite);
+
+  const porId = new Map<string, ConversaBuscaItem>();
+  for (const r of porNome) porId.set(r.id, { ...toResumo(r), trecho: "" });
+  for (const m of porMensagem) porId.set(m.id, m); // trecho do histórico vale mais
+  return [...porId.values()]
+    .sort((a, b) =>
+      a.ultimaMensagemEm !== b.ultimaMensagemEm
+        ? b.ultimaMensagemEm.localeCompare(a.ultimaMensagemEm)
+        : b.id.localeCompare(a.id),
+    )
+    .slice(0, limite);
 }
 
 /**
@@ -344,19 +419,122 @@ function podeSerCitada(m: { waMessageId: string; erro: string | null }): boolean
   return !m.waMessageId.startsWith("local:") && !m.erro;
 }
 
+const INCLUDE_MENSAGEM = { autorUser: { select: { nome: true } } } satisfies Prisma.MensagemInclude;
+
+type LinhaMensagem = Prisma.MensagemGetPayload<{ include: typeof INCLUDE_MENSAGEM }>;
+
+/** Teto do delta legado (`?depois=`) — o mesmo de antes. */
+const TETO_DELTA_LEGADO = 500;
+
+/**
+ * Delta legado (`?depois=<ISO>`) e, sem cursor, as mensagens mais recentes.
+ *
+ * `gte`, não `gt`: o WhatsApp marca o tempo em segundos, e duas mensagens no
+ * mesmo segundo do cursor seriam perdidas para sempre. O cliente deduplica por id.
+ * O delta sai em ordem crescente e para no teto — `temMais` (em
+ * `deltaLegadoRepo`) avisa quando ficou coisa para trás.
+ *
+ * Sem `depois`, devolve o **fim** da conversa (as mais recentes), em ordem
+ * cronológica. Antes devolvia o começo, e uma conversa longa abria no passado.
+ */
 export async function listarMensagensRepo(
   conversaId: string,
   depois?: Date,
 ): Promise<MensagemItem[]> {
-  // `gte`, não `gt`: o WhatsApp marca o tempo em segundos, e duas mensagens no
-  // mesmo segundo do cursor seriam perdidas para sempre. O cliente deduplica por id.
-  const rows = await prisma.mensagem.findMany({
-    where: { conversaId, ...(depois ? { enviadaEm: { gte: depois } } : {}) },
-    include: { autorUser: { select: { nome: true } } },
-    orderBy: { enviadaEm: "asc" },
-    take: 500,
-  });
+  if (!depois) {
+    return (await paginaMensagensRepo(conversaId, { limite: TETO_DELTA_LEGADO })).mensagens;
+  }
+  return (await deltaLegadoRepo(conversaId, depois)).mensagens;
+}
 
+export async function deltaLegadoRepo(
+  conversaId: string,
+  depois: Date,
+): Promise<{ mensagens: MensagemItem[]; temMais: boolean }> {
+  const rows = await prisma.mensagem.findMany({
+    where: { conversaId, enviadaEm: { gte: depois } },
+    include: INCLUDE_MENSAGEM,
+    orderBy: [{ enviadaEm: "asc" }, { id: "asc" }],
+    take: TETO_DELTA_LEGADO + 1,
+  });
+  const temMais = rows.length > TETO_DELTA_LEGADO;
+  return { mensagens: await paraItens(conversaId, rows.slice(0, TETO_DELTA_LEGADO)), temMais };
+}
+
+/**
+ * Uma página do histórico, sempre em ordem cronológica:
+ *
+ * - sem cursor: as `limite` mais recentes (`temAnteriores` diz se há mais atrás);
+ * - `antes`: as `limite` imediatamente anteriores ao cursor;
+ * - `apos`: as `limite` imediatamente posteriores (`temMais` diz se o delta
+ *   continua — a tela pede a próxima com o cursor da última recebida).
+ *
+ * O cursor é (enviadaEm, id): mensagens no mesmo segundo não se perdem nem se
+ * repetem entre páginas.
+ */
+export async function paginaMensagensRepo(
+  conversaId: string,
+  opcoes: { antes?: Cursor | null; apos?: Cursor | null; limite?: number } = {},
+): Promise<{ mensagens: MensagemItem[]; temAnteriores: boolean; temMais: boolean }> {
+  const limite = opcoes.limite ?? PAGINA_MENSAGENS;
+
+  if (opcoes.apos) {
+    const c = opcoes.apos;
+    const rows = await prisma.mensagem.findMany({
+      where: {
+        conversaId,
+        OR: [
+          { enviadaEm: { gt: new Date(c.em) } },
+          { enviadaEm: new Date(c.em), id: { gt: c.id } },
+        ],
+      },
+      include: INCLUDE_MENSAGEM,
+      orderBy: [{ enviadaEm: "asc" }, { id: "asc" }],
+      take: limite + 1,
+    });
+    return {
+      mensagens: await paraItens(conversaId, rows.slice(0, limite)),
+      temAnteriores: true,
+      temMais: rows.length > limite,
+    };
+  }
+
+  const c = opcoes.antes;
+  const rows = await prisma.mensagem.findMany({
+    where: c
+      ? {
+          conversaId,
+          OR: [
+            { enviadaEm: { lt: new Date(c.em) } },
+            { enviadaEm: new Date(c.em), id: { lt: c.id } },
+          ],
+        }
+      : { conversaId },
+    include: INCLUDE_MENSAGEM,
+    orderBy: [{ enviadaEm: "desc" }, { id: "desc" }],
+    take: limite + 1,
+  });
+  const pagina = rows.slice(0, limite).reverse();
+  return {
+    mensagens: await paraItens(conversaId, pagina),
+    temAnteriores: rows.length > limite,
+    temMais: false,
+  };
+}
+
+/** A mensagem gravada por um envio, pelo id que o WhatsApp (ou o fallback local) deu. */
+export async function mensagemPorWaIdRepo(
+  conversaId: string,
+  waMessageId: string,
+): Promise<MensagemItem | null> {
+  const row = await prisma.mensagem.findFirst({
+    where: { conversaId, waMessageId },
+    include: INCLUDE_MENSAGEM,
+  });
+  return row ? ((await paraItens(conversaId, [row]))[0] ?? null) : null;
+}
+
+async function paraItens(conversaId: string, rows: LinhaMensagem[]): Promise<MensagemItem[]> {
   // Onde está a original de cada citação. A busca é no histórico inteiro, não
   // no lote: num delta, a mensagem citada quase sempre é mais antiga que o
   // cursor — e o painel já a tem na tela para pular até ela.

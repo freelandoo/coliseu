@@ -21,7 +21,14 @@ import {
  * ingestão do webhook não chega até aqui).
  */
 
-export type FalhaEnvio = { erro: string; status: number };
+/**
+ * `waMessageId` existe quando a falha ficou gravada como bolha de erro na
+ * conversa — a tela troca a bolha dela por essa, em vez de mostrar duas.
+ */
+export type FalhaEnvio = { erro: string; status: number; waMessageId?: string };
+
+/** Envio aceito pela Evolution e gravado. Não prova entrega no aparelho. */
+export type EnvioGravado = { waMessageId: string };
 
 export function ehFalhaEnvio(x: unknown): x is FalhaEnvio {
   return typeof x === "object" && x !== null && "erro" in x && "status" in x;
@@ -82,7 +89,7 @@ export async function enviarTextoNaConversa(input: {
   contexto?: ContextoEnvio;
   /** Mensagem citada, quando a recepção respondeu uma em especial. */
   citada?: CitacaoGravada | null;
-}): Promise<null | FalhaEnvio> {
+}): Promise<EnvioGravado | FalhaEnvio> {
   const ctx = input.contexto ?? (await contextoEnvio(input.conversaId, input.userId));
   if (ehFalhaEnvio(ctx)) return ctx;
 
@@ -97,30 +104,33 @@ export async function enviarTextoNaConversa(input: {
     );
     // Sem id do WhatsApp não há como deduplicar o eco do webhook; o prefixo
     // "local:" deixa isso explícito no banco.
+    const waMessageId = waId ?? `local:${randomUUID()}`;
     await registrarMensagemRepo({
       conversaId: input.conversaId,
-      waMessageId: waId ?? `local:${randomUUID()}`,
+      waMessageId,
       direcao: "OUT",
       autor: "ATENDENTE",
       autorUserId: input.userId,
       texto: input.texto,
       citada: input.citada,
     });
-    return null;
+    return { waMessageId };
   } catch (e) {
-    await registrarMensagemRepo({
+    const waMessageId = `local:${randomUUID()}`;
+    const gravou = await registrarMensagemRepo({
       conversaId: input.conversaId,
-      waMessageId: `local:${randomUUID()}`,
+      waMessageId,
       direcao: "OUT",
       autor: "ATENDENTE",
       autorUserId: input.userId,
       texto: input.texto,
       citada: input.citada,
       erro: e instanceof Error ? e.message.slice(0, 200) : "falha no envio",
-    }).catch(() => undefined);
+    }).catch(() => false);
+    const bolha = gravou ? { waMessageId } : {};
 
-    if (e instanceof EvolutionError) return { erro: e.message, status: e.status };
+    if (e instanceof EvolutionError) return { erro: e.message, status: e.status, ...bolha };
     console.error("[whatsapp] falha ao enviar", e);
-    return { erro: "Falha ao enviar a mensagem.", status: 502 };
+    return { erro: "Falha ao enviar a mensagem.", status: 502, ...bolha };
   }
 }

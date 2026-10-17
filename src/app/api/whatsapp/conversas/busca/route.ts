@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { exigirSessaoApi } from "@/lib/auth/api-guard";
 import { podePapel, type Papel } from "@/lib/auth/rbac";
-import { buscarConversasPorMensagemRepo } from "@/lib/repositories/whatsapp";
+import { buscarConversasRepo } from "@/lib/repositories/whatsapp";
 
 export const dynamic = "force-dynamic";
 
@@ -9,11 +9,12 @@ export const dynamic = "force-dynamic";
 const MINIMO = 2;
 
 /**
- * GET `?q=` — conversas em que alguém escreveu o termo.
+ * GET `?q=` — conversas pelo nome, telefone ou por algo escrito no histórico.
  *
- * Complementa a busca da tela: nome e telefone o navegador filtra sozinho na
- * lista que já carregou; palavra que ficou no meio do histórico (ou conversa
- * antiga demais para estar na lista) só o banco acha.
+ * A tela filtra na hora a lista que já carregou, mas ela é só a primeira
+ * página: conversa antiga (fora da lista) ou palavra no meio do histórico só o
+ * banco acha. `termo` volta junto, para a tela casar a resposta com a busca
+ * que a originou.
  */
 export async function GET(req: Request) {
   const g = await exigirSessaoApi();
@@ -23,7 +24,7 @@ export async function GET(req: Request) {
   }
 
   const q = (new URL(req.url).searchParams.get("q") ?? "").trim();
-  if (q.length < MINIMO) return NextResponse.json({ conversas: [] });
+  if (q.length < MINIMO) return NextResponse.json({ conversas: [], termo: q });
 
-  return NextResponse.json({ conversas: await buscarConversasPorMensagemRepo(q) });
+  return NextResponse.json({ conversas: await buscarConversasRepo(q), termo: q });
 }

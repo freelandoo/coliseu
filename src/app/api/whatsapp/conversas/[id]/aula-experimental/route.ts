@@ -2,8 +2,12 @@ import { NextResponse } from "next/server";
 import { exigirSessaoApi } from "@/lib/auth/api-guard";
 import { podePapel, type Papel } from "@/lib/auth/rbac";
 import { criarAulaExperimentalRepo } from "@/lib/repositories/aulas-experimentais";
-import { listarMensagensRepo, obterConversaRepo } from "@/lib/repositories/whatsapp";
-import { enviarTextoNaConversa } from "@/lib/whatsapp/responder";
+import {
+  mensagemPorWaIdRepo,
+  obterConversaRepo,
+  paginaMensagensRepo,
+} from "@/lib/repositories/whatsapp";
+import { ehFalhaEnvio, enviarTextoNaConversa } from "@/lib/whatsapp/responder";
 import { soDigitos } from "@/lib/whatsapp/telefone";
 import {
   ehDataISO,
@@ -26,9 +30,9 @@ async function guarda() {
 /**
  * POST — marca a aula experimental e manda a confirmação na conversa.
  *
- * Não é resposta automática: quem clica no horário é a recepção, e a mensagem
- * que sai é a mesma que ela mandaria à mão. Automático aqui é só não ter que
- * digitar a data de novo.
+ * Não é resposta automática: a recepção revisa pessoa, modalidade, dia e hora e
+ * clica em "Confirmar e enviar no WhatsApp"; a mensagem que sai é a mesma que
+ * ela mandaria à mão. Automático aqui é só não ter que digitar a data de novo.
  *
  * A ordem importa: envia primeiro, grava depois. Aula na lista que a pessoa
  * nunca foi avisada é pior do que envio que deu certo e não entrou na lista —
@@ -67,23 +71,49 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
     );
   }
 
-  const falha = await enviarTextoNaConversa({
+  const envio = await enviarTextoNaConversa({
     conversaId: id,
     texto: mensagemAulaExperimental({ modalidade, data, hora }),
     userId: g.user.id,
   });
-  if (falha) return NextResponse.json({ erro: falha.erro }, { status: falha.status });
+  if (ehFalhaEnvio(envio)) {
+    // Envio falhou: nada entra na agenda. A bolha de erro (quando gravada) vai
+    // junto, para a conversa mostrar o que não saiu.
+    const mensagem = envio.waMessageId ? await mensagemPorWaIdRepo(id, envio.waMessageId) : null;
+    return NextResponse.json({ erro: envio.erro, mensagem }, { status: envio.status });
+  }
 
-  const aula = await criarAulaExperimentalRepo({
-    conversaId: id,
-    personId: conversa.personId,
-    nome: conversa.nome,
-    telefone: soDigitos(conversa.telefone),
-    modalidade,
-    data,
-    hora,
-    agendadoPorId: g.user.id,
-  });
+  // A mensagem já saiu. Se a gravação falhar daqui em diante, a resposta diz
+  // isso com todas as letras — reenviar mandaria a confirmação duas vezes.
+  let aula;
+  try {
+    aula = await criarAulaExperimentalRepo({
+      conversaId: id,
+      personId: conversa.personId,
+      nome: conversa.nome,
+      telefone: soDigitos(conversa.telefone),
+      modalidade,
+      data,
+      hora,
+      agendadoPorId: g.user.id,
+    });
+  } catch (e) {
+    console.error("[aula-experimental] confirmação enviada, gravação falhou", e);
+    const mensagem = await mensagemPorWaIdRepo(id, envio.waMessageId).catch(() => null);
+    return NextResponse.json(
+      {
+        erro:
+          "A confirmação foi enviada no WhatsApp, mas a aula não entrou na agenda. Não envie de novo — avise o administrador.",
+        enviada: true,
+        mensagem,
+      },
+      { status: 500 },
+    );
+  }
 
-  return NextResponse.json({ aula, mensagens: await listarMensagensRepo(id) });
+  const [mensagem, pagina] = await Promise.all([
+    mensagemPorWaIdRepo(id, envio.waMessageId),
+    paginaMensagensRepo(id),
+  ]);
+  return NextResponse.json({ aula, mensagem, mensagens: pagina.mensagens });
 }
