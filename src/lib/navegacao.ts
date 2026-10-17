@@ -228,7 +228,14 @@ export function comParametro(
 
 /* ---------- retorno da ficha ---------- */
 
-export const ORIGENS_FICHA = ["alunos", "atendimento", "vencimentos"] as const;
+export const ORIGENS_FICHA = [
+  "alunos",
+  "atendimento",
+  "vencimentos",
+  "captacao",
+  "retencao",
+  "fidelidade",
+] as const;
 export type OrigemFicha = (typeof ORIGENS_FICHA)[number];
 
 /**
@@ -251,6 +258,15 @@ export function retornoDaFicha(
   }
   if (origem === "vencimentos" && podeModulo(papel, "cobranca")) {
     return { href: "/cobranca?aba=vencimentos", rotulo: "Vencimentos", origem };
+  }
+  if (origem === "captacao" && podeModulo(papel, "captacao")) {
+    return { href: "/captacao", rotulo: "Captação", origem };
+  }
+  if (origem === "retencao" && podeModulo(papel, "matriculados")) {
+    return { href: "/matriculados/retencao", rotulo: "Retenção", origem };
+  }
+  if (origem === "fidelidade" && podeModulo(papel, "matriculados")) {
+    return { href: "/matriculados/fidelidade", rotulo: "Fidelidade", origem };
   }
   return { href: "/matriculados", rotulo: "Alunos", origem: "alunos" };
 }

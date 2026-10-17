@@ -43,16 +43,16 @@ export default async function CaptacaoPage() {
         <Reveal delay={0.03}>
           <Link
             href="/aula-experimental"
-            className="mb-4 flex items-center gap-2 rounded-lg border border-red/40 bg-red-ghost px-4 py-2.5 text-sm text-ink transition-colors hover:border-red/60"
+            className="mb-4 flex items-center gap-2 rounded-lg border border-brand/40 bg-brand-soft px-4 py-2.5 text-sm text-ink transition-colors hover:border-brand/60"
           >
-            <span className="flex h-5 min-w-5 items-center justify-center rounded bg-red px-1 text-xs font-semibold text-white">
+            <span className="flex h-5 min-w-5 items-center justify-center rounded bg-brand px-1 text-xs font-semibold text-white">
               {aulasHoje}
             </span>
             <span>
               aula{aulasHoje > 1 ? "s" : ""} experimental{aulasHoje > 1 ? "is" : ""} marcada
               {aulasHoje > 1 ? "s" : ""} para hoje
             </span>
-            <span className="ml-auto text-xs font-medium text-red-bright">Ver agenda →</span>
+            <span className="ml-auto text-xs font-semibold text-brand">Ver agenda →</span>
           </Link>
         </Reveal>
       )}

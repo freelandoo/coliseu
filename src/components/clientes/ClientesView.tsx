@@ -5,19 +5,18 @@ import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Badge, Card } from "@/components/ui/primitives";
 import { NovoCadastro } from "@/components/clientes/NovoCadastro";
-import { RemoverPessoa } from "@/components/clientes/RemoverPessoa";
 import { RenovarModal } from "@/components/matriculados/RenovarModal";
 import { CheckoutBalcao } from "@/components/matricula/CheckoutBalcao";
 import { cn } from "@/lib/cn";
 import {
   ALUNO_STATUS_LABEL,
   LEAD_ESTAGIO_LABEL,
-  ORIGEM_LABEL,
   type Pessoa,
   type Plano,
 } from "@/lib/types";
-import { classeBotao } from "@/components/ui/Botao";
+import { Botao } from "@/components/ui/Botao";
 import { classeCampoEmLinha } from "@/components/ui/Campo";
+import { formatData } from "@/lib/mock-data";
 import { comParametro, lerEnum, SITUACOES_ALUNO, type SituacaoAluno } from "@/lib/navegacao";
 import { consultaAlunosLembrada, lembrarConsultaAlunos } from "@/lib/memoria-navegacao";
 
@@ -110,11 +109,20 @@ export function ClientesView({
   const [renovando, setRenovando] = useState<Pessoa | null>(null);
   const [pagando, setPagando] = useState<Pessoa | null>(null);
 
+  // Todos os planos servem para mostrar o de cada aluno (inclusive arquivado);
+  // nova matrícula só oferece os contratáveis.
   const planoById = useMemo(() => new Map(planos.map((p) => [p.id, p])), [planos]);
+  const contrataveis = useMemo(() => planos.filter((p) => p.ativo !== false), [planos]);
 
   function fecharRenovacao() {
     setRenovando(null);
     router.refresh();
+  }
+
+  function planoDe(p: Pessoa): string {
+    const plano = p.planoId ? planoById.get(p.planoId) : undefined;
+    if (!plano) return "Sem plano";
+    return plano.ativo === false ? `${plano.nome} (arquivado)` : plano.nome;
   }
 
   const contagem = useMemo(() => {
@@ -131,16 +139,18 @@ export function ClientesView({
     if (!plano) return null;
     const pendente = p.status === "pendente";
     return (
-      <button type="button"
+      <Botao
+        variante="contorno"
+        tamanho="sm"
         onClick={(e) => {
           e.stopPropagation();
           if (pendente) setPagando(p);
           else setRenovando(p);
         }}
-        className={classeBotao({ variante: "contorno", tamanho: "sm" })}
+        title={pendente ? "Registrar pagamento recebido no balcão" : "Revisar a renovação deste plano"}
       >
-        {pendente ? "Confirmar pgto" : "Renovar"}
-      </button>
+        {pendente ? "Receber no balcão" : "Renovar"}
+      </Botao>
     );
   }
 
@@ -170,7 +180,7 @@ export function ClientesView({
           placeholder="Buscar por nome, código, CPF ou telefone…"
           className={`${classeCampoEmLinha} w-full max-w-sm`}
         />
-        <NovoCadastro planos={planos} />
+        <NovoCadastro modo="matricula" planos={contrataveis} />
       </div>
 
       <div role="group" aria-label="Situação" className="flex flex-wrap gap-1.5 sm:gap-2">
@@ -182,9 +192,9 @@ export function ClientesView({
               onClick={() => setFiltro(chip.key)}
               aria-pressed={ativo}
               className={cn(
-                "flex items-center gap-1.5 rounded-lg border px-2.5 py-1.5 text-xs font-medium transition-colors sm:gap-2 sm:px-3.5 sm:py-2 sm:text-sm",
+                "flex min-h-9 items-center gap-1.5 rounded-lg border px-2.5 py-1.5 text-sm font-medium transition-colors sm:gap-2 sm:px-3.5",
                 ativo
-                  ? "border-red/60 bg-red-ghost text-ink"
+                  ? "border-brand/60 bg-brand-soft text-ink"
                   : "border-border bg-surface text-muted hover:border-border-strong hover:text-ink",
               )}
             >
@@ -192,7 +202,7 @@ export function ClientesView({
               <span
                 className={cn(
                   "flex h-4 min-w-4 items-center justify-center rounded-md px-1 text-xs font-semibold sm:h-5 sm:min-w-5 sm:text-xs",
-                  ativo ? "bg-red text-white" : "bg-surface-2 text-faint",
+                  ativo ? "bg-brand text-white" : "bg-surface-2 text-muted",
                 )}
               >
                 {contagem[chip.key]}
@@ -202,11 +212,35 @@ export function ClientesView({
         })}
       </div>
 
+      {(q || filtro !== "todos") && pessoas.length > 0 && (
+        <div role="status" className="-mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-muted">
+          <span>
+            {visiveis.length} de {pessoas.length} aluno{pessoas.length === 1 ? "" : "s"}
+            {filtro !== "todos" && ` · ${CHIPS.find((c) => c.key === filtro)?.label}`}
+            {q && ` · busca “${busca.trim()}”`}
+          </span>
+          <Botao
+            variante="discreto"
+            tamanho="sm"
+            onClick={() => {
+              mudarBusca("");
+              setFiltro("todos");
+            }}
+          >
+            Limpar consulta
+          </Botao>
+        </div>
+      )}
+
       <Card className="overflow-hidden">
         <div ref={listaRef}>
         {visiveis.length === 0 ? (
-          <p className="px-5 py-10 text-center text-sm text-faint">
-            Nenhuma pessoa nesta categoria.
+          <p className="px-5 py-10 text-center text-sm text-muted">
+            {pessoas.length === 0
+              ? "Nenhum aluno cadastrado ainda. Matricule um lead pela Captação ou use “+ Nova matrícula”."
+              : q
+                ? `Ninguém encontrado para “${busca.trim()}”${filtro !== "todos" ? " nesta situação" : ""}. A busca cobre nome, código, CPF e telefone.`
+                : "Nenhum aluno nesta situação."}
           </p>
         ) : (
           <>
@@ -229,16 +263,14 @@ export function ClientesView({
                       {p.telefone || p.email || "—"}
                       <span className="ml-2 font-mono text-faint">{p.codigo}</span>
                     </p>
+                    <p className="mt-0.5 text-xs text-muted">
+                      {planoDe(p)}
+                      {p.vencimentoPlano && ` · vence ${formatData(p.vencimentoPlano)}`}
+                    </p>
                   </div>
                   <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-2">
-                    <span className="flex flex-wrap items-center gap-1.5">
-                      <Badge>{ORIGEM_LABEL[p.origem]}</Badge>
-                      <Badge tone={s.tone}>{s.rotulo}</Badge>
-                    </span>
-                    <span className="ml-auto flex flex-wrap items-center justify-end gap-2">
-                      {botaoRenovacao(p)}
-                      <RemoverPessoa id={p.id} nome={p.nome} />
-                    </span>
+                    <Badge tone={s.tone}>{s.rotulo}</Badge>
+                    <span className="ml-auto">{botaoRenovacao(p)}</span>
                   </div>
                 </div>
               );
@@ -252,11 +284,11 @@ export function ClientesView({
                 <tr className="border-b border-border text-left">
                   <Th>Código</Th>
                   <Th>Nome</Th>
-                  <Th>Contato</Th>
-                  <Th>Origem</Th>
+                  <Th>Plano</Th>
+                  <Th>Vencimento</Th>
                   <Th>Situação</Th>
-                  <Th>Renovação</Th>
-                  <Th>Remover</Th>
+                  <Th>Ação</Th>
+                  <Th>Contato</Th>
                 </tr>
               </thead>
               <tbody>
@@ -278,18 +310,16 @@ export function ClientesView({
                           {p.nome}
                         </Link>
                       </td>
+                      <td className="px-4 py-3 text-ink">{planoDe(p)}</td>
                       <td className="px-4 py-3 text-muted">
-                        {p.telefone || p.email || "—"}
-                      </td>
-                      <td className="px-4 py-3">
-                        <Badge>{ORIGEM_LABEL[p.origem]}</Badge>
+                        {p.vencimentoPlano ? formatData(p.vencimentoPlano) : "—"}
                       </td>
                       <td className="px-4 py-3">
                         <Badge tone={s.tone}>{s.rotulo}</Badge>
                       </td>
                       <td className="px-4 py-3">{botaoRenovacao(p)}</td>
-                      <td className="px-4 py-3">
-                        <RemoverPessoa id={p.id} nome={p.nome} />
+                      <td className="px-4 py-3 text-muted">
+                        {p.telefone || p.email || "—"}
                       </td>
                     </tr>
                   );
@@ -329,7 +359,7 @@ export function ClientesView({
 
 function Th({ children }: { children: React.ReactNode }) {
   return (
-    <th className="px-4 py-3 text-xs font-semibold text-faint">
+    <th className="px-4 py-3 text-xs font-semibold text-muted">
       {children}
     </th>
   );

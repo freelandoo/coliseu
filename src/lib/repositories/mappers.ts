@@ -55,8 +55,9 @@ export function toPessoa(p: PPerson & { memberships: MembershipComAutor[] }): Pe
     vencimentoPlano: m?.vencimentoPlano.toISOString(),
     ultimaPresenca: m?.ultimaPresenca.toISOString(),
     dataNascimento: p.dataNascimento ?? undefined,
+    // Qualquer parte do endereço conta: rua e número sem CEP ainda são endereço.
     endereco:
-      p.cep || p.cidade
+      p.cep || p.estado || p.cidade || p.rua || p.numero
         ? {
             cep: p.cep ?? undefined,
             estado: p.estado ?? undefined,

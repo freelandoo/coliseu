@@ -110,6 +110,22 @@ describe("retorno da ficha", () => {
     expect(retornoDaFicha("atendimento", "x&y=1", "RECEPCAO").href).toBe("/atendimento");
   });
 
+  it("captação, retenção e fidelidade voltam para a própria tela", () => {
+    expect(retornoDaFicha("captacao", null, "RECEPCAO")).toMatchObject({ href: "/captacao", origem: "captacao" });
+    expect(retornoDaFicha("retencao", null, "ADMIN").href).toBe("/matriculados/retencao");
+    expect(retornoDaFicha("fidelidade", null, "ADMIN").href).toBe("/matriculados/fidelidade");
+  });
+
+  it("origem nova não aceita destino montado pela URL", () => {
+    expect(retornoDaFicha("captacao", "https://evil.com", "ADMIN").href).toBe("/captacao");
+    expect(retornoDaFicha("/captacao", null, "ADMIN").href).toBe("/matriculados");
+  });
+
+  it("técnico sem os módulos cai no padrão", () => {
+    expect(retornoDaFicha("captacao", null, "TECNICO").origem).toBe("alunos");
+    expect(retornoDaFicha("retencao", null, "TECNICO").origem).toBe("alunos");
+  });
+
   it("sem o módulo de destino, não oferece a volta para ele", () => {
     expect(retornoDaFicha("vencimentos", null, "RECEPCAO").href).toBe("/matriculados");
     expect(retornoDaFicha("vencimentos", null, "ADMIN").href).toBe("/cobranca?aba=vencimentos");

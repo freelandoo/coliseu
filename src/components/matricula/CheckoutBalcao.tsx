@@ -1,11 +1,12 @@
 "use client";
 
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { cn } from "@/lib/cn";
 import { formatBRL } from "@/lib/mock-data";
 import { DescricaoModal, Modal, TituloModal } from "@/components/ui/Modal";
 import { Botao } from "@/components/ui/Botao";
 import { MensagemErro } from "@/components/ui/Campo";
+import { lerResultado, sinalDeTempo, temOk } from "@/lib/operacao";
 
 export type MetodoBalcao = "dinheiro" | "pix" | "debito" | "credito";
 
@@ -35,30 +36,42 @@ export function CheckoutBalcao({
   const [parcelas, setParcelas] = useState(1);
   const [enviando, setEnviando] = useState(false);
   const [erro, setErro] = useState("");
+  // Sem confirmação o botão trava: confirmar de novo pode dar baixa duas vezes.
+  const [incerto, setIncerto] = useState(false);
+  const emVoo = useRef(false);
 
   const credito = metodo === "credito";
   const valorParcela = credito && parcelas > 1 ? valor / parcelas : valor;
 
   async function confirmar() {
+    if (emVoo.current || incerto) return;
+    emVoo.current = true;
     setErro("");
     setEnviando(true);
-    try {
-      const r = await fetch(`/api/pessoas/${personId}/checkout`, {
+    const res = await lerResultado(
+      fetch(`/api/pessoas/${personId}/checkout`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ metodo, parcelas: credito ? parcelas : 1 }),
-      });
-      if (!r.ok) {
-        const d = await r.json().catch(() => ({}));
-        setErro(d?.erro ?? "Falha ao confirmar pagamento");
-        setEnviando(false);
-        return;
-      }
+        signal: sinalDeTempo(),
+      }),
+      temOk,
+      "Falha ao confirmar pagamento.",
+    );
+    emVoo.current = false;
+    setEnviando(false);
+    if (res.tipo === "ok") {
       onPago(metodo);
-    } catch {
-      setErro("Sem conexão com o servidor");
-      setEnviando(false);
+      return;
     }
+    if (res.tipo === "falha") {
+      setErro(res.erro);
+      return;
+    }
+    setIncerto(true);
+    setErro(
+      "Sem confirmação do servidor. O pagamento pode ter sido registrado — confira os pagamentos na ficha antes de confirmar de novo.",
+    );
   }
 
   return (
@@ -124,7 +137,8 @@ export function CheckoutBalcao({
           </div>
           {parcelas > 1 && (
             <p className="mt-2 text-xs text-muted">
-              {parcelas}× de <span className="font-medium text-ink">{formatBRL(valorParcela)}</span>
+              {parcelas}× de <span className="font-medium text-ink">{formatBRL(valorParcela)}</span> na
+              maquininha. O sistema registra o pagamento do total; o parcelamento fica entre a pessoa e a operadora.
             </p>
           )}
         </div>
@@ -138,12 +152,13 @@ export function CheckoutBalcao({
         bloco
         onClick={confirmar}
         carregando={enviando}
+        disabled={incerto}
         className="mt-6"
       >
         {enviando ? "Confirmando…" : `Confirmar pagamento · ${formatBRL(valor)}`}
       </Botao>
       <Botao bloco onClick={onFechar} disabled={enviando} className="mt-3">
-        Cancelar
+        {incerto ? "Fechar" : "Cancelar"}
       </Botao>
     </Modal>
   );

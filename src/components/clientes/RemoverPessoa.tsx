@@ -4,42 +4,57 @@ import { useRouter } from "next/navigation";
 import { DescricaoModal, Modal, TituloModal } from "@/components/ui/Modal";
 import { Botao } from "@/components/ui/Botao";
 import { MensagemErro } from "@/components/ui/Campo";
+import { lerResultado, temOk } from "@/lib/operacao";
 
 /**
  * Remove uma pessoa (lead ou matriculado) com confirmação. Usa o DELETE
  * /api/pessoas/[id], que apaga a ficha e remove a pessoa das catracas (LGPD).
- * O stopPropagation no wrapper protege linhas de tabela clicáveis (o diálogo
- * vai num portal, mas os eventos React continuam subindo por este span).
+ * O diálogo só fecha — e `aoRemover` só roda — depois que o servidor confirmou.
+ * O stopPropagation no wrapper protege linhas de tabela clicáveis.
  */
-export function RemoverPessoa({ id, nome }: { id: string; nome: string }) {
+export function RemoverPessoa({
+  id,
+  nome,
+  rotulo = "Remover",
+  aoRemover,
+}: {
+  id: string;
+  nome: string;
+  rotulo?: string;
+  /** Depois da remoção confirmada. Padrão: atualizar a tela. */
+  aoRemover?: () => void;
+}) {
   const router = useRouter();
   const [confirmando, setConfirmando] = useState(false);
   const [removendo, setRemovendo] = useState(false);
   const [erro, setErro] = useState("");
 
   async function remover() {
+    if (removendo) return;
     setErro("");
     setRemovendo(true);
-    const r = await fetch(`/api/pessoas/${id}`, { method: "DELETE" });
-    if (!r.ok) {
-      const d = (await r.json().catch(() => null)) as { erro?: string } | null;
-      setErro(d?.erro ?? "Não foi possível remover.");
-      setRemovendo(false);
+    const res = await lerResultado(fetch(`/api/pessoas/${id}`, { method: "DELETE" }), temOk, "Não foi possível remover.");
+    setRemovendo(false);
+    if (res.tipo === "ok") {
+      setConfirmando(false);
+      if (aoRemover) aoRemover();
+      else router.refresh();
       return;
     }
-    setConfirmando(false);
-    setRemovendo(false);
-    router.refresh();
+    setErro(
+      res.tipo === "falha"
+        ? res.erro
+        : "Sem confirmação do servidor. A remoção pode ter acontecido — recarregue a página antes de tentar de novo.",
+    );
   }
 
   return (
     <span onClick={(e) => e.stopPropagation()}>
       <Botao variante="perigo-contorno" tamanho="sm" onClick={() => setConfirmando(true)}>
-        Remover
+        {rotulo}
       </Botao>
 
       {confirmando && (
-        // Fora do processamento, fundo e Esc cancelam (o clique no fundo já cancelava).
         <Modal
           onFechar={() => !removendo && setConfirmando(false)}
           fecharComEsc={!removendo}
@@ -48,12 +63,12 @@ export function RemoverPessoa({ id, nome }: { id: string; nome: string }) {
         >
           <TituloModal>Remover cadastro</TituloModal>
           <DescricaoModal className="mt-2">
-            Remover <strong className="text-ink">{nome}</strong>? Apaga a ficha, o histórico e a
-            biometria das catracas. Não dá para desfazer.
+            Remover <strong className="text-ink">{nome}</strong>? Apaga a ficha, o histórico e a biometria das catracas.
+            Não dá para desfazer.
           </DescricaoModal>
           {erro && <MensagemErro className="mt-3">{erro}</MensagemErro>}
           <div className="mt-5 flex gap-3">
-            <Botao variante="perigo" onClick={remover} carregando={removendo} className="flex-1">
+            <Botao variante="perigo" onClick={() => void remover()} carregando={removendo} className="flex-1">
               {removendo ? "Removendo…" : "Remover"}
             </Botao>
             <Botao onClick={() => setConfirmando(false)} disabled={removendo}>

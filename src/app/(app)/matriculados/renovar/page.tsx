@@ -9,7 +9,6 @@ import {
   listarAlunos,
   listarCobrancas,
   listarPlanos,
-  proximoCodigoCadastro,
 } from "@/lib/store";
 
 export const dynamic = "force-dynamic";
@@ -22,12 +21,11 @@ export default async function RenovarPage({
 }) {
   const { pessoa } = await searchParams;
   const preSelecionadoId = idSeguro(Array.isArray(pessoa) ? pessoa[0] : pessoa);
-  const [candidatos, alunos, cobrancas, planos, proximoCodigo] = await Promise.all([
+  const [candidatos, alunos, cobrancas, planos] = await Promise.all([
     candidatosMatricula(),
     listarAlunos(),
     listarCobrancas(),
     listarPlanos(),
-    proximoCodigoCadastro(),
   ]);
   const planoById = new Map(planos.map((p) => [p.id, p]));
 
@@ -39,7 +37,7 @@ export default async function RenovarPage({
         (c) => c.alunoId === a.id && c.status === "pendente",
       );
       const plano = planoById.get(a.planoId);
-      const link = cobranca?.linkPagamento ?? "";
+      const link = cobranca?.linkPagamento || undefined;
       return {
         id: `seed-${a.id}`,
         personId: a.id,
@@ -47,10 +45,10 @@ export default async function RenovarPage({
         nome: a.nome,
         planoNome: plano?.nome ?? "—",
         valor: cobranca?.valor ?? plano?.valorMensal ?? 0,
-        waLink: linkPagamentoWhatsApp(a.telefone, a.nome, link),
-        email: a.email,
-        sincronizadoAsaas: Boolean(cobranca?.asaasId),
-        faltando: [] as ("email" | "whatsapp" | "dataNascimento" | "endereco")[],
+        linkPagamento: link,
+        // Sem link de cobrança não há o que mandar: nada de WhatsApp com link vazio.
+        waLink: link && a.telefone ? linkPagamentoWhatsApp(a.telefone, a.nome, link) : undefined,
+        email: a.email || undefined,
       };
     });
 
@@ -69,7 +67,6 @@ export default async function RenovarPage({
           planos={planos.filter((p) => p.ativo !== false)}
           candidatosIniciais={candidatos}
           matriculadosIniciais={matriculadosIniciais}
-          proximoCodigoInicial={proximoCodigo}
           preSelecionadoId={preSelecionadoId}
         />
       </Reveal>
