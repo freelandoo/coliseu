@@ -71,7 +71,7 @@ function FiltroPeriodo({ atual }: { atual: Periodo }) {
           href={p === "hoje" ? "/atendimento/uso" : `/atendimento/uso?periodo=${p}`}
           aria-current={p === atual ? "page" : undefined}
           className={cn(
-            "rounded-md px-2.5 py-1 text-[11px] font-semibold uppercase tracking-wide transition-colors",
+            "rounded-md px-2.5 py-1 text-xs font-semibold transition-colors",
             p === atual ? "bg-red-ghost text-ink" : "text-faint hover:text-muted",
           )}
         >
@@ -87,14 +87,14 @@ function FiltroPeriodo({ atual }: { atual: Periodo }) {
 function Total({ label, valor, hint }: { label: string; valor: number; hint?: string }) {
   return (
     <Card className="grid grid-cols-[1fr_auto] items-center gap-x-3 p-3.5 sm:block">
-      <p className="col-start-1 row-start-1 text-[10px] font-medium uppercase tracking-widest text-faint">
+      <p className="col-start-1 row-start-1 text-xs font-medium text-faint">
         {label}
       </p>
       <p className="col-start-2 row-span-2 row-start-1 self-center text-right font-display text-2xl font-semibold leading-none tabular-nums text-ink sm:mt-1.5 sm:text-left">
         {valor}
       </p>
       {hint && (
-        <p className="col-start-1 row-start-2 mt-0.5 text-[11px] text-muted sm:mt-1.5">{hint}</p>
+        <p className="col-start-1 row-start-2 mt-0.5 text-xs text-muted sm:mt-1.5">{hint}</p>
       )}
     </Card>
   );
@@ -116,7 +116,7 @@ function Celula({
 }) {
   return (
     <div>
-      <p className="text-[10px] font-medium uppercase tracking-widest text-faint">{label}</p>
+      <p className="text-xs font-medium text-faint">{label}</p>
       <p
         className={cn(
           "mt-0.5 font-display text-lg font-semibold leading-none tabular-nums",
@@ -149,7 +149,7 @@ function Classificacoes({ porInteresse }: { porInteresse: Record<ConversaInteres
         <span
           key={b}
           title={`${INTERESSE_LABEL[b]}: ${porInteresse[b]}`}
-          className="flex items-center gap-1 text-[11px] tabular-nums text-muted"
+          className="flex items-center gap-1 text-xs tabular-nums text-muted"
         >
           <Bandeira estagio={INTERESSE_ESTAGIO[b]} className="h-3 w-3" />
           {porInteresse[b]}
@@ -201,19 +201,19 @@ function LinhaColaborador({
               )}
             />
           )}
-          <span className="truncate font-display text-sm font-semibold uppercase tracking-wide text-ink">
+          <span className="truncate font-display text-sm font-semibold text-ink">
             {uso.nome}
           </span>
-          <span className="shrink-0 text-[10px] uppercase tracking-widest text-faint">
+          <span className="shrink-0 text-xs text-faint">
             {aparelho ? "fora do sistema" : (uso.role && PAPEL_LABEL[uso.role]) || uso.role}
           </span>
           {!uso.ativo && (
-            <span className="shrink-0 text-[10px] uppercase tracking-widest text-warn">
+            <span className="shrink-0 text-xs text-warn">
               desativado
             </span>
           )}
         </div>
-        <p className="text-[11px] text-faint">
+        <p className="text-xs text-faint">
           {uso.online ? (
             <span className="text-ok">online agora</span>
           ) : (
@@ -275,7 +275,7 @@ export function UsoPainel({ dados }: { dados: UsoAtendimento }) {
     <div className="flex flex-col gap-4">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <FiltroPeriodo atual={dados.periodo} />
-        <p className="text-[11px] text-faint">
+        <p className="text-xs text-faint">
           {dia(dados.inicio)} → {dia(dados.fim)} ·{" "}
           {online.length > 0 ? (
             <span className="text-ok">
@@ -335,10 +335,10 @@ export function UsoPainel({ dados }: { dados: UsoAtendimento }) {
 
       {/* Sem esta nota, os dois tempos parecem a mesma medida mal feita. */}
       <Card className="p-4">
-        <h2 className="font-display text-[11px] font-semibold uppercase tracking-widest text-ink">
+        <h2 className="font-display text-xs font-semibold text-ink">
           Como cada número é contado
         </h2>
-        <dl className="mt-2 grid gap-2 text-[11px] leading-relaxed text-muted sm:grid-cols-2">
+        <dl className="mt-2 grid gap-2 text-xs leading-relaxed text-muted sm:grid-cols-2">
           <div>
             <dt className="font-semibold text-ink">Mensagens e conversas</dt>
             <dd>

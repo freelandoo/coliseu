@@ -23,14 +23,17 @@ export const metadata: Metadata = {
   appleWebApp: {
     capable: true,
     title: "Coliseu",
-    statusBarStyle: "black-translucent",
+    // Tema claro: "default" mantém relógio e bateria escuros sobre a barra clara
+    // ("black-translucent" desenha os dois em branco, ilegíveis sobre o branco).
+    statusBarStyle: "default",
   },
 };
 
 export const viewport: Viewport = {
   width: "device-width",
   initialScale: 1,
-  themeColor: "#0e0f11",
+  // cor da barra do navegador/sistema = superfície do topo (branco)
+  themeColor: "#ffffff",
   viewportFit: "cover",
 };
 

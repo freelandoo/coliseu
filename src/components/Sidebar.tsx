@@ -128,7 +128,7 @@ export function Sidebar({ papel, desenvolvedor = false }: { papel: Papel; desenv
         <div
           onClick={() => setAberto(false)}
           aria-hidden
-          className="fixed inset-0 z-40 bg-black/60 lg:hidden"
+          className="fixed inset-0 z-40 bg-scrim lg:hidden"
         />
       )}
 
@@ -202,7 +202,7 @@ export function Sidebar({ papel, desenvolvedor = false }: { papel: Papel; desenv
                     {/* Badge de não lidas — só no Atendimento, some quando zera. */}
                     {item.modulo === "atendimento" && <NaoLidasBadge />}
                   </span>
-                  <span className="block text-[11px] text-faint">{item.hint}</span>
+                  <span className="block text-xs text-faint">{item.hint}</span>
                 </span>
               </Link>
             );
@@ -235,12 +235,12 @@ export function Sidebar({ papel, desenvolvedor = false }: { papel: Papel; desenv
             </span>
             <span className="leading-tight">
               <span className="block text-sm font-medium">Perfil</span>
-              <span className="block text-[11px] text-faint">Conta, senha e downloads</span>
+              <span className="block text-xs text-faint">Conta, senha e downloads</span>
             </span>
           </Link>
         </div>
 
-        <div className="border-t border-border px-5 py-4 text-[11px] text-faint">
+        <div className="border-t border-border px-5 py-4 text-xs text-faint">
           <p className="flex items-center gap-2">
             <span className="inline-block h-1.5 w-1.5 rounded-full bg-ok" />
             Integração Asaas + WhatsApp

@@ -3,10 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import { cn } from "@/lib/cn";
 import type { RespostaProntaItem } from "@/lib/types";
-
-const campoCls =
-  "w-full rounded-lg border border-border bg-surface px-2.5 py-1.5 text-xs text-ink " +
-  "placeholder:text-faint outline-none transition-colors focus:border-red/60";
+import { MensagemErro, classeCampoCompacto } from "@/components/ui/Campo";
 
 /**
  * A lista mostra só a primeira frase — o suficiente para reconhecer a resposta
@@ -159,9 +156,9 @@ export function RespostasProntas({
                 Respostas prontas
                 <span className="ml-1.5 font-normal text-faint">— comuns a todos os usuários</span>
               </p>
-              <button
+              <button type="button"
                 onClick={() => setCadastrando((a) => !a)}
-                className="text-[11px] font-semibold uppercase tracking-wide text-red-bright transition-colors hover:underline"
+                className="text-xs font-semibold text-red-bright transition-colors hover:underline"
               >
                 {cadastrando ? "Cancelar" : "+ Cadastrar"}
               </button>
@@ -175,13 +172,13 @@ export function RespostasProntas({
                   rows={4}
                   autoFocus
                   placeholder="Escreva ou cole a resposta… Ela fica guardada para todo mundo usar."
-                  className={cn(campoCls, "resize-y")}
+                  className={cn(classeCampoCompacto, "resize-y")}
                 />
-                <button
+                <button type="button"
                   onClick={() => void salvar()}
                   disabled={salvando || !novoTexto.trim()}
                   className={cn(
-                    "mt-2 rounded-lg border px-3 py-1.5 text-xs font-semibold uppercase tracking-widest transition-colors",
+                    "mt-2 rounded-lg border px-3 py-1.5 text-xs font-semibold transition-colors",
                     salvando || !novoTexto.trim()
                       ? "cursor-not-allowed border-border text-faint"
                       : "border-border-strong text-muted hover:text-ink",
@@ -192,7 +189,7 @@ export function RespostasProntas({
               </div>
             )}
 
-            {erro && <p className="mt-2 text-xs text-red-bright">{erro}</p>}
+            {erro && <MensagemErro className="mt-2">{erro}</MensagemErro>}
 
             <ul className="mt-2 max-h-48 divide-y divide-border overflow-y-auto rounded-lg border border-border bg-surface">
               {carregando && (
@@ -221,9 +218,9 @@ export function RespostasProntas({
                       autoFocus
                       maxLength={80}
                       placeholder="Título da resposta… (vazio volta à primeira frase)"
-                      className={campoCls}
+                      className={classeCampoCompacto}
                     />
-                    <button
+                    <button type="button"
                       onClick={() => void salvarTitulo(r.id)}
                       disabled={renomeando}
                       title="Salvar título"
@@ -234,7 +231,7 @@ export function RespostasProntas({
                         <path d="M2.5 7l3 3 5-6.5" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" />
                       </svg>
                     </button>
-                    <button
+                    <button type="button"
                       onClick={() => setEditandoId(null)}
                       title="Cancelar"
                       aria-label="Cancelar edição do título"
@@ -247,7 +244,7 @@ export function RespostasProntas({
                   </li>
                 ) : (
                   <li key={r.id} className="flex items-center gap-1">
-                    <button
+                    <button type="button"
                       onClick={() => onEscolher(r.texto)}
                       title={r.texto}
                       className="min-w-0 flex-1 px-3 py-2 text-left transition-colors hover:bg-red-ghost"
@@ -255,9 +252,9 @@ export function RespostasProntas({
                       <span className="block truncate text-xs font-medium text-ink">
                         {r.titulo ?? primeiraFrase(r.texto)}
                       </span>
-                      {r.autor && <span className="block text-[10px] text-faint">por {r.autor}</span>}
+                      {r.autor && <span className="block text-xs text-faint">por {r.autor}</span>}
                     </button>
-                    <button
+                    <button type="button"
                       onClick={() => {
                         setEditandoId(r.id);
                         setTituloRascunho(r.titulo ?? "");
@@ -276,11 +273,11 @@ export function RespostasProntas({
                         />
                       </svg>
                     </button>
-                    <button
+                    <button type="button"
                       onClick={() => void remover(r.id)}
                       title="Remover do acervo"
                       aria-label="Remover resposta"
-                      className="shrink-0 px-1.5 py-2 text-faint transition-colors hover:text-red-bright"
+                      className="shrink-0 px-1.5 py-2 text-faint transition-colors hover:text-danger"
                     >
                       <svg width="12" height="12" viewBox="0 0 12 12" fill="none" aria-hidden>
                         <path d="M3 3l6 6M9 3l-6 6" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" />

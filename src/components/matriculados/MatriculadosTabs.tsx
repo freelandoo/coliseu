@@ -32,7 +32,7 @@ export function MatriculadosTabs() {
                 : "border-border bg-surface text-muted hover:border-border-strong hover:text-ink",
             )}
           >
-            <span className="uppercase tracking-wide">{aba.label}</span>
+            <span className="">{aba.label}</span>
           </Link>
         );
       })}

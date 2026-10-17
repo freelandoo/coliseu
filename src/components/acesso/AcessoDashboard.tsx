@@ -31,19 +31,19 @@ export function AcessoDashboard({ dados, podeCriar }: { dados: Dados; podeCriar:
       </section>
 
       <section>
-        <h2 className="mb-4 font-display text-sm font-semibold uppercase tracking-widest text-faint">Catracas</h2>
+        <h2 className="mb-4 font-display text-sm font-semibold text-faint">Catracas</h2>
         <div className="grid gap-4 md:grid-cols-2">
           {dados.devices.map((d) => (
             <Card key={d.id} className="flex flex-wrap items-center justify-between gap-4 p-5">
               <div>
                 <p className="font-medium text-ink">{d.name}</p>
                 <p className="text-xs text-faint">firmware {d.firmware} · heartbeat {fmt(d.lastHeartbeatAt)}</p>
-                <p className="mt-1 font-mono text-[11px] text-faint" title="DEVICE_ID do .env do agente">
+                <p className="mt-1 font-mono text-xs text-faint" title="DEVICE_ID do .env do agente">
                   {d.id}
                 </p>
               </div>
               <div className="flex flex-col items-end gap-2">
-                <Badge tone={d.status === "ONLINE" ? "ok" : d.status === "MAINTENANCE" ? "warn" : "red"}>{d.status}</Badge>
+                <Badge tone={d.status === "ONLINE" ? "ok" : d.status === "MAINTENANCE" ? "warn" : "danger"}>{d.status}</Badge>
                 {podeCriar && d.status === "ONLINE" && <PararAgente deviceId={d.id} />}
               </div>
               <LiberarCatraca deviceId={d.id} online={d.status === "ONLINE"} />
@@ -60,7 +60,7 @@ export function AcessoDashboard({ dados, podeCriar }: { dados: Dados; podeCriar:
       <SimuladorAcesso alunos={dados.alunos} />
 
       <section>
-        <h2 className="mb-4 font-display text-sm font-semibold uppercase tracking-widest text-faint">Comandos pendentes</h2>
+        <h2 className="mb-4 font-display text-sm font-semibold text-faint">Comandos pendentes</h2>
         <Card className="overflow-hidden">
           {dados.comandos.length === 0 ? (
             <p className="px-5 py-8 text-center text-sm text-faint">Nenhum comando pendente.</p>
@@ -69,7 +69,7 @@ export function AcessoDashboard({ dados, podeCriar }: { dados: Dados; podeCriar:
               {dados.comandos.map((c) => (
                 <div key={c.id} className="flex items-center justify-between px-5 py-3">
                   <span className="text-sm text-ink">{c.type}</span>
-                  <Badge tone={c.status === "DEAD_LETTER" ? "red" : "neutral"}>{c.status}</Badge>
+                  <Badge tone={c.status === "DEAD_LETTER" ? "danger" : "neutral"}>{c.status}</Badge>
                 </div>
               ))}
             </div>
@@ -78,7 +78,7 @@ export function AcessoDashboard({ dados, podeCriar }: { dados: Dados; podeCriar:
       </section>
 
       <section>
-        <h2 className="mb-4 font-display text-sm font-semibold uppercase tracking-widest text-faint">Acessos recentes</h2>
+        <h2 className="mb-4 font-display text-sm font-semibold text-faint">Acessos recentes</h2>
         <Card className="overflow-hidden">
           {dados.eventos.length === 0 ? (
             <p className="px-5 py-8 text-center text-sm text-faint">Nenhum acesso registrado ainda.</p>
@@ -90,7 +90,7 @@ export function AcessoDashboard({ dados, podeCriar }: { dados: Dados; podeCriar:
                     <p className="text-sm text-ink">{e.nome}</p>
                     <p className="text-xs text-faint">{fmt(e.deviceTime)} · {e.reason}</p>
                   </div>
-                  <Badge tone={e.decision === "ALLOWED" ? "ok" : "red"}>{e.decision}{e.physicallyPassed ? " ✓" : ""}</Badge>
+                  <Badge tone={e.decision === "ALLOWED" ? "ok" : "danger"}>{e.decision}{e.physicallyPassed ? " ✓" : ""}</Badge>
                 </div>
               ))}
             </div>

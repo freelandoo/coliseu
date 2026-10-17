@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState, type ChangeEvent, type TouchEvent } from "react";
 import { useRouter } from "next/navigation";
-import { Modal } from "@/components/ui/Modal";
+import { Modal, TituloModal } from "@/components/ui/Modal";
 import { Bandeira } from "@/components/ui/Bandeira";
 import { RespostasProntas } from "@/components/captacao/RespostasProntas";
 import { AulaExperimentalPainel } from "@/components/captacao/AulaExperimentalPainel";
@@ -20,16 +20,14 @@ import {
   type LeadEstagio,
   type MensagemItem,
 } from "@/lib/types";
+import { classeBotao } from "@/components/ui/Botao";
+import { MensagemErro, classeCampo } from "@/components/ui/Campo";
 
 /** Rede de segurança: o SSE traz em tempo real; isto cobre um stream caído. */
 const FALLBACK_THREAD_MS = 60_000;
 
 /** Quanto tempo a mensagem fica acesa depois de pular até ela. */
 const DESTAQUE_MS = 1_600;
-
-const inputCls =
-  "w-full rounded-lg border border-border bg-surface px-3 py-2 text-sm text-ink " +
-  "placeholder:text-faint outline-none transition-colors focus:border-red/60";
 
 /**
  * As 5 flags de classificação, na ordem do funil (a mesma das abas da
@@ -380,7 +378,7 @@ export function ConversaPainel({
                 {FLAGS.map((f) => {
                   const ativa = conversa.interesse === f.interesse;
                   return (
-                    <button
+                    <button type="button"
                       key={f.interesse}
                       onClick={() => void classificar(f.interesse)}
                       disabled={classificando}
@@ -402,20 +400,20 @@ export function ConversaPainel({
               </div>
             )}
             {podeResponder && (
-              <button
+              <button type="button"
                 onClick={() => {
                   setMostrandoRespostas((a) => !a);
                   setMostrandoAula(false);
                   setClassificando(false);
                 }}
                 aria-expanded={mostrandoRespostas}
-                className="flex items-center gap-1.5 text-[11px] font-medium text-faint transition-colors hover:text-ink"
+                className="flex items-center gap-1.5 text-xs font-medium text-faint transition-colors hover:text-ink"
               >
                 Respostas prontas
                 <span
                   aria-hidden
                   className={cn(
-                    "text-[9px] transition-transform",
+                    "text-xs transition-transform",
                     mostrandoRespostas && "rotate-180",
                   )}
                 >
@@ -426,15 +424,15 @@ export function ConversaPainel({
           </div>
           {podeApagar && (
             <div className="flex items-center gap-3">
-              <button
+              <button type="button"
                 onClick={() => setConfirmando("limpar")}
-                className="text-[11px] font-medium text-faint transition-colors hover:text-ink"
+                className="text-xs font-medium text-faint transition-colors hover:text-ink"
               >
                 Limpar
               </button>
-              <button
+              <button type="button"
                 onClick={() => setConfirmando("remover")}
-                className="text-[11px] font-medium text-faint transition-colors hover:text-red-bright"
+                className="text-xs font-medium text-faint transition-colors hover:text-danger"
               >
                 Remover
               </button>
@@ -499,7 +497,7 @@ export function ConversaPainel({
               setMostrandoAula(false);
             }}
           />
-          <button
+          <button type="button"
             onClick={() => {
               const abrindo = !mostrandoAula;
               setMostrandoAula(abrindo);
@@ -507,11 +505,11 @@ export function ConversaPainel({
               setMostrandoRespostas(false);
             }}
             aria-expanded={mostrandoAula}
-            className="flex shrink-0 items-center gap-1.5 border-t border-border px-4 py-1.5 text-[11px] font-medium text-faint transition-colors hover:text-ink"
+            className="flex shrink-0 items-center gap-1.5 border-t border-border px-4 py-1.5 text-xs font-medium text-faint transition-colors hover:text-ink"
           >
             <span
               aria-hidden
-              className={cn("text-[9px] transition-transform", mostrandoAula && "rotate-180")}
+              className={cn("text-xs transition-transform", mostrandoAula && "rotate-180")}
             >
               ▼
             </span>
@@ -528,7 +526,7 @@ export function ConversaPainel({
             {citando && (
               <div className="mb-2 flex items-start gap-2 rounded-lg border border-border border-l-2 border-l-red-bright bg-surface-2 px-3 py-1.5">
                 <div className="min-w-0 flex-1">
-                  <p className="text-[11px] font-semibold text-red-bright">
+                  <p className="text-xs font-semibold text-red-bright">
                     {autorDe(citando) ?? "Mensagem"}
                   </p>
                   <p className="truncate text-xs text-muted">{citando.texto}</p>
@@ -628,11 +626,11 @@ export function ConversaPainel({
                 }}
                 rows={3}
                 placeholder={dicaComposer(enterEnvia)}
-                className={cn(inputCls, "flex-1 resize-none")}
+                className={cn(classeCampo, "flex-1 resize-none")}
               />
               )}
               {!gravando && (
-                <button
+                <button type="button"
                   onClick={() => void responder()}
                   disabled={anexando || !temConteudo}
                   title="Enviar"
@@ -662,7 +660,7 @@ export function ConversaPainel({
               )}
             </div>
             {anexando && <p className="mt-2 text-xs text-faint">Enviando…</p>}
-            {erro && <p className="mt-2 text-xs text-red-bright">{erro}</p>}
+            {erro && <MensagemErro className="mt-2">{erro}</MensagemErro>}
           </>
         ) : (
           <p className="text-center text-xs text-faint">
@@ -692,9 +690,9 @@ function ConfirmarExclusao({
   const limpando = tipo === "limpar";
   return (
     <Modal onFechar={onCancelar}>
-      <h3 className="font-display text-lg font-semibold uppercase tracking-wide text-ink">
+      <TituloModal>
         {limpando ? "Limpar conversa" : "Remover conversa"}
-      </h3>
+      </TituloModal>
       <p className="mt-2 text-sm text-muted">
         {limpando ? (
           <>
@@ -715,15 +713,15 @@ function ConfirmarExclusao({
           : "Não dá para desfazer por aqui — fica uma cópia no backup do sistema. Se a pessoa escrever de novo, uma conversa nova aparece."}
       </p>
       <div className="mt-5 flex gap-3">
-        <button
+        <button type="button"
           onClick={onConfirmar}
-          className="flex-1 rounded-lg bg-red px-4 py-2.5 font-display text-sm font-semibold uppercase tracking-widest text-white transition-colors hover:bg-red-bright"
+          className={cn(classeBotao({ variante: "perigo" }), "flex-1")}
         >
           {limpando ? "Limpar" : "Remover"}
         </button>
-        <button
+        <button type="button"
           onClick={onCancelar}
-          className="rounded-lg border border-border-strong px-4 py-2.5 text-sm font-medium text-muted transition-colors hover:text-ink"
+          className={classeBotao({ variante: "secundario" })}
         >
           Cancelar
         </button>
@@ -818,9 +816,9 @@ function TrechoCitado({
   const conteudo = (
     <>
       {citacao.autor && (
-        <span className="block text-[11px] font-semibold text-red-bright">{citacao.autor}</span>
+        <span className="block text-xs font-semibold text-red-bright">{citacao.autor}</span>
       )}
-      <span className="line-clamp-2 break-words text-[11px] text-muted">
+      <span className="line-clamp-2 break-words text-xs text-muted">
         {citacao.texto || "Mensagem"}
       </span>
     </>
@@ -948,7 +946,7 @@ function Bolha({
         className={cn(
           "relative max-w-[80%] rounded-xl border px-3.5 py-2",
           saida ? "border-red/30 bg-red-ghost" : "border-border bg-surface-2",
-          mensagem.erro && "border-red/70",
+          mensagem.erro && "border-danger/",
           destacada && "ring-2 ring-red-bright",
         )}
       >
@@ -983,7 +981,7 @@ function Bolha({
         {mensagem.citada && <TrechoCitado citacao={mensagem.citada} onIrPara={onIrPara} />}
         {/* Em grupo, quem falou importa tanto quanto o que foi dito. */}
         {!saida && mensagem.remetente && (
-          <p className="mb-0.5 text-[11px] font-semibold text-red-bright">{mensagem.remetente}</p>
+          <MensagemErro className="mb-0.5 text-xs font-semibold">{mensagem.remetente}</MensagemErro>
         )}
         {temMidia && (
           <div className={cn(legenda && "mb-1.5")}>
@@ -991,11 +989,11 @@ function Bolha({
           </div>
         )}
         {legenda && <p className="whitespace-pre-wrap break-words text-sm text-ink">{legenda}</p>}
-        <p className="mt-1 text-right text-[11px] text-faint">
+        <p className="mt-1 text-right text-xs text-faint">
           {saida && (mensagem.autorNome ?? "pelo aparelho")}
           {saida && " · "}
           {hora(mensagem.enviadaEm)}
-          {mensagem.erro && <span className="text-red-bright"> · não entregue</span>}
+          {mensagem.erro && <span className="text-danger"> · não entregue</span>}
         </p>
       </div>
     </div>

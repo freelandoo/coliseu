@@ -32,7 +32,7 @@ export function AbasAtendimento({
   return (
     <div className="mb-3 flex flex-wrap items-center justify-between gap-3">
       <div className="flex flex-wrap items-center gap-3">
-        <h1 className="font-display text-sm font-semibold uppercase tracking-widest text-ink">
+        <h1 className="font-display text-sm font-semibold text-ink">
           Atendimento
         </h1>
         {podeVerUso && (
@@ -46,7 +46,7 @@ export function AbasAtendimento({
                 href={a.href}
                 aria-current={a.chave === ativa ? "page" : undefined}
                 className={cn(
-                  "rounded-md px-2.5 py-1 font-display text-[11px] font-semibold uppercase tracking-widest transition-colors",
+                  "rounded-md px-2.5 py-1 text-xs font-semibold transition-colors",
                   a.chave === ativa
                     ? "bg-red-ghost text-ink"
                     : "text-faint hover:text-muted",

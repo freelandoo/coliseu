@@ -11,6 +11,7 @@ import {
   type Modalidade,
 } from "@/lib/aula-experimental";
 import type { AulaExperimentalItem, MensagemItem } from "@/lib/types";
+import { MensagemErro } from "@/components/ui/Campo";
 
 const DIAS_SEMANA = ["D", "S", "T", "Q", "Q", "S", "S"];
 
@@ -122,7 +123,7 @@ export function AulaExperimentalPainel({
                 </span>
               </p>
               {passo !== "modalidade" && (
-                <button
+                <button type="button"
                   onClick={() => {
                     setErro("");
                     if (passo === "hora") {
@@ -133,7 +134,7 @@ export function AulaExperimentalPainel({
                       setModalidade(null);
                     }
                   }}
-                  className="shrink-0 text-[11px] font-semibold uppercase tracking-wide text-faint transition-colors hover:text-ink"
+                  className="shrink-0 text-xs font-semibold text-faint transition-colors hover:text-ink"
                 >
                   ← Voltar
                 </button>
@@ -141,7 +142,7 @@ export function AulaExperimentalPainel({
             </div>
 
             {(modalidade || data) && (
-              <p className="mt-1 text-[11px] text-faint">
+              <p className="mt-1 text-xs text-faint">
                 {modalidade}
                 {data && ` · ${formatarDiaMes(data)}`}
               </p>
@@ -150,7 +151,7 @@ export function AulaExperimentalPainel({
             {passo === "modalidade" && (
               <div className="mt-2 flex flex-wrap gap-1.5">
                 {MODALIDADES.map((m) => (
-                  <button
+                  <button type="button"
                     key={m}
                     onClick={() => {
                       setModalidade(m);
@@ -167,7 +168,7 @@ export function AulaExperimentalPainel({
             {passo === "data" && (
               <div className="mt-2 rounded-lg border border-border bg-surface p-2">
                 <div className="flex items-center justify-between px-1 pb-2">
-                  <button
+                  <button type="button"
                     onClick={() => mudarMes(-1)}
                     disabled={noMesCorrente}
                     aria-label="Mês anterior"
@@ -178,10 +179,10 @@ export function AulaExperimentalPainel({
                   >
                     ‹
                   </button>
-                  <span className="font-display text-[11px] font-semibold uppercase tracking-widest text-ink">
+                  <span className="font-display text-xs font-semibold text-ink">
                     {MESES[cursor.mes - 1]} {cursor.ano}
                   </span>
-                  <button
+                  <button type="button"
                     onClick={() => mudarMes(1)}
                     aria-label="Próximo mês"
                     className="rounded-md px-2 py-1 text-muted transition-colors hover:bg-surface-2 hover:text-ink"
@@ -194,7 +195,7 @@ export function AulaExperimentalPainel({
                   {DIAS_SEMANA.map((d, i) => (
                     <span
                       key={i}
-                      className="pb-1 text-center text-[10px] font-semibold uppercase text-faint"
+                      className="pb-1 text-center text-xs font-semibold text-faint"
                     >
                       {d}
                     </span>
@@ -205,7 +206,7 @@ export function AulaExperimentalPainel({
                     const passou = iso < hoje;
                     const ehHoje = iso === hoje;
                     return (
-                      <button
+                      <button type="button"
                         key={dia}
                         onClick={() => {
                           setData(iso);
@@ -231,7 +232,7 @@ export function AulaExperimentalPainel({
             {passo === "hora" && (
               <div className="mt-2 grid grid-cols-4 gap-1.5 sm:grid-cols-6">
                 {HORAS.map((h) => (
-                  <button
+                  <button type="button"
                     key={h}
                     onClick={() => void agendar(h)}
                     disabled={enviando}
@@ -249,7 +250,7 @@ export function AulaExperimentalPainel({
             )}
 
             {enviando && <p className="mt-2 text-xs text-faint">Marcando e avisando no WhatsApp…</p>}
-            {erro && <p className="mt-2 text-xs text-red-bright">{erro}</p>}
+            {erro && <MensagemErro className="mt-2">{erro}</MensagemErro>}
           </div>
         </div>
       </div>

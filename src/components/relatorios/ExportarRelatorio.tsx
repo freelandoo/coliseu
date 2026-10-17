@@ -4,6 +4,7 @@ import { useState } from "react";
 import { Card } from "@/components/ui/primitives";
 import { cn } from "@/lib/cn";
 import { PRESET_LABEL, PRESETS, type PresetPeriodo } from "@/lib/relatorios/periodo";
+import { MensagemErro, classeCampoEmLinha } from "@/components/ui/Campo";
 
 /**
  * Painel de exportação de Relatórios.
@@ -32,9 +33,7 @@ const TIPOS: { id: Tipo; titulo: string; descricao: string }[] = [
   },
 ];
 
-const selectCls =
-  "rounded-lg border border-border bg-surface px-3 py-2 text-sm text-ink " +
-  "outline-none transition-colors focus:border-red/60";
+const selectCls = classeCampoEmLinha;
 
 export function ExportarRelatorio() {
   const [tipo, setTipo] = useState<Tipo>("marketing");
@@ -85,7 +84,7 @@ export function ExportarRelatorio() {
 
   return (
     <Card className="p-5">
-      <h3 className="font-display text-sm font-semibold uppercase tracking-widest text-ink">
+      <h3 className="font-display text-sm font-semibold text-ink">
         Exportar relatório
       </h3>
       <p className="mb-4 mt-0.5 text-xs text-faint">
@@ -112,7 +111,7 @@ export function ExportarRelatorio() {
             >
               <span
                 className={cn(
-                  "font-display text-sm font-semibold uppercase tracking-widest",
+                  "font-display text-sm font-semibold",
                   ativo ? "text-red-bright" : "text-ink",
                 )}
               >
@@ -127,7 +126,7 @@ export function ExportarRelatorio() {
       {/* período */}
       <div className="mt-4 flex flex-wrap items-end gap-3">
         <label className="flex flex-col gap-1">
-          <span className="text-[11px] font-medium uppercase tracking-widest text-faint">
+          <span className="text-xs font-medium text-faint">
             Período
           </span>
           <select
@@ -146,7 +145,7 @@ export function ExportarRelatorio() {
         {personalizado && (
           <>
             <label className="flex flex-col gap-1">
-              <span className="text-[11px] font-medium uppercase tracking-widest text-faint">
+              <span className="text-xs font-medium text-faint">
                 De
               </span>
               <input
@@ -157,7 +156,7 @@ export function ExportarRelatorio() {
               />
             </label>
             <label className="flex flex-col gap-1">
-              <span className="text-[11px] font-medium uppercase tracking-widest text-faint">
+              <span className="text-xs font-medium text-faint">
                 Até
               </span>
               <input
@@ -175,7 +174,7 @@ export function ExportarRelatorio() {
           onClick={() => exportar("pdf")}
           disabled={baixando !== null || faltaData}
           className={cn(
-            "rounded-lg bg-red px-4 py-2.5 font-display text-xs font-semibold uppercase",
+            "rounded-lg bg-red px-4 py-2.5 text-xs font-semibold",
             "tracking-widest text-white transition-colors hover:bg-red-bright disabled:opacity-60",
           )}
         >
@@ -187,7 +186,7 @@ export function ExportarRelatorio() {
           disabled={baixando !== null || faltaData}
           className={cn(
             "rounded-lg border border-border-strong px-4 py-2.5 font-display text-xs font-semibold",
-            "uppercase tracking-widest text-muted transition-colors hover:text-ink disabled:opacity-60",
+            "text-muted transition-colors hover:text-ink disabled:opacity-60",
           )}
         >
           {baixando === "planilha" ? "Gerando…" : "Planilhas (.zip)"}
@@ -199,9 +198,9 @@ export function ExportarRelatorio() {
           Informe as duas datas — a inicial não pode ser depois da final.
         </p>
       )}
-      {erro && <p className="mt-3 text-xs text-red-bright">{erro}</p>}
+      {erro && <MensagemErro className="mt-3">{erro}</MensagemErro>}
 
-      <p className="mt-4 border-t border-border pt-3 text-[11px] text-faint">
+      <p className="mt-4 border-t border-border pt-3 text-xs text-faint">
         As planilhas trazem nome, telefone e situação de pagamento. É dado pessoal de aluno e
         lead: guarde no computador da academia e não repasse.
       </p>

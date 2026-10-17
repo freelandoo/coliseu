@@ -12,7 +12,7 @@ export function Card({
     <div
       className={cn(
         "rounded-xl border border-border bg-surface",
-        "shadow-[var(--shadow-plate)]",
+        "shadow-[var(--shadow-card)]",
         className,
       )}
       {...rest}
@@ -22,16 +22,36 @@ export function Card({
   );
 }
 
-/* ---------- Badge ---------- */
-type Tone = "neutral" | "red" | "ok" | "warn";
+/* ---------- Tons semânticos ---------- */
+/**
+ * `brand` = identidade/destaque (rubi); `danger` = erro, atraso, risco, falha.
+ * `ok` e `warn` são aliases legados de `success` e `warning` (mesmo visual).
+ */
+export type Tone = "neutral" | "brand" | "danger" | "success" | "warning" | "info" | "ok" | "warn";
 
-const TONE: Record<Tone, string> = {
-  neutral: "border-border text-muted bg-surface-2",
-  red: "border-red/40 text-red-bright bg-red-ghost",
-  ok: "border-ok/40 text-ok bg-ok/10",
-  warn: "border-warn/40 text-warn bg-warn/10",
+const TONE_BADGE: Record<Tone, string> = {
+  neutral: "border-border-strong/70 text-muted bg-surface-2",
+  brand: "border-brand/30 text-brand bg-brand-soft",
+  danger: "border-danger/30 text-danger bg-danger-soft",
+  success: "border-success/30 text-success bg-success-soft",
+  ok: "border-success/30 text-success bg-success-soft",
+  warning: "border-warning/30 text-warning bg-warning-soft",
+  warn: "border-warning/30 text-warning bg-warning-soft",
+  info: "border-info/30 text-info bg-info-soft",
 };
 
+const TONE_TEXTO: Record<Tone, string> = {
+  neutral: "text-ink",
+  brand: "text-brand",
+  danger: "text-danger",
+  success: "text-success",
+  ok: "text-success",
+  warning: "text-warning",
+  warn: "text-warning",
+  info: "text-info",
+};
+
+/* ---------- Badge ---------- */
 export function Badge({
   children,
   tone = "neutral",
@@ -44,9 +64,9 @@ export function Badge({
   return (
     <span
       className={cn(
-        "inline-flex items-center gap-1.5 rounded-md border px-2 py-0.5",
-        "text-xs font-medium uppercase tracking-wide",
-        TONE[tone],
+        "inline-flex items-center gap-1.5 whitespace-nowrap rounded-md border px-2 py-0.5",
+        "text-xs font-medium",
+        TONE_BADGE[tone],
         className,
       )}
     >
@@ -72,27 +92,23 @@ export function Stat({
 }) {
   const conteudo = (
     <>
-      <p className="text-[11px] font-medium uppercase tracking-widest text-faint">
-        {label}
-      </p>
+      <p className="text-sm font-medium text-muted">{label}</p>
       <p
         className={cn(
-          "mt-1 font-display text-3xl font-semibold leading-none",
-          tone === "red" && "text-red-bright",
-          tone === "ok" && "text-ok",
-          tone === "warn" && "text-warn",
+          "mt-1.5 font-display text-3xl font-semibold leading-none tabular-nums",
+          TONE_TEXTO[tone],
         )}
       >
         {value}
       </p>
-      {hint && <p className="mt-1.5 text-xs text-muted">{hint}</p>}
+      {hint && <p className="mt-2 text-xs text-faint">{hint}</p>}
     </>
   );
 
   if (href) {
     return (
-      <Link href={href} className="group block">
-        <Card className="h-full p-4 transition-colors group-hover:border-border-strong group-hover:bg-surface-2">
+      <Link href={href} className="group block rounded-xl">
+        <Card className="h-full p-4 transition-colors duration-150 group-hover:border-border-strong group-hover:bg-surface-2">
           {conteudo}
         </Card>
       </Link>
@@ -114,15 +130,18 @@ export function PageHeader({
   subtitle?: string;
 }) {
   return (
-    <header className="mb-4 flex items-center gap-3">
-      <span className="steel-plate h-7 w-7 shrink-0 rounded-md text-sm sm:h-8 sm:w-8 sm:text-base">
+    <header className="mb-5 flex items-center gap-3">
+      <span
+        aria-hidden
+        className="steel-plate h-8 w-8 shrink-0 rounded-lg text-sm sm:h-9 sm:w-9 sm:text-base"
+      >
         {step ?? "•"}
       </span>
       <div>
-        <h1 className="font-display text-lg font-semibold uppercase tracking-wide text-ink sm:text-xl">
+        <h1 className="font-display text-xl font-semibold tracking-wide text-ink sm:text-2xl">
           {title}
         </h1>
-        {subtitle && <p className="mt-0.5 max-w-2xl text-xs text-muted">{subtitle}</p>}
+        {subtitle && <p className="mt-0.5 max-w-2xl text-sm text-muted">{subtitle}</p>}
       </div>
     </header>
   );

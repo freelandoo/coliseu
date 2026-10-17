@@ -2,13 +2,10 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { Modal } from "@/components/ui/Modal";
+import { DescricaoModal, Modal, TituloModal } from "@/components/ui/Modal";
+import { Botao } from "@/components/ui/Botao";
+import { Campo, MensagemErro, classeCampo } from "@/components/ui/Campo";
 import { BotaoSair } from "@/components/perfil/BotaoSair";
-import { cn } from "@/lib/cn";
-
-const inputCls =
-  "w-full rounded-lg border border-border bg-surface px-3 py-2 text-sm text-ink " +
-  "placeholder:text-faint outline-none transition-colors focus:border-red/60";
 
 /**
  * Bloqueia o sistema até o colaborador trocar a senha provisória.
@@ -16,7 +13,7 @@ const inputCls =
  * Não pede a senha atual: ela acabou de ser usada para abrir esta sessão, e o
  * servidor só dispensa a atual quando a conta está marcada como provisória.
  * Sem botão de fechar — a ideia é justamente não deixar seguir com a senha que
- * o admin ditou em voz alta.
+ * o admin ditou em voz alta. Por isso o Modal vai sem `onFechar`: Esc não fecha.
  */
 export function TrocaSenhaObrigatoria({ nome }: { nome: string }) {
   const router = useRouter();
@@ -49,56 +46,61 @@ export function TrocaSenhaObrigatoria({ nome }: { nome: string }) {
   const invalido = novaSenha.length < 8 || !confirmar;
 
   return (
-    <Modal onFechar={() => undefined}>
-      <h3 className="font-display text-xl font-semibold uppercase tracking-wide text-ink">
-        Crie sua senha
-      </h3>
-      <p className="mt-2 text-sm text-muted">
+    <Modal>
+      <TituloModal>Crie sua senha</TituloModal>
+      <DescricaoModal className="mt-2">
         Olá, {nome}. Você entrou com a senha provisória do administrador. Escolha uma senha só sua
         para continuar.
-      </p>
+      </DescricaoModal>
 
-      <div className="mt-5 flex flex-col gap-3">
-        <input
-          className={inputCls}
-          type="password"
-          placeholder="Nova senha (mín. 8 caracteres)"
-          autoComplete="new-password"
-          value={novaSenha}
-          onChange={(e) => setNovaSenha(e.target.value)}
-        />
-        <input
-          className={inputCls}
-          type="password"
-          placeholder="Confirmar nova senha"
-          autoComplete="new-password"
-          value={confirmar}
-          onChange={(e) => setConfirmar(e.target.value)}
-          onKeyDown={(e) => {
-            if (e.key === "Enter" && !invalido) void salvar();
-          }}
-        />
+      <div className="mt-5 flex flex-col gap-4">
+        <Campo rotulo="Nova senha" ajuda="Mínimo de 8 caracteres.">
+          {(a) => (
+            <input
+              {...a}
+              className={classeCampo}
+              type="password"
+              autoComplete="new-password"
+              value={novaSenha}
+              onChange={(e) => setNovaSenha(e.target.value)}
+            />
+          )}
+        </Campo>
+        <Campo rotulo="Confirmar nova senha">
+          {(a) => (
+            <input
+              {...a}
+              className={classeCampo}
+              type="password"
+              autoComplete="new-password"
+              value={confirmar}
+              onChange={(e) => setConfirmar(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === "Enter" && !invalido) void salvar();
+              }}
+            />
+          )}
+        </Campo>
       </div>
 
-      {erro && <p className="mt-3 text-xs text-red-bright">{erro}</p>}
+      {erro && <MensagemErro className="mt-3">{erro}</MensagemErro>}
 
-      <button
+      <Botao
+        variante="primario"
+        tamanho="lg"
+        bloco
         onClick={salvar}
-        disabled={salvando || invalido}
-        className={cn(
-          "mt-5 w-full rounded-lg px-4 py-3 font-display text-sm font-semibold uppercase tracking-widest transition-colors",
-          salvando || invalido
-            ? "cursor-not-allowed bg-surface-2 text-faint"
-            : "bg-red text-white hover:bg-red-bright",
-        )}
+        disabled={invalido}
+        carregando={salvando}
+        className="mt-5"
       >
         {salvando ? "Salvando…" : "Salvar e entrar"}
-      </button>
+      </Botao>
 
       {/* Sem isto a tela vira armadilha: quem entrou na conta errada não tem
           como voltar ao login, já que o modal cobre o sistema inteiro. */}
       <div className="mt-3 flex justify-center">
-        <BotaoSair className="border-transparent px-2 py-1 text-[11px]" rotulo="Sair" />
+        <BotaoSair variante="discreto" tamanho="sm" rotulo="Sair" />
       </div>
     </Modal>
   );

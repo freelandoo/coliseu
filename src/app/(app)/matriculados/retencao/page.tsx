@@ -48,7 +48,7 @@ export default async function RetencaoPage() {
         <section className="grid grid-cols-2 gap-4 lg:grid-cols-3">
           <Stat label="Frequentes" value={frequentes} tone="ok" hint="presença em dia" />
           <Stat label="Ausentes" value={ausentes} tone="warn" hint="há 7+ dias" />
-          <Stat label="Lista de evasão" value={evasao} tone="red" hint="há 21+ dias" />
+          <Stat label="Lista de evasão" value={evasao} tone="danger" hint="há 21+ dias" />
         </section>
       </Reveal>
 

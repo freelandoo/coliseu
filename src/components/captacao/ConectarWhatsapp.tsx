@@ -2,9 +2,11 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
-import { Modal } from "@/components/ui/Modal";
+import { Modal, TituloModal } from "@/components/ui/Modal";
 import { cn } from "@/lib/cn";
 import type { WhatsappStatus } from "@/lib/types";
+import { classeBotao } from "@/components/ui/Botao";
+import { MensagemErro } from "@/components/ui/Campo";
 
 interface StatusResposta {
   configurado: boolean;
@@ -85,8 +87,8 @@ export function ConectarWhatsapp({
       <span
         title="Defina EVOLUTION_URL e EVOLUTION_API_KEY no ambiente."
         className={cn(
-          "rounded-lg border border-border font-display font-semibold uppercase tracking-widest text-faint",
-          compacto ? "px-2.5 py-1 text-[11px]" : "px-4 py-2.5 text-sm",
+          "rounded-lg border border-border font-display font-semibold text-faint",
+          compacto ? "px-2.5 py-1 text-xs" : "px-4 py-2.5 text-sm",
         )}
       >
         WhatsApp não configurado
@@ -105,7 +107,7 @@ export function ConectarWhatsapp({
             "flex items-center gap-2 rounded-lg border border-ok/40 bg-ok/10 text-ok transition-colors hover:bg-ok/15",
             compacto
               ? "px-2.5 py-1 text-xs font-medium"
-              : "px-4 py-2.5 font-display text-sm font-semibold uppercase tracking-widest",
+              : "px-4 py-2.5 text-sm font-semibold",
           )}
         >
           <span className={cn("shrink-0 rounded-full bg-ok", compacto ? "h-1.5 w-1.5" : "h-2 w-2")} />
@@ -125,8 +127,8 @@ export function ConectarWhatsapp({
           type="button"
           onClick={() => setModal(true)}
           className={cn(
-            "rounded-lg bg-red font-display font-semibold uppercase tracking-widest text-white transition-colors hover:bg-red-bright",
-            compacto ? "px-2.5 py-1 text-[11px]" : "px-4 py-2.5 text-sm",
+            "rounded-lg bg-red font-display font-semibold text-white transition-colors hover:bg-red-bright",
+            compacto ? "px-2.5 py-1 text-xs" : "px-4 py-2.5 text-sm",
           )}
         >
           Conectar WhatsApp
@@ -264,9 +266,9 @@ function ModalConexao({
 
   return (
     <Modal onFechar={onFechar} className="text-center">
-        <h3 className="font-display text-xl font-semibold uppercase tracking-wide text-ink">
+        <TituloModal>
           {pareado ? "WhatsApp conectado" : "Conectar WhatsApp"}
-        </h3>
+        </TituloModal>
 
         {pareado ? (
           <>
@@ -280,16 +282,16 @@ function ModalConexao({
             <p className="mt-3 text-xs text-faint">
               Ninguém é respondido automaticamente — toda resposta sai daqui, digitada pela recepção.
             </p>
-            <button
+            <button type="button"
               onClick={onFechar}
-              className="mt-5 w-full rounded-lg bg-red px-4 py-3 font-display text-sm font-semibold uppercase tracking-widest text-white transition-colors hover:bg-red-bright"
+              className={cn(classeBotao({ variante: "primario", tamanho: "lg", bloco: true }), "mt-5")}
             >
               Concluir
             </button>
-            <button
+            <button type="button"
               onClick={desconectar}
               disabled={carregando}
-              className="mt-3 w-full rounded-lg border border-border-strong px-4 py-2.5 text-sm font-medium text-muted transition-colors hover:text-ink"
+              className={cn(classeBotao({ variante: "secundario", bloco: true }), "mt-3")}
             >
               Desconectar aparelho
             </button>
@@ -325,13 +327,13 @@ function ModalConexao({
               </p>
             )}
 
-            {erro && <p className="mt-3 text-xs text-red-bright">{erro}</p>}
+            {erro && <MensagemErro className="mt-3">{erro}</MensagemErro>}
 
-            <button
+            <button type="button"
               onClick={confirmar}
               disabled={carregando}
               className={cn(
-                "mt-5 w-full rounded-lg px-4 py-3 font-display text-sm font-semibold uppercase tracking-widest transition-colors",
+                "mt-5 w-full rounded-lg px-4 py-3 text-sm font-semibold transition-colors",
                 carregando ? "cursor-not-allowed bg-surface-2 text-faint" : "bg-red text-white hover:bg-red-bright",
               )}
             >
@@ -339,20 +341,20 @@ function ModalConexao({
             </button>
 
             <div className="mt-3 flex gap-3">
-              <button
+              <button type="button"
                 onClick={async () => {
                   setCarregando(true);
                   setErro("");
                   aplicar(await pedirQr());
                 }}
                 disabled={carregando}
-                className="flex-1 rounded-lg border border-border-strong px-4 py-2.5 text-sm font-medium text-muted transition-colors hover:text-ink"
+                className={cn(classeBotao({ variante: "secundario" }), "flex-1")}
               >
                 Atualizar QR Code
               </button>
-              <button
+              <button type="button"
                 onClick={onFechar}
-                className="rounded-lg border border-border-strong px-4 py-2.5 text-sm font-medium text-muted transition-colors hover:text-ink"
+                className={classeBotao({ variante: "secundario" })}
               >
                 Fechar
               </button>

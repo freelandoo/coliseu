@@ -10,8 +10,9 @@ export default function manifest(): MetadataRoute.Manifest {
       "CRM da Academia Coliseu Team: captação, matrícula, cobrança, renovação e retenção integradas com Asaas.",
     start_url: "/",
     display: "standalone",
-    background_color: "#0e0f11",
-    theme_color: "#0e0f11",
+    // tela de abertura no fundo do app; barra do sistema na cor do topo
+    background_color: "#f7f7f8",
+    theme_color: "#ffffff",
     icons: [
       { src: "/icons/icon-192.png", sizes: "192x192", type: "image/png" },
       { src: "/icons/icon-512.png", sizes: "512x512", type: "image/png" },

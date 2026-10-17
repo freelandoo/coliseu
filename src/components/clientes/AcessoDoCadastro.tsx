@@ -2,8 +2,10 @@
 
 import { useState } from "react";
 import { Badge, Card } from "@/components/ui/primitives";
-import { Modal } from "@/components/ui/Modal";
+import { Modal, TituloModal } from "@/components/ui/Modal";
 import { cn } from "@/lib/cn";
+import { classeBotao } from "@/components/ui/Botao";
+import { MensagemErro, classeCampo, classeRotulo } from "@/components/ui/Campo";
 
 export type Papel = "ADMIN" | "RECEPCAO" | "TECNICO";
 
@@ -71,22 +73,22 @@ export function AcessoDoCadastro({
   return (
     <Card className="p-6">
       <div className="flex items-center justify-between gap-3">
-        <h3 className="font-display text-sm font-semibold uppercase tracking-widest text-faint">
+        <h3 className="font-display text-sm font-semibold text-faint">
           Acesso ao sistema
         </h3>
         {acesso && <Badge tone={acesso.ativo ? "ok" : "neutral"}>{PAPEL_LABEL[acesso.role]}</Badge>}
       </div>
 
-      {erro && <p className="mt-3 text-xs text-red-bright">{erro}</p>}
+      {erro && <MensagemErro className="mt-3">{erro}</MensagemErro>}
 
       {!acesso ? (
         <>
           <p className="mt-3 text-sm text-muted">
             Esta pessoa ainda não entra no sistema. Crie um acesso para ela atender e matricular.
           </p>
-          <button
+          <button type="button"
             onClick={() => setCriando(true)}
-            className="mt-4 w-full rounded-lg border border-red/50 px-4 py-2.5 font-display text-sm font-semibold uppercase tracking-widest text-red-bright transition-colors hover:bg-red-ghost"
+            className={cn(classeBotao({ variante: "contorno", bloco: true }), "mt-4")}
           >
             Dar acesso ao sistema
           </button>
@@ -104,7 +106,7 @@ export function AcessoDoCadastro({
             <select
               value={acesso.role}
               onChange={(e) => patch({ role: e.target.value })}
-              className="w-full rounded-lg border border-border bg-surface px-3 py-2 text-sm text-ink outline-none focus:border-red/60"
+              className="w-full rounded-lg border border-control bg-surface px-3 py-2 text-sm text-ink outline-none focus:border-brand"
             >
               {PAPEIS.map(([v, label]) => (
                 <option key={v} value={v}>
@@ -113,18 +115,18 @@ export function AcessoDoCadastro({
               ))}
             </select>
             <div className="flex gap-2">
-              <button
+              <button type="button"
                 onClick={resetar}
                 className="flex-1 rounded-md border border-border px-3 py-2 text-xs font-medium text-faint transition-colors hover:text-ink"
               >
                 Nova senha
               </button>
-              <button
+              <button type="button"
                 onClick={() => patch({ ativo: !acesso.ativo })}
                 className={cn(
                   "flex-1 rounded-md border px-3 py-2 text-xs font-medium transition-colors",
                   acesso.ativo
-                    ? "border-border text-faint hover:border-red/60 hover:text-red-bright"
+                    ? "border-border text-faint hover:border-danger/ hover:text-danger"
                     : "border-ok/40 text-ok hover:bg-ok/10",
                 )}
               >
@@ -150,9 +152,9 @@ export function AcessoDoCadastro({
 
       {credencial && (
         <Modal onFechar={() => setCredencial(null)} className="text-center">
-          <h3 className="font-display text-xl font-semibold uppercase tracking-wide text-ink">
+          <TituloModal>
             Acesso de {nome}
-          </h3>
+          </TituloModal>
           <div className="mt-4 rounded-lg border border-border bg-surface-2 p-4 text-left text-sm">
             <p className="flex justify-between py-1">
               <span className="text-faint">Login</span>
@@ -167,9 +169,9 @@ export function AcessoDoCadastro({
             Anote agora: a senha não pode ser consultada depois, só redefinida. A pessoa troca no
             primeiro acesso.
           </p>
-          <button
+          <button type="button"
             onClick={() => setCredencial(null)}
-            className="mt-5 w-full rounded-lg bg-red px-4 py-3 font-display text-sm font-semibold uppercase tracking-widest text-white transition-colors hover:bg-red-bright"
+            className={cn(classeBotao({ variante: "primario", tamanho: "lg", bloco: true }), "mt-5")}
           >
             Anotei
           </button>
@@ -213,35 +215,33 @@ function ModalNovoAcesso({
     onCriado(d.colaborador, senha);
   }
 
-  const cls =
-    "w-full rounded-lg border border-border bg-surface px-3 py-2 text-sm text-ink " +
-    "placeholder:text-faint outline-none transition-colors focus:border-red/60";
+  const cls = classeCampo;
 
   return (
     <Modal onFechar={onFechar}>
-      <h3 className="font-display text-xl font-semibold uppercase tracking-wide text-ink">
+      <TituloModal>
         Dar acesso a {nome}
-      </h3>
+      </TituloModal>
       <p className="mt-0.5 text-xs text-faint">
         A pessoa passa a entrar no sistema com login e senha. A senha é provisória.
       </p>
 
       <div className="mt-5 flex flex-col gap-3">
-        <div>
-          <label className="mb-1 block text-xs font-medium text-muted">Login</label>
+        <label className="block">
+          <span className={classeRotulo}>Login</span>
           <input
             value={login}
             onChange={(e) => setLogin(e.target.value)}
             placeholder="deixe vazio para gerar a partir do nome"
             className={cls}
           />
-        </div>
-        <div>
-          <label className="mb-1 block text-xs font-medium text-muted">Senha provisória *</label>
+        </label>
+        <label className="block">
+          <span className={classeRotulo}>Senha provisória *</span>
           <input value={senha} onChange={(e) => setSenha(e.target.value)} className={cls} />
-        </div>
-        <div>
-          <label className="mb-1 block text-xs font-medium text-muted">Papel</label>
+        </label>
+        <label className="block">
+          <span className={classeRotulo}>Papel</span>
           <select value={role} onChange={(e) => setRole(e.target.value as Papel)} className={cls}>
             {PAPEIS.map(([v, label]) => (
               <option key={v} value={v}>
@@ -249,17 +249,17 @@ function ModalNovoAcesso({
               </option>
             ))}
           </select>
-        </div>
+        </label>
       </div>
 
-      {erro && <p className="mt-3 text-xs text-red-bright">{erro}</p>}
+      {erro && <MensagemErro className="mt-3">{erro}</MensagemErro>}
 
       <div className="mt-5 flex gap-3">
-        <button
+        <button type="button"
           onClick={salvar}
           disabled={salvando || senha.length < 8}
           className={cn(
-            "flex-1 rounded-lg px-4 py-3 font-display text-sm font-semibold uppercase tracking-widest transition-colors",
+            "flex-1 rounded-lg px-4 py-3 text-sm font-semibold transition-colors",
             salvando || senha.length < 8
               ? "cursor-not-allowed bg-surface-2 text-faint"
               : "bg-red text-white hover:bg-red-bright",
@@ -267,9 +267,9 @@ function ModalNovoAcesso({
         >
           {salvando ? "Criando…" : "Criar acesso"}
         </button>
-        <button
+        <button type="button"
           onClick={onFechar}
-          className="rounded-lg border border-border-strong px-4 py-3 text-sm font-medium text-muted transition-colors hover:text-ink"
+          className={classeBotao({ variante: "secundario", tamanho: "lg" })}
         >
           Cancelar
         </button>

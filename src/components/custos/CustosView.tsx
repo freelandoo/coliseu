@@ -6,6 +6,9 @@ import { Card, Stat } from "@/components/ui/primitives";
 import { cn } from "@/lib/cn";
 import { formatBRL, formatData } from "@/lib/mock-data";
 import type { Despesa } from "@/lib/types";
+import { Botao, classeBotao } from "@/components/ui/Botao";
+import { Modal, TituloModal } from "@/components/ui/Modal";
+import { MensagemErro, classeCampo, classeRotulo } from "@/components/ui/Campo";
 
 const CATEGORIAS = [
   "Luz",
@@ -17,10 +20,6 @@ const CATEGORIAS = [
   "Manutenção",
   "Marketing",
 ];
-
-const inputCls =
-  "w-full rounded-lg border border-border bg-surface px-3 py-2 text-sm text-ink " +
-  "placeholder:text-faint outline-none transition-colors focus:border-red/60";
 
 export function CustosView({
   despesas,
@@ -45,7 +44,7 @@ export function CustosView({
     <div className="flex flex-col gap-8">
       {/* relatório de lucro */}
       <section>
-        <h2 className="mb-4 font-display text-sm font-semibold uppercase tracking-widest text-faint">
+        <h2 className="mb-4 font-display text-sm font-semibold text-faint">
           Resultado do mês
         </h2>
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
@@ -58,13 +57,13 @@ export function CustosView({
           <Stat
             label="Despesas lançadas"
             value={formatBRL(totalDespesas)}
-            tone="red"
+            tone="danger"
             hint={`${despesas.length} lançamento${despesas.length === 1 ? "" : "s"}`}
           />
           <Stat
             label="Lucro"
             value={formatBRL(lucro)}
-            tone={lucro >= 0 ? "ok" : "red"}
+            tone={lucro >= 0 ? "ok" : "danger"}
             hint={`Margem ${margem.toFixed(1).replace(".", ",")}%`}
           />
         </div>
@@ -72,12 +71,12 @@ export function CustosView({
 
       {/* lançar despesa */}
       <section>
-        <h2 className="mb-4 font-display text-sm font-semibold uppercase tracking-widest text-faint">
+        <h2 className="mb-4 font-display text-sm font-semibold text-faint">
           Lançar despesa
         </h2>
         <div className="flex flex-wrap gap-2">
           {CATEGORIAS.map((cat) => (
-            <button
+            <button type="button"
               key={cat}
               onClick={() => setModalCategoria(cat)}
               className="rounded-lg border border-border bg-surface px-3 py-2 text-xs font-medium text-ink transition-colors hover:border-red/40 hover:bg-surface-2 sm:px-4 sm:py-2.5 sm:text-sm"
@@ -85,9 +84,9 @@ export function CustosView({
               + {cat}
             </button>
           ))}
-          <button
+          <button type="button"
             onClick={() => setModalCategoria("")}
-            className="rounded-lg border border-dashed border-border-strong px-3 py-2 text-xs font-medium text-muted transition-colors hover:text-ink sm:px-4 sm:py-2.5 sm:text-sm"
+            className={classeBotao({ variante: "secundario", tamanho: "sm" })}
           >
             + Outra despesa
           </button>
@@ -96,7 +95,7 @@ export function CustosView({
 
       {/* lista de despesas */}
       <section>
-        <h2 className="mb-4 font-display text-sm font-semibold uppercase tracking-widest text-faint">
+        <h2 className="mb-4 font-display text-sm font-semibold text-faint">
           Despesas lançadas
         </h2>
         <Card className="overflow-hidden">
@@ -115,7 +114,7 @@ export function CustosView({
                       <p className="text-sm font-medium text-ink">
                         {d.categoria}
                         {d.recorrente && (
-                          <span className="ml-2 text-[11px] uppercase tracking-wide text-warn">
+                          <span className="ml-2 text-xs text-warn">
                             fixa
                           </span>
                         )}
@@ -125,14 +124,14 @@ export function CustosView({
                       )}
                       <p className="text-xs text-faint">{formatData(d.data)}</p>
                     </div>
-                    <span className="shrink-0 text-sm font-semibold text-red-bright">
+                    <span className="shrink-0 text-sm font-semibold text-danger">
                       {formatBRL(d.valor)}
                     </span>
                   </div>
                   <div className="text-right">
-                    <button
+                    <button type="button"
                       onClick={() => excluir(d.id)}
-                      className="text-xs font-medium text-faint transition-colors hover:text-red-bright"
+                      className="text-xs font-medium text-faint transition-colors hover:text-danger"
                     >
                       Excluir
                     </button>
@@ -163,19 +162,19 @@ export function CustosView({
                       <td className="px-4 py-3">
                         <span className="font-medium text-ink">{d.categoria}</span>
                         {d.recorrente && (
-                          <span className="ml-2 text-[11px] uppercase tracking-wide text-warn">
+                          <span className="ml-2 text-xs text-warn">
                             fixa
                           </span>
                         )}
                       </td>
                       <td className="px-4 py-3 text-muted">{d.descricao || "—"}</td>
-                      <td className="px-4 py-3 text-right font-semibold text-red-bright">
+                      <td className="px-4 py-3 text-right font-semibold text-danger">
                         {formatBRL(d.valor)}
                       </td>
                       <td className="px-4 py-3 text-right">
-                        <button
+                        <button type="button"
                           onClick={() => excluir(d.id)}
-                          className="text-xs font-medium text-faint transition-colors hover:text-red-bright"
+                          className="text-xs font-medium text-faint transition-colors hover:text-danger"
                         >
                           Excluir
                         </button>
@@ -256,90 +255,74 @@ function ModalDespesa({
 
   return (
     // Clique no fundo não fecha: o lançamento já digitado se perdia.
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4">
-      <div
-        role="dialog"
-        aria-modal="true"
-        className="w-full max-w-md rounded-xl border border-border bg-surface p-6 shadow-[var(--shadow-plate)]"
-      >
-        <h3 className="font-display text-xl font-semibold uppercase tracking-wide text-ink">
-          Nova despesa
-        </h3>
+    // Esc fecha como o Cancelar, exceto durante o envio.
+    <Modal onFechar={onFechar} fecharComEsc={!enviando}>
+        <TituloModal>Nova despesa</TituloModal>
 
         <div className="mt-5 flex flex-col gap-3">
-          <div>
-            <label className="mb-1 block text-xs font-medium text-muted">Categoria</label>
+          <label className="block">
+            <span className={classeRotulo}>Categoria</span>
             <input
               autoFocus={!categoriaInicial}
               value={categoria}
               onChange={(e) => setCategoria(e.target.value)}
               placeholder="Ex.: Luz, Água, Aluguel…"
-              className={inputCls}
+              className={classeCampo}
             />
-          </div>
-          <div>
-            <label className="mb-1 block text-xs font-medium text-muted">Valor (R$)</label>
+          </label>
+          <label className="block">
+            <span className={classeRotulo}>Valor (R$)</span>
             <input
               autoFocus={!!categoriaInicial}
               value={valor}
               onChange={(e) => setValor(e.target.value)}
               inputMode="decimal"
               placeholder="0,00"
-              className={inputCls}
+              className={classeCampo}
             />
-          </div>
-          <div>
-            <label className="mb-1 block text-xs font-medium text-muted">Descrição (opcional)</label>
+          </label>
+          <label className="block">
+            <span className={classeRotulo}>Descrição (opcional)</span>
             <input
               value={descricao}
               onChange={(e) => setDescricao(e.target.value)}
-              className={inputCls}
+              className={classeCampo}
             />
-          </div>
-          <div>
-            <label className="mb-1 block text-xs font-medium text-muted">Data</label>
+          </label>
+          <label className="block">
+            <span className={classeRotulo}>Data</span>
             <input
               type="date"
               value={data}
               onChange={(e) => setData(e.target.value)}
-              className={inputCls}
+              className={classeCampo}
             />
-          </div>
+          </label>
           <label className="flex items-center gap-2 text-sm text-muted">
             <input
               type="checkbox"
               checked={recorrente}
               onChange={(e) => setRecorrente(e.target.checked)}
-              className="h-4 w-4 accent-red-bright"
+              className="h-4 w-4 accent-brand"
             />
             Despesa fixa mensal (recorrente)
           </label>
         </div>
 
-        {erro && <p className="mt-3 text-xs text-red-bright">{erro}</p>}
+        {erro && <MensagemErro className="mt-3">{erro}</MensagemErro>}
 
         <div className="mt-5 flex gap-3">
-          <button
-            onClick={enviar}
-            disabled={enviando}
-            className={cn(
-              "flex-1 rounded-lg px-4 py-3 font-display text-sm font-semibold uppercase tracking-widest transition-colors",
-              enviando
-                ? "cursor-not-allowed bg-surface-2 text-faint"
-                : "bg-red text-white hover:bg-red-bright",
-            )}
-          >
+          <Botao variante="primario" tamanho="lg" onClick={enviar} carregando={enviando} className="flex-1">
             {enviando ? "Lançando…" : "Lançar despesa"}
-          </button>
-          <button
+          </Botao>
+          <button type="button"
             onClick={onFechar}
-            className="rounded-lg border border-border-strong px-4 py-3 text-sm font-medium text-muted transition-colors hover:text-ink"
+            className={classeBotao({ variante: "secundario", tamanho: "lg" })}
           >
             Cancelar
           </button>
         </div>
-      </div>
-    </div>
+    </Modal>
   );
 }
 
@@ -353,7 +336,7 @@ function Th({
   return (
     <th
       className={cn(
-        "px-4 py-3 text-xs font-semibold uppercase tracking-widest text-faint",
+        "px-4 py-3 text-xs font-semibold text-faint",
         className,
       )}
     >

@@ -54,10 +54,10 @@ function TabBtn({
   children: React.ReactNode;
 }) {
   return (
-    <button
+    <button type="button"
       onClick={onClick}
       className={cn(
-        "rounded-lg border px-3 py-1.5 font-display text-xs font-semibold uppercase tracking-widest transition-colors",
+        "rounded-lg border px-3 py-1.5 text-xs font-semibold transition-colors",
         ativo
           ? "border-red/60 bg-red-ghost text-ink"
           : "border-border bg-surface text-muted hover:border-border-strong hover:text-ink",

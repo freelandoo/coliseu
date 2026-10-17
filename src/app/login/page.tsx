@@ -1,9 +1,8 @@
 "use client";
 import { useState } from "react";
-
-const inputCls =
-  "w-full rounded-lg border border-border bg-surface px-3 py-2 text-sm text-ink " +
-  "placeholder:text-faint outline-none transition-colors focus:border-red/60";
+import { classeBotao } from "@/components/ui/Botao";
+import { MensagemErro, classeCampo } from "@/components/ui/Campo";
+import { cn } from "@/lib/cn";
 
 type Modo = "login" | "cadastro";
 
@@ -62,13 +61,15 @@ export default function LoginPage() {
         <p className="mt-1 text-sm text-muted">{cadastro ? "Criar conta" : "Acesso restrito"}</p>
         <div className="mt-5 flex flex-col gap-3">
           {cadastro && (
-            <input className={inputCls} placeholder="Nome" value={nome}
+            <input className={classeCampo} placeholder="Nome" aria-label="Nome" autoComplete="name" value={nome}
               onChange={(e) => setNome(e.target.value)} />
           )}
-          <input className={inputCls} placeholder={cadastro ? "E-mail" : "Login ou e-mail"}
+          <input className={classeCampo} placeholder={cadastro ? "E-mail" : "Login ou e-mail"}
+            aria-label={cadastro ? "E-mail" : "Login ou e-mail"}
             autoComplete="username" value={email} onChange={(e) => setEmail(e.target.value)} />
           <div className="relative">
-            <input className={`${inputCls} pr-10`} type={verSenha ? "text" : "password"}
+            <input className={`${classeCampo} pr-10`} type={verSenha ? "text" : "password"}
+              aria-label="Senha" autoComplete={cadastro ? "new-password" : "current-password"}
               placeholder={cadastro ? "Senha (mín. 8 caracteres)" : "Senha"} value={senha}
               onChange={(e) => setSenha(e.target.value)} onKeyDown={(e) => e.key === "Enter" && enviar()} />
             <button type="button" onClick={() => setVerSenha((v) => !v)}
@@ -78,9 +79,9 @@ export default function LoginPage() {
             </button>
           </div>
         </div>
-        {erro && <p className="mt-3 text-xs text-red-bright">{erro}</p>}
-        <button onClick={enviar} disabled={enviando}
-          className="mt-5 w-full rounded-lg bg-red px-4 py-3 font-display text-sm font-semibold uppercase tracking-widest text-white transition-colors hover:bg-red-bright disabled:opacity-60">
+        {erro && <MensagemErro className="mt-3">{erro}</MensagemErro>}
+        <button type="button" onClick={enviar} disabled={enviando}
+          className={cn(classeBotao({ variante: "primario", tamanho: "lg", bloco: true }), "mt-5")}>
           {enviando ? "Enviando…" : cadastro ? "Cadastrar" : "Entrar"}
         </button>
         <button onClick={trocarModo} type="button"

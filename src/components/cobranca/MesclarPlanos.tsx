@@ -4,10 +4,9 @@ import { useState } from "react";
 import { cn } from "@/lib/cn";
 import { formatBRL } from "@/lib/mock-data";
 import type { PlanoComContagem } from "@/components/cobranca/GestaoPlanos";
-
-const inputCls =
-  "w-full rounded-lg border border-border bg-surface px-3 py-2 text-sm text-ink " +
-  "placeholder:text-faint outline-none transition-colors focus:border-red/60";
+import { DescricaoModal, Modal, TituloModal } from "@/components/ui/Modal";
+import { Botao } from "@/components/ui/Botao";
+import { Campo, MensagemErro, classeCampo } from "@/components/ui/Campo";
 
 /**
  * Junta os planos selecionados em um só. Um deles serve de base (o que
@@ -73,25 +72,25 @@ export function ModalMesclarPlanos({
   }
 
   return (
-    <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/60 p-4 sm:items-center">
-      <div className="max-h-[90vh] w-full max-w-lg overflow-y-auto rounded-xl border border-border bg-surface p-6 shadow-xl">
-        <h3 className="font-display text-lg font-semibold uppercase tracking-wide text-ink">
-          Mesclar {planos.length} planos
-        </h3>
-        <p className="mt-1 text-sm text-muted">
+    // Sem fechar no fundo (formulário). Esc = Cancelar, fora do envio.
+    <Modal onFechar={onFechar} fecharComEsc={!enviando} className="max-w-lg">
+        <TituloModal>Mesclar {planos.length} planos</TituloModal>
+        <DescricaoModal>
           Escolha o plano base. Todos os {totalAlunos} aluno(s) passam para ele.
-        </p>
+        </DescricaoModal>
 
-        <ul className="mt-4 divide-y divide-border rounded-lg border border-border">
+        <fieldset className="mt-4">
+        <legend className="sr-only">Plano base</legend>
+        <ul className="divide-y divide-border rounded-lg border border-border">
           {planos.map((p) => (
             <li key={p.id}>
-              <label className="flex cursor-pointer items-center gap-3 px-3 py-2.5 text-sm">
+              <label className="flex min-h-11 cursor-pointer items-center gap-3 px-3 py-2.5 text-sm">
                 <input
                   type="radio"
                   name="base"
                   checked={destinoId === p.id}
                   onChange={() => escolherBase(p)}
-                  className="accent-red"
+                  className="h-4 w-4 accent-brand"
                 />
                 <span className="min-w-0 flex-1">
                   <span className={cn("block truncate", destinoId === p.id ? "font-medium text-ink" : "text-muted")}>
@@ -102,26 +101,28 @@ export function ModalMesclarPlanos({
                     {p.ativo === false ? " · arquivado" : ""}
                   </span>
                 </span>
-                <span className="text-xs text-muted">{formatBRL(p.valorMensal)}</span>
+                <span className="text-xs text-muted tabular-nums">{formatBRL(p.valorMensal)}</span>
               </label>
             </li>
           ))}
         </ul>
+        </fieldset>
 
         <div className="mt-4 flex flex-col gap-3">
-          <div>
-            <label className="mb-1 block text-xs font-medium text-muted">Nome do plano</label>
-            <input value={nome} onChange={(e) => setNome(e.target.value)} className={inputCls} />
-          </div>
+          <Campo rotulo="Nome do plano">
+            {(a) => <input {...a} value={nome} onChange={(e) => setNome(e.target.value)} className={classeCampo} />}
+          </Campo>
           <div className="grid grid-cols-2 gap-3">
-            <div>
-              <label className="mb-1 block text-xs font-medium text-muted">Valor/mês (R$)</label>
-              <input inputMode="decimal" value={valor} onChange={(e) => setValor(e.target.value)} className={inputCls} />
-            </div>
-            <div>
-              <label className="mb-1 block text-xs font-medium text-muted">Duração (dias)</label>
-              <input inputMode="numeric" value={duracao} onChange={(e) => setDuracao(e.target.value)} className={inputCls} />
-            </div>
+            <Campo rotulo="Valor/mês (R$)">
+              {(a) => (
+                <input {...a} inputMode="decimal" value={valor} onChange={(e) => setValor(e.target.value)} className={classeCampo} />
+              )}
+            </Campo>
+            <Campo rotulo="Duração (dias)">
+              {(a) => (
+                <input {...a} inputMode="numeric" value={duracao} onChange={(e) => setDuracao(e.target.value)} className={classeCampo} />
+              )}
+            </Campo>
           </div>
           <p className="text-xs text-faint">
             O novo valor vale para matrículas e renovações. Assinaturas já ativas no Asaas continuam
@@ -129,26 +130,14 @@ export function ModalMesclarPlanos({
           </p>
         </div>
 
-        {erro && <p className="mt-3 text-xs text-red-bright">{erro}</p>}
+        {erro && <MensagemErro className="mt-3">{erro}</MensagemErro>}
 
         <div className="mt-5 flex justify-end gap-2">
-          <button
-            type="button"
-            onClick={onFechar}
-            className="rounded-lg border border-border-strong px-4 py-2 text-xs font-semibold uppercase tracking-widest text-muted transition-colors hover:text-ink"
-          >
-            Cancelar
-          </button>
-          <button
-            type="button"
-            onClick={mesclar}
-            disabled={enviando || !nome.trim()}
-            className="rounded-lg bg-red px-4 py-2 font-display text-xs font-semibold uppercase tracking-widest text-white transition-colors hover:bg-red-bright disabled:opacity-60"
-          >
+          <Botao onClick={onFechar}>Cancelar</Botao>
+          <Botao variante="primario" onClick={mesclar} disabled={!nome.trim()} carregando={enviando}>
             {enviando ? "Mesclando…" : "Mesclar"}
-          </button>
+          </Botao>
         </div>
-      </div>
-    </div>
+    </Modal>
   );
 }

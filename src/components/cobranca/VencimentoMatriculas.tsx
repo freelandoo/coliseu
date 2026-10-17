@@ -4,6 +4,8 @@ import Link from "next/link";
 import { useCallback, useEffect, useState } from "react";
 import { Badge, Card } from "@/components/ui/primitives";
 import { formatData } from "@/lib/mock-data";
+import { classeBotao } from "@/components/ui/Botao";
+import { MensagemErro } from "@/components/ui/Campo";
 
 type Candidato = {
   membershipId: string;
@@ -91,7 +93,7 @@ export function VencimentoMatriculas() {
     <Card className="p-6">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div className="flex items-center gap-2">
-          <h2 className="font-display text-sm font-semibold uppercase tracking-widest text-ink">
+          <h2 className="font-display text-sm font-semibold text-ink">
             Vencimento de matrículas
           </h2>
           <Badge tone={modo.tom}>{modo.rotulo}</Badge>
@@ -101,7 +103,7 @@ export function VencimentoMatriculas() {
             type="button"
             onClick={vencerAgora}
             disabled={aplicando}
-            className="rounded-lg border border-red/40 px-4 py-2 text-xs font-semibold uppercase tracking-widest text-red-bright transition-colors hover:bg-red-ghost disabled:opacity-60"
+            className={classeBotao({ variante: "contorno", tamanho: "sm" })}
           >
             {aplicando ? "Vencendo…" : `Vencer ${previa.candidatos.length} agora`}
           </button>
@@ -113,7 +115,7 @@ export function VencimentoMatriculas() {
       </p>
 
       {resultado && <p className="mt-3 text-xs text-ok">{resultado}</p>}
-      {erro && <p className="mt-3 text-xs text-red-bright">{erro}</p>}
+      {erro && <MensagemErro className="mt-3">{erro}</MensagemErro>}
 
       {previa.candidatos.length === 0 ? (
         <p className="mt-4 text-sm text-faint">Nenhuma matrícula vencida além da carência.</p>

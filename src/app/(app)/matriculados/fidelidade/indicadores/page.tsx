@@ -65,7 +65,7 @@ export default async function IndicadoresFidelidadePage() {
       {/* #3 mix de fidelidade */}
       <Reveal delay={0.1}>
         <div className="mt-6">
-          <h2 className="mb-3 font-display text-sm font-semibold uppercase tracking-widest text-muted">
+          <h2 className="mb-3 font-display text-sm font-semibold text-muted">
             Mix de fidelidade — composição da base ativa
           </h2>
           <Card className="p-6">
@@ -84,7 +84,7 @@ export default async function IndicadoresFidelidadePage() {
             <div className="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-4">
               {mix.map((m) => (
                 <div key={m.faixa} className="flex flex-col">
-                  <span className="text-xs uppercase tracking-wide text-faint">{m.label}</span>
+                  <span className="text-xs text-faint">{m.label}</span>
                   <span className="font-display text-2xl font-semibold text-ink">
                     {m.pct.toFixed(0)}%
                   </span>
@@ -102,7 +102,7 @@ export default async function IndicadoresFidelidadePage() {
       {/* #4 alto valor em risco */}
       <Reveal delay={0.12}>
         <div className="mt-6">
-          <h2 className="mb-3 font-display text-sm font-semibold uppercase tracking-widest text-muted">
+          <h2 className="mb-3 font-display text-sm font-semibold text-muted">
             Fiéis e veteranos em risco
           </h2>
           <Card className="overflow-hidden">
@@ -126,7 +126,7 @@ export default async function IndicadoresFidelidadePage() {
                         <span className="ml-2 font-mono text-faint">{aluno.codigo}</span>
                       </p>
                     </div>
-                    <Badge tone={diasAusente >= 14 ? "red" : "warn"}>
+                    <Badge tone={diasAusente >= 14 ? "danger" : "warn"}>
                       {diasAusente} dias
                     </Badge>
                   </div>
@@ -151,7 +151,7 @@ export default async function IndicadoresFidelidadePage() {
                         <td className="px-4 py-3 font-medium text-ink">{aluno.nome}</td>
                         <td className="px-4 py-3 text-muted">{formatMeses(meses)}</td>
                         <td className="px-4 py-3">
-                          <Badge tone={diasAusente >= 14 ? "red" : "warn"}>{diasAusente} dias</Badge>
+                          <Badge tone={diasAusente >= 14 ? "danger" : "warn"}>{diasAusente} dias</Badge>
                         </td>
                       </tr>
                     ))}
@@ -167,7 +167,7 @@ export default async function IndicadoresFidelidadePage() {
       {/* #5 janela de reativação */}
       <Reveal delay={0.14}>
         <div className="mt-6">
-          <h2 className="mb-3 font-display text-sm font-semibold uppercase tracking-widest text-muted">
+          <h2 className="mb-3 font-display text-sm font-semibold text-muted">
             Janela de reativação — cancelados por tempo de saída
           </h2>
           <section className="grid grid-cols-1 gap-4 sm:grid-cols-3">
@@ -187,7 +187,7 @@ export default async function IndicadoresFidelidadePage() {
               titulo="Frios"
               hint="6+ meses · reengajamento difícil"
               alunos={reativacao.frios}
-              tone="red"
+              tone="danger"
             />
           </section>
         </div>
@@ -205,13 +205,13 @@ function JanelaCard({
   titulo: string;
   hint: string;
   alunos: { aluno: { id: string; nome: string }; meses: number }[];
-  tone: "ok" | "warn" | "red";
+  tone: "ok" | "warn" | "danger";
 }) {
-  const cor = { ok: "text-ok", warn: "text-warn", red: "text-red-bright" }[tone];
+  const cor = { ok: "text-success", warn: "text-warning", danger: "text-danger" }[tone];
   return (
     <Card className="p-5">
       <div className="flex items-baseline justify-between">
-        <h3 className="font-display text-sm font-semibold uppercase tracking-wide text-ink">{titulo}</h3>
+        <h3 className="font-display text-sm font-semibold text-ink">{titulo}</h3>
         <span className={`font-display text-2xl font-semibold ${cor}`}>{alunos.length}</span>
       </div>
       <p className="mt-0.5 text-xs text-faint">{hint}</p>
@@ -233,7 +233,7 @@ function JanelaCard({
 
 function Th({ children }: { children: React.ReactNode }) {
   return (
-    <th className="px-4 py-3 text-xs font-semibold uppercase tracking-widest text-faint">
+    <th className="px-4 py-3 text-xs font-semibold text-faint">
       {children}
     </th>
   );

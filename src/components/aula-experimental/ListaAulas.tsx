@@ -65,7 +65,7 @@ export function ListaAulas({
         {CHIPS.map((chip) => {
           const ativo = filtro === chip.key;
           return (
-            <button
+            <button type="button"
               key={chip.key}
               onClick={() => setFiltro(chip.key)}
               className={cn(
@@ -75,10 +75,10 @@ export function ListaAulas({
                   : "border-border bg-surface text-muted hover:border-border-strong hover:text-ink",
               )}
             >
-              <span className="uppercase tracking-wide">{chip.label}</span>
+              <span className="">{chip.label}</span>
               <span
                 className={cn(
-                  "flex h-4 min-w-4 items-center justify-center rounded-md px-1 text-[10px] font-semibold sm:h-5 sm:min-w-5 sm:text-xs",
+                  "flex h-4 min-w-4 items-center justify-center rounded-md px-1 text-xs font-semibold sm:h-5 sm:min-w-5 sm:text-xs",
                   ativo ? "bg-red text-white" : "bg-surface-2 text-faint",
                 )}
               >
@@ -206,7 +206,7 @@ function Th({ children, className }: { children: React.ReactNode; className?: st
   return (
     <th
       className={cn(
-        "px-4 py-3 text-xs font-semibold uppercase tracking-widest text-faint",
+        "px-4 py-3 text-xs font-semibold text-faint",
         className,
       )}
     >

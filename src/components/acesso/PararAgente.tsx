@@ -22,7 +22,7 @@ export function PararAgente({ deviceId }: { deviceId: string }) {
   }
 
   if (estado === "enviado") {
-    return <p className="text-[11px] text-faint">comando enviado — o agente encerra no próximo ciclo</p>;
+    return <p className="text-xs text-faint">comando enviado — o agente encerra no próximo ciclo</p>;
   }
   return (
     <button
@@ -30,7 +30,7 @@ export function PararAgente({ deviceId }: { deviceId: string }) {
       onClick={parar}
       disabled={estado === "enviando"}
       title="Encerra o agente de simulação (fake). O agente real da catraca ignora este comando."
-      className="rounded-lg border border-border px-3 py-1.5 font-display text-[10px] font-semibold uppercase tracking-widest text-faint transition-colors hover:border-red/60 hover:text-red-bright disabled:opacity-60"
+      className="rounded-lg border border-border px-3 py-1.5 text-xs font-semibold text-faint transition-colors hover:border-danger/ hover:text-danger disabled:opacity-60"
     >
       {estado === "enviando" ? "Enviando…" : estado === "erro" ? "Falhou — tentar de novo" : "Parar simulação"}
     </button>

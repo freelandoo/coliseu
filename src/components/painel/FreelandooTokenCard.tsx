@@ -2,6 +2,8 @@
 import { useState } from "react";
 import { Badge, Card } from "@/components/ui/primitives";
 import type { StatusTokenFreelandoo } from "@/lib/freelandoo/token";
+import { MensagemErro } from "@/components/ui/Campo";
+import { classeBotao } from "@/components/ui/Botao";
 
 function fmtData(iso: string | null): string {
   if (!iso) return "nunca";
@@ -32,14 +34,12 @@ export function FreelandooTokenCard({ inicial }: { inicial: StatusTokenFreelando
     setCopiado(true);
   }
 
-  const btnCls =
-    "rounded-lg bg-red px-4 py-2.5 font-display text-xs font-semibold uppercase tracking-widest " +
-    "text-white transition-colors hover:bg-red-bright disabled:opacity-60";
+  const btnCls = classeBotao({ variante: "primario" });
 
   return (
     <Card className="p-5">
       <div className="flex items-center justify-between">
-        <h3 className="font-display text-xl font-semibold uppercase tracking-wide text-ink">
+        <h3 className="font-display text-xl font-semibold text-ink">
           Integração API
         </h3>
         {status.exists
@@ -59,7 +59,7 @@ export function FreelandooTokenCard({ inicial }: { inicial: StatusTokenFreelando
 
       {token && (
         <div className="mt-4 rounded-lg border border-warn/40 bg-warn/10 p-4">
-          <p className="text-xs font-medium uppercase tracking-widest text-warn">
+          <p className="text-xs font-medium text-warn">
             Copie agora — este token não será mostrado de novo
           </p>
           <code className="mt-2 block break-all font-mono text-sm text-ink">{token}</code>
@@ -69,7 +69,7 @@ export function FreelandooTokenCard({ inicial }: { inicial: StatusTokenFreelando
         </div>
       )}
 
-      {erro && <p className="mt-3 text-xs text-red-bright">{erro}</p>}
+      {erro && <MensagemErro className="mt-3">{erro}</MensagemErro>}
 
       {!token && (
         <div className="mt-4 flex items-center gap-3">

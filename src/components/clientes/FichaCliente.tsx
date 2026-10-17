@@ -17,10 +17,8 @@ import {
   type Pessoa,
   type Plano,
 } from "@/lib/types";
-
-const inputCls =
-  "w-full rounded-lg border border-border bg-surface px-3 py-2 text-sm text-ink " +
-  "placeholder:text-faint outline-none transition-colors focus:border-red/60";
+import { classeBotao } from "@/components/ui/Botao";
+import { classeCampo, classeRotulo } from "@/components/ui/Campo";
 
 const ESTAGIOS: LeadEstagio[] = ["novo", "qualificado", "interesse", "perdido"];
 
@@ -111,29 +109,29 @@ export function FichaCliente({
         {/* dados pessoais */}
         <Card className="p-6">
           <div className="mb-5 flex items-center justify-between">
-            <h2 className="font-display text-sm font-semibold uppercase tracking-widest text-ink">
+            <h2 className="font-display text-sm font-semibold text-ink">
               Dados pessoais
             </h2>
             {editando ? (
               <div className="flex gap-2">
-                <button
+                <button type="button"
                   onClick={salvar}
                   disabled={salvando}
-                  className="rounded-md bg-red px-3 py-1.5 text-xs font-semibold uppercase tracking-wide text-white transition-colors hover:bg-red-bright disabled:opacity-60"
+                  className={classeBotao({ variante: "primario", tamanho: "sm" })}
                 >
                   {salvando ? "Salvando…" : "Salvar"}
                 </button>
-                <button
+                <button type="button"
                   onClick={() => setEditando(false)}
-                  className="rounded-md border border-border-strong px-3 py-1.5 text-xs font-medium text-muted transition-colors hover:text-ink"
+                  className={classeBotao({ variante: "secundario", tamanho: "sm" })}
                 >
                   Cancelar
                 </button>
               </div>
             ) : (
-              <button
+              <button type="button"
                 onClick={() => setEditando(true)}
-                className="rounded-md border border-border-strong px-3 py-1.5 text-xs font-semibold uppercase tracking-wide text-muted transition-colors hover:text-ink"
+                className={classeBotao({ variante: "secundario", tamanho: "sm" })}
               >
                 Editar
               </button>
@@ -179,10 +177,10 @@ export function FichaCliente({
         {/* situação + ações */}
         <div className="flex flex-col gap-4">
           <Card className="p-6">
-            <p className="text-xs font-medium uppercase tracking-widest text-faint">
+            <p className="text-xs font-medium text-faint">
               {pessoa.codigo}
             </p>
-            <h1 className="mt-1 font-display text-2xl font-semibold uppercase tracking-wide text-ink">
+            <h1 className="mt-1 font-display text-2xl font-semibold text-ink">
               {pessoa.nome}
             </h1>
             <div className="mt-3 flex flex-wrap items-center gap-2">
@@ -198,7 +196,7 @@ export function FichaCliente({
                 <select
                   value={pessoa.estagio ?? "novo"}
                   onChange={(e) => patch({ estagio: e.target.value })}
-                  className={inputCls}
+                  className={classeCampo}
                 >
                   {ESTAGIOS.map((e) => (
                     <option key={e} value={e}>
@@ -208,7 +206,7 @@ export function FichaCliente({
                 </select>
                 <Link
                   href="/matriculados/renovar"
-                  className="mt-3 block rounded-lg bg-red px-4 py-2.5 text-center font-display text-sm font-semibold uppercase tracking-widest text-white transition-colors hover:bg-red-bright"
+                  className={cn(classeBotao({ variante: "primario" }), "mt-3")}
                 >
                   Matricular →
                 </Link>
@@ -241,10 +239,10 @@ export function FichaCliente({
       )}
 
       <div className="flex justify-end">
-        <button
+        <button type="button"
           onClick={excluir}
           disabled={excluindo}
-          className="rounded-lg border border-red/40 px-4 py-2.5 text-sm font-semibold uppercase tracking-widest text-red-bright transition-colors hover:bg-red-ghost disabled:opacity-60"
+          className={classeBotao({ variante: "perigo-contorno" })}
         >
           {excluindo ? "Excluindo…" : "Excluir cliente"}
         </button>
@@ -294,14 +292,14 @@ function Campo({
   type?: string;
 }) {
   return (
-    <div>
-      <label className="mb-1 block text-xs font-medium text-muted">{label}</label>
+    <label className="block">
+      <span className={classeRotulo}>{label}</span>
       <input
         type={type}
         value={value}
         onChange={(e) => onChange(e.target.value)}
-        className={inputCls}
+        className={classeCampo}
       />
-    </div>
+    </label>
   );
 }

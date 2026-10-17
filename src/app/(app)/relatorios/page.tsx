@@ -71,7 +71,7 @@ export default async function RelatoriosPage() {
   const funilTone: Record<LeadEstagio, RelatoriosData["funil"][number]["tone"]> = {
     novo: "neutral",
     qualificado: "warn",
-    interesse: "red",
+    interesse: "brand",
     convertido: "ok",
     perdido: "neutral",
   };
@@ -108,7 +108,7 @@ export default async function RelatoriosPage() {
     {
       label: "Atrasado",
       valor: cobrancas.filter((c) => c.status === "atrasado").length,
-      tone: "red" as const,
+      tone: "danger" as const,
     },
   ];
 
@@ -117,13 +117,13 @@ export default async function RelatoriosPage() {
   const evasaoTempo = evasao_.dist.map((d) => ({
     label: d.label,
     valor: d.count,
-    tone: (d.label === evasao_.pico.label && d.count > 0 ? "red" : "neutral") as RelatoriosData["evasaoTempo"][number]["tone"],
+    tone: (d.label === evasao_.pico.label && d.count > 0 ? "danger" : "neutral") as RelatoriosData["evasaoTempo"][number]["tone"],
   }));
   const coorte = retencaoPorCoorte(alunos);
   const retencaoCoorte = coorte.map((c) => ({
     label: c.label,
     valor: Math.round(c.pct),
-    tone: (c.pct >= 70 ? "ok" : c.pct >= 40 ? "warn" : "red") as RelatoriosData["retencaoCoorte"][number]["tone"],
+    tone: (c.pct >= 70 ? "ok" : c.pct >= 40 ? "warn" : "danger") as RelatoriosData["retencaoCoorte"][number]["tone"],
   }));
 
   const retencao = [
@@ -136,12 +136,12 @@ export default async function RelatoriosPage() {
     {
       label: "14 dias",
       valor: comFaixa.filter((x) => x.faixa === 14).length,
-      tone: "red" as const,
+      tone: "danger" as const,
     },
     {
       label: "21 dias",
       valor: comFaixa.filter((x) => x.faixa === 21).length,
-      tone: "red" as const,
+      tone: "danger" as const,
     },
   ];
 
@@ -157,7 +157,7 @@ export default async function RelatoriosPage() {
         label: "Taxa de inadimplência",
         valor: taxaInadimplencia,
         formato: "pct",
-        tone: "red",
+        tone: "danger",
         hint: `${receitaRisco.toLocaleString("pt-BR", { style: "currency", currency: "BRL" })} em risco`,
       },
       {
@@ -178,7 +178,7 @@ export default async function RelatoriosPage() {
         label: "Lucro do mês",
         valor: lucro,
         formato: "moeda",
-        tone: lucro >= 0 ? "ok" : "red",
+        tone: lucro >= 0 ? "ok" : "danger",
         hint: `Margem ${margemLucro.toFixed(1).replace(".", ",")}%`,
       },
       {
@@ -194,8 +194,8 @@ export default async function RelatoriosPage() {
     retencao,
     resultado: [
       { label: "Receita", valor: mrr, tone: "ok" },
-      { label: "Despesas", valor: despesas, tone: "red" },
-      { label: "Lucro", valor: lucro, tone: lucro >= 0 ? "ok" : "red" },
+      { label: "Despesas", valor: despesas, tone: "danger" },
+      { label: "Lucro", valor: lucro, tone: lucro >= 0 ? "ok" : "danger" },
     ],
     serie: serieMensal(),
     evasaoTempo,

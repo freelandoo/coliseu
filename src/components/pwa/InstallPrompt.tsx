@@ -1,6 +1,8 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { classeBotao } from "@/components/ui/Botao";
+import { cn } from "@/lib/cn";
 
 // Evento não-padronizado do Chrome/Android. Tipado localmente.
 interface BeforeInstallPromptEvent extends Event {
@@ -128,7 +130,7 @@ export function InstallPrompt() {
         {/* eslint-disable-next-line @next/next/no-img-element */}
         <img src="/icons/icon-192.png" alt="Coliseu" className="h-10 w-10 shrink-0 rounded-xl border border-border" />
         <div className="min-w-0 flex-1">
-          <p className="font-display text-sm font-semibold uppercase tracking-wide text-ink">
+          <p className="font-display text-sm font-semibold text-ink">
             Instalar o Coliseu
           </p>
           {modo === "android" ? (
@@ -143,14 +145,14 @@ export function InstallPrompt() {
           )}
         </div>
         {modo === "android" ? (
-          <button
+          <button type="button"
             onClick={instalar}
-            className="shrink-0 rounded-lg bg-red px-3.5 py-2 font-display text-xs font-semibold uppercase tracking-wide text-white transition-colors hover:bg-red-bright"
+            className={cn(classeBotao({ variante: "primario", tamanho: "sm" }), "shrink-0")}
           >
             Instalar
           </button>
         ) : null}
-        <button
+        <button type="button"
           onClick={dispensar}
           aria-label="Fechar"
           className="shrink-0 rounded-full p-1 text-muted transition-colors hover:text-ink"

@@ -7,6 +7,9 @@ import { cn } from "@/lib/cn";
 import { formatBRL } from "@/lib/mock-data";
 import type { Plano } from "@/lib/types";
 import { ModalMesclarPlanos } from "@/components/cobranca/MesclarPlanos";
+import { Modal, TituloModal } from "@/components/ui/Modal";
+import { Botao, classeBotao } from "@/components/ui/Botao";
+import { Campo, MensagemErro, classeCampo } from "@/components/ui/Campo";
 
 export interface PlanoComContagem extends Plano {
   alunos: number;
@@ -38,10 +41,6 @@ function comparar(a: PlanoComContagem, b: PlanoComContagem, coluna: Coluna) {
       return a.valorMensal - b.valorMensal;
   }
 }
-
-const inputCls =
-  "w-full rounded-lg border border-border bg-surface px-3 py-2 text-sm text-ink " +
-  "placeholder:text-faint outline-none transition-colors focus:border-red/60";
 
 /**
  * Leitura aproximada em meses ao lado dos dias — o contrato é vendido como
@@ -116,19 +115,19 @@ export function GestaoPlanos({ planos }: { planos: PlanoComContagem[] }) {
   return (
     <div className="flex flex-col gap-6">
       <div className="flex items-center justify-between">
-        <h2 className="font-display text-sm font-semibold uppercase tracking-widest text-faint">
+        <h2 className="font-display text-sm font-semibold text-faint">
           Planos
         </h2>
         <div className="flex gap-2">
-          <button
+          <button type="button"
             onClick={() => (mesclando ? sairDaMescla() : setMesclando(true))}
-            className="rounded-lg border border-border-strong px-4 py-2.5 font-display text-sm font-semibold uppercase tracking-widest text-muted transition-colors hover:text-ink"
+            className={classeBotao({ variante: "secundario" })}
           >
             {mesclando ? "Cancelar mescla" : "Mesclar planos"}
           </button>
-          <button
+          <button type="button"
             onClick={() => setModalNovo(true)}
-            className="rounded-lg bg-red px-4 py-2.5 font-display text-sm font-semibold uppercase tracking-widest text-white transition-colors hover:bg-red-bright"
+            className={classeBotao({ variante: "primario" })}
           >
             + Novo plano
           </button>
@@ -144,10 +143,10 @@ export function GestaoPlanos({ planos }: { planos: PlanoComContagem[] }) {
               ? "Marque os planos que vão virar um só (pode incluir arquivados)."
               : `${selecionados.size} plano(s) selecionado(s)`}
           </span>
-          <button
+          <button type="button"
             onClick={() => setModalMescla(true)}
             disabled={selecionados.size < 2}
-            className="rounded-lg bg-red px-4 py-2 font-display text-xs font-semibold uppercase tracking-widest text-white transition-colors hover:bg-red-bright disabled:opacity-50"
+            className={classeBotao({ variante: "primario", tamanho: "sm" })}
           >
             Mesclar {selecionados.size >= 2 ? selecionados.size : ""}
           </button>
@@ -163,7 +162,7 @@ export function GestaoPlanos({ planos }: { planos: PlanoComContagem[] }) {
         ).map((chip) => {
           const ativo = situacao === chip.key;
           return (
-            <button
+            <button type="button"
               key={chip.key}
               onClick={() => setSituacao(chip.key)}
               className={cn(
@@ -173,10 +172,10 @@ export function GestaoPlanos({ planos }: { planos: PlanoComContagem[] }) {
                   : "border-border bg-surface text-muted hover:border-border-strong hover:text-ink",
               )}
             >
-              <span className="uppercase tracking-wide">{chip.label}</span>
+              <span className="">{chip.label}</span>
               <span
                 className={cn(
-                  "flex h-4 min-w-4 items-center justify-center rounded-md px-1 text-[10px] font-semibold sm:h-5 sm:min-w-5 sm:text-xs",
+                  "flex h-4 min-w-4 items-center justify-center rounded-md px-1 text-xs font-semibold sm:h-5 sm:min-w-5 sm:text-xs",
                   ativo ? "bg-red text-white" : "bg-surface-2 text-faint",
                 )}
               >
@@ -242,14 +241,14 @@ export function GestaoPlanos({ planos }: { planos: PlanoComContagem[] }) {
                     </span>
                   </div>
                   <div className="flex justify-end gap-3">
-                    <button
+                    <button type="button"
                       onClick={() => setEditando(p)}
                       className="text-xs font-medium text-faint transition-colors hover:text-red-bright"
                     >
                       Editar
                     </button>
                     {!p.mesclado && (
-                      <button
+                      <button type="button"
                         onClick={() => arquivar(p, inativo)}
                         className="text-xs font-medium text-faint transition-colors hover:text-ink"
                       >
@@ -342,14 +341,14 @@ export function GestaoPlanos({ planos }: { planos: PlanoComContagem[] }) {
                       </td>
                       <td className="px-4 py-3 text-right">
                         <div className="flex justify-end gap-3">
-                          <button
+                          <button type="button"
                             onClick={() => setEditando(p)}
                             className="text-xs font-medium text-faint transition-colors hover:text-red-bright"
                           >
                             Editar
                           </button>
                           {!p.mesclado && (
-                            <button
+                            <button type="button"
                               onClick={() => arquivar(p, inativo)}
                               className="text-xs font-medium text-faint transition-colors hover:text-ink"
                             >
@@ -460,91 +459,73 @@ function ModalPlano({
 
   return (
     // Sem fechar no clique do fundo: o formulário está preenchido e o clique
-    // fora do campo apagava tudo. Sai por Cancelar.
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4">
-      <div
-        role="dialog"
-        aria-modal="true"
-        className="w-full max-w-md rounded-xl border border-border bg-surface p-6 shadow-[var(--shadow-plate)]"
-      >
-        <h3 className="font-display text-xl font-semibold uppercase tracking-wide text-ink">
-          {editando ? "Editar plano" : "Novo plano"}
-        </h3>
+    // fora do campo apagava tudo. Sai por Cancelar (ou Esc, fora do envio).
+    <Modal onFechar={onFechar} fecharComEsc={!enviando}>
+        <TituloModal>{editando ? "Editar plano" : "Novo plano"}</TituloModal>
 
-        <div className="mt-5 flex flex-col gap-3">
-          <div>
-            <label className="mb-1 block text-xs font-medium text-muted">Nome</label>
-            <input
-              autoFocus
-              value={nome}
-              onChange={(e) => setNome(e.target.value)}
-              placeholder="Ex.: Mensal, Trimestral…"
-              className={inputCls}
-            />
-          </div>
-          <div>
-            <label className="mb-1 block text-xs font-medium text-muted">
-              Valor mensal (R$)
-            </label>
-            <input
-              value={valor}
-              onChange={(e) => setValor(e.target.value)}
-              inputMode="decimal"
-              placeholder="0,00"
-              className={inputCls}
-            />
-          </div>
-          <div>
-            <label className="mb-1 block text-xs font-medium text-muted">
-              Duração (dias)
-            </label>
-            <input
-              value={duracao}
-              onChange={(e) => setDuracao(e.target.value)}
-              inputMode="numeric"
-              placeholder="30"
-              className={inputCls}
-            />
-            <p className="mt-1 text-xs text-faint">
-              30 = mensal · 90 = trimestral · 180 = semestral · 365 = anual
-            </p>
-          </div>
-          <div>
-            <label className="mb-1 block text-xs font-medium text-muted">
-              Descrição (opcional)
-            </label>
-            <input
-              value={descricao}
-              onChange={(e) => setDescricao(e.target.value)}
-              className={inputCls}
-            />
-          </div>
+        <div className="mt-5 flex flex-col gap-4">
+          <Campo rotulo="Nome">
+            {(a) => (
+              <input
+                {...a}
+                autoFocus
+                value={nome}
+                onChange={(e) => setNome(e.target.value)}
+                placeholder="Ex.: Mensal, Trimestral…"
+                className={classeCampo}
+              />
+            )}
+          </Campo>
+          <Campo rotulo="Valor mensal (R$)">
+            {(a) => (
+              <input
+                {...a}
+                value={valor}
+                onChange={(e) => setValor(e.target.value)}
+                inputMode="decimal"
+                placeholder="0,00"
+                className={classeCampo}
+              />
+            )}
+          </Campo>
+          <Campo
+            rotulo="Duração (dias)"
+            ajuda="30 = mensal · 90 = trimestral · 180 = semestral · 365 = anual"
+          >
+            {(a) => (
+              <input
+                {...a}
+                value={duracao}
+                onChange={(e) => setDuracao(e.target.value)}
+                inputMode="numeric"
+                placeholder="30"
+                className={classeCampo}
+              />
+            )}
+          </Campo>
+          <Campo rotulo="Descrição (opcional)">
+            {(a) => (
+              <input
+                {...a}
+                value={descricao}
+                onChange={(e) => setDescricao(e.target.value)}
+                className={classeCampo}
+              />
+            )}
+          </Campo>
         </div>
 
-        {erro && <p className="mt-3 text-xs text-red-bright">{erro}</p>}
+        {erro && <MensagemErro className="mt-3">{erro}</MensagemErro>}
 
         <div className="mt-5 flex gap-3">
-          <button
-            onClick={enviar}
-            disabled={enviando}
-            className={cn(
-              "flex-1 rounded-lg px-4 py-3 font-display text-sm font-semibold uppercase tracking-widest transition-colors",
-              enviando
-                ? "cursor-not-allowed bg-surface-2 text-faint"
-                : "bg-red text-white hover:bg-red-bright",
-            )}
-          >
+          <Botao variante="primario" tamanho="lg" onClick={enviar} carregando={enviando} className="flex-1">
             {enviando ? "Salvando…" : editando ? "Salvar" : "Criar plano"}
-          </button>
-          <button
-            onClick={onFechar}
-            className="rounded-lg border border-border-strong px-4 py-3 text-sm font-medium text-muted transition-colors hover:text-ink"
-          >
+          </Botao>
+          <Botao tamanho="lg" onClick={onFechar}>
             Cancelar
-          </button>
+          </Botao>
         </div>
-      </div>
-    </div>
+    </Modal>
   );
 }
 
@@ -563,7 +544,7 @@ type ThProps = {
 
 function Th({ children, className, coluna, atual, direcao, onOrdenar }: ThProps) {
   const base = cn(
-    "px-4 py-3 text-xs font-semibold uppercase tracking-widest text-faint",
+    "px-4 py-3 text-xs font-semibold text-faint",
     className,
   );
 
@@ -581,16 +562,16 @@ function Th({ children, className, coluna, atual, direcao, onOrdenar }: ThProps)
           : "none"
       }
     >
-      <button
+      <button type="button"
         onClick={() => onOrdenar(coluna)}
         className={cn(
-          "inline-flex items-center gap-1.5 uppercase tracking-widest transition-colors hover:text-ink",
+          "inline-flex items-center gap-1.5 transition-colors hover:text-ink",
           ordenada && "text-ink",
           className?.includes("text-right") && "flex-row-reverse",
         )}
       >
         {children}
-        <span aria-hidden className={cn("text-[10px]", !ordenada && "opacity-25")}>
+        <span aria-hidden className={cn("text-xs", !ordenada && "opacity-25")}>
           {ordenada && direcao === "desc" ? "▼" : "▲"}
         </span>
       </button>

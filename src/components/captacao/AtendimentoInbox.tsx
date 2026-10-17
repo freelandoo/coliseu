@@ -39,7 +39,7 @@ const PONTO: Record<ConversaInteresse, string> = {
   nao_classificado: "bg-white",
   com_interesse: "bg-warn",
   sem_interesse: "bg-info",
-  perdido: "bg-red-bright",
+  perdido: "bg-danger",
   convertido: "bg-ok",
 };
 
@@ -74,17 +74,17 @@ function AbaBotao({
   onClick: () => void;
 }) {
   return (
-    <button
+    <button type="button"
       onClick={onClick}
       className={cn(
-        "flex flex-1 items-center justify-center gap-2 px-4 py-2.5 font-display text-[11px] font-semibold uppercase tracking-widest transition-colors",
+        "flex flex-1 items-center justify-center gap-2 px-4 py-2.5 text-xs font-semibold transition-colors",
         ativa ? "border-b-2 border-red bg-red-ghost text-ink" : "text-faint hover:text-muted",
       )}
     >
       {label}
-      <span className="text-[11px] font-normal tracking-normal text-faint">{quantidade}</span>
+      <span className="text-xs font-normal tracking-normal text-faint">{quantidade}</span>
       {naoLidas > 0 && (
-        <span className="flex h-4 min-w-4 items-center justify-center rounded bg-red px-1 text-[10px] font-semibold tracking-normal text-white">
+        <span className="flex h-4 min-w-4 items-center justify-center rounded bg-red px-1 text-xs font-semibold tracking-normal text-white">
           {naoLidas}
         </span>
       )}
@@ -125,7 +125,7 @@ function BarraBandeiras({
             title={`${INTERESSE_LABEL[bandeira]} · ${contagem[bandeira]}`}
             aria-label={`Filtrar por ${INTERESSE_LABEL[bandeira]} — ${contagem[bandeira]} conversa(s)`}
             className={cn(
-              "flex items-center gap-1 rounded-full border px-1.5 py-0.5 text-[10px] font-semibold tabular-nums transition-colors",
+              "flex items-center gap-1 rounded-full border px-1.5 py-0.5 text-xs font-semibold tabular-nums transition-colors",
               ativa
                 ? "border-red/60 bg-red-ghost text-ink"
                 : "border-border text-faint hover:border-border-strong hover:text-muted",
@@ -144,7 +144,7 @@ function BarraBandeiras({
         <button
           type="button"
           onClick={onLimpar}
-          className="rounded-full px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-faint transition-colors hover:text-ink"
+          className="rounded-full px-1.5 py-0.5 text-xs font-semibold text-faint transition-colors hover:text-ink"
         >
           todas
         </button>
@@ -493,10 +493,10 @@ export function AtendimentoInbox({
                 type="search"
                 placeholder="Buscar nome, telefone ou palavra…"
                 aria-label="Buscar conversa por nome, telefone ou palavra"
-                className="w-full rounded-lg border border-border bg-surface px-3 py-1.5 pr-8 text-xs text-ink outline-none transition-colors placeholder:text-faint focus:border-red/60"
+                className="w-full rounded-lg border border-control bg-surface px-3 py-1.5 pr-8 text-xs text-ink outline-none transition-colors placeholder:text-faint focus:border-brand"
               />
               {busca && (
-                <button
+                <button type="button"
                   onClick={() => setBusca("")}
                   aria-label="Limpar busca"
                   className="absolute right-2 top-1/2 -translate-y-1/2 rounded p-1 text-faint transition-colors hover:text-ink"
@@ -551,32 +551,32 @@ export function AtendimentoInbox({
                             <Link
                               href={`/matriculados/${c.personId}`}
                               onClick={(e) => e.stopPropagation()}
-                              className="shrink-0 text-[10px] font-bold uppercase tracking-wide text-red-bright hover:underline"
+                              className="shrink-0 text-xs font-bold text-red-bright hover:underline"
                             >
                               ver
                             </Link>
                           )}
                           <span className="truncate text-[13px] font-medium text-ink">{c.nome}</span>
                         </span>
-                        <span className="shrink-0 text-[11px] text-faint">{quando(c.ultimaMensagemEm)}</span>
+                        <span className="shrink-0 text-xs text-faint">{quando(c.ultimaMensagemEm)}</span>
                       </span>
                       <span className="mt-0.5 flex items-center justify-between gap-2">
                         {/* Achado no histórico mostra o pedaço que casou, não a
                             última mensagem — é o que responde "por que essa
                             conversa apareceu?". */}
-                        <span className="truncate text-[11px] text-muted">
+                        <span className="truncate text-xs text-muted">
                           {c.trecho
                             ? trechoAoRedor(c.trecho, termo)
                             : c.preview || c.telefone}
                         </span>
                         {c.naoLidas > 0 && (
-                          <span className="flex h-4 min-w-4 shrink-0 items-center justify-center rounded bg-red px-1 text-[10px] font-semibold text-white">
+                          <span className="flex h-4 min-w-4 shrink-0 items-center justify-center rounded bg-red px-1 text-xs font-semibold text-white">
                             {c.naoLidas}
                           </span>
                         )}
                       </span>
                       {c.interesse !== "nao_classificado" && (
-                        <span className="mt-1 block text-[11px] uppercase tracking-wide text-faint">
+                        <span className="mt-1 block text-xs text-faint">
                           {INTERESSE_LABEL[c.interesse]}
                         </span>
                       )}
@@ -601,7 +601,7 @@ export function AtendimentoInbox({
               {/* Topo estilo WhatsApp, só no mobile: voltar + nome. No desktop o
                   nome já aparece marcado na lista ao lado. */}
               <div className="flex shrink-0 items-center gap-2.5 border-b border-border px-3 py-2 lg:hidden">
-                <button
+                <button type="button"
                   onClick={voltar}
                   aria-label="Voltar para as conversas"
                   className="-ml-1 rounded-lg p-1.5 text-muted transition-colors hover:text-ink"
@@ -627,7 +627,7 @@ export function AtendimentoInbox({
                 <span className="min-w-0 flex-1">
                   <span className="block truncate text-sm font-medium text-ink">{atual.nome}</span>
                   {!atual.ehGrupo && (
-                    <span className="block truncate text-[11px] uppercase tracking-wide text-faint">
+                    <span className="block truncate text-xs text-faint">
                       {INTERESSE_LABEL[atual.interesse]}
                     </span>
                   )}
@@ -635,7 +635,7 @@ export function AtendimentoInbox({
                 {atual.personId && (
                   <Link
                     href={`/matriculados/${atual.personId}`}
-                    className="shrink-0 text-[10px] font-bold uppercase tracking-wide text-red-bright hover:underline"
+                    className="shrink-0 text-xs font-bold text-red-bright hover:underline"
                   >
                     ver
                   </Link>

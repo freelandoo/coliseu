@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { classeBotao } from "@/components/ui/Botao";
 
 type Estado =
   | "carregando"
@@ -161,7 +162,7 @@ export function AtivarNotificacoes() {
     return (
       <p className="flex items-center justify-between gap-2 text-xs text-muted">
         <span>Avisos de mensagem ativos neste aparelho.</span>
-        <button
+        <button type="button"
           onClick={() => void desativar()}
           className="shrink-0 font-medium text-faint transition-colors hover:text-ink"
         >
@@ -172,10 +173,10 @@ export function AtivarNotificacoes() {
   }
 
   return (
-    <button
+    <button type="button"
       onClick={() => void ativar()}
       disabled={estado === "ativando"}
-      className="w-full rounded-lg border border-border-strong px-3 py-2 text-left text-xs font-medium text-muted transition-colors hover:text-ink disabled:cursor-not-allowed disabled:opacity-60"
+      className={classeBotao({ variante: "secundario", tamanho: "sm", bloco: true })}
     >
       {estado === "ativando" ? "Ativando…" : "🔔 Ativar avisos de mensagem neste aparelho"}
     </button>

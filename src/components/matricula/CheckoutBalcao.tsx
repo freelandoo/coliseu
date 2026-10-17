@@ -3,6 +3,9 @@
 import { useState } from "react";
 import { cn } from "@/lib/cn";
 import { formatBRL } from "@/lib/mock-data";
+import { DescricaoModal, Modal, TituloModal } from "@/components/ui/Modal";
+import { Botao } from "@/components/ui/Botao";
+import { MensagemErro } from "@/components/ui/Campo";
 
 export type MetodoBalcao = "dinheiro" | "pix" | "debito" | "credito";
 
@@ -60,91 +63,89 @@ export function CheckoutBalcao({
 
   return (
     // Clique no fundo não fecha: é uma venda em andamento, não some por engano.
-    <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/70 p-4">
-      <div
-        role="dialog"
-        aria-modal="true"
-        className="w-full max-w-md rounded-xl border border-border bg-surface p-6 shadow-[var(--shadow-plate)]"
-      >
-        <h3 className="font-display text-xl font-semibold uppercase tracking-wide text-ink">
-          Venda de balcão
-        </h3>
-        <p className="mt-0.5 text-xs text-faint">Pagamento presencial · confirma na hora</p>
+    // Esc segue o "Cancelar": indisponível enquanto a confirmação está no ar.
+    <Modal onFechar={onFechar} fecharComEsc={!enviando}>
+      <TituloModal>Venda de balcão</TituloModal>
+      <DescricaoModal className="mt-0.5">Pagamento presencial · confirma na hora</DescricaoModal>
 
-        <div className="mt-5 rounded-lg border border-border bg-surface-2 p-4 text-sm">
-          <Linha rotulo="Aluno" valor={nome} />
-          <Linha rotulo="Plano" valor={planoNome} />
-          <Linha rotulo="Total" valor={formatBRL(valor)} destaque />
+      <div className="mt-5 rounded-lg border border-border bg-surface-2 p-4 text-sm">
+        <Linha rotulo="Aluno" valor={nome} />
+        <Linha rotulo="Plano" valor={planoNome} />
+        <Linha rotulo="Total" valor={formatBRL(valor)} destaque />
+      </div>
+
+      <div className="mt-5">
+        <p id="checkout-metodo" className="text-sm font-medium text-muted">
+          Forma de pagamento
+        </p>
+        <div role="group" aria-labelledby="checkout-metodo" className="mt-2 grid grid-cols-2 gap-2">
+          {METODOS.map((m) => (
+            <button
+              type="button"
+              key={m.key}
+              onClick={() => setMetodo(m.key)}
+              aria-pressed={metodo === m.key}
+              className={cn(
+                "flex min-h-11 items-center gap-2 rounded-lg border px-3 py-2.5 text-left text-sm transition-colors",
+                metodo === m.key
+                  ? "border-brand bg-brand-soft font-semibold text-ink"
+                  : "border-border-strong bg-surface text-muted hover:border-control hover:text-ink",
+              )}
+            >
+              <span aria-hidden>{m.icone}</span>
+              <span className="font-medium">{m.label}</span>
+            </button>
+          ))}
         </div>
+      </div>
 
-        <div className="mt-5">
-          <span className="text-xs font-semibold uppercase tracking-widest text-faint">
-            Forma de pagamento
-          </span>
-          <div className="mt-2 grid grid-cols-2 gap-2">
-            {METODOS.map((m) => (
+      {credito && (
+        <div className="mt-4">
+          <p id="checkout-parcelas" className="text-sm font-medium text-muted">
+            Parcelas
+          </p>
+          <div role="group" aria-labelledby="checkout-parcelas" className="mt-2 flex flex-wrap gap-2">
+            {[1, 2, 3, 4, 6, 12].map((n) => (
               <button
-                key={m.key}
-                onClick={() => setMetodo(m.key)}
+                type="button"
+                key={n}
+                onClick={() => setParcelas(n)}
+                aria-pressed={parcelas === n}
                 className={cn(
-                  "flex items-center gap-2 rounded-lg border px-3 py-2.5 text-left text-sm transition-colors",
-                  metodo === m.key
-                    ? "border-red/60 bg-red-ghost text-ink"
-                    : "border-border bg-surface text-muted hover:border-border-strong hover:text-ink",
+                  "min-h-9 rounded-md border px-3 py-1.5 text-sm tabular-nums transition-colors",
+                  parcelas === n
+                    ? "border-brand bg-brand-soft font-semibold text-ink"
+                    : "border-border-strong bg-surface text-muted hover:border-control hover:text-ink",
                 )}
               >
-                <span>{m.icone}</span>
-                <span className="font-medium">{m.label}</span>
+                {n}x
               </button>
             ))}
           </div>
+          {parcelas > 1 && (
+            <p className="mt-2 text-xs text-muted">
+              {parcelas}× de <span className="font-medium text-ink">{formatBRL(valorParcela)}</span>
+            </p>
+          )}
         </div>
+      )}
 
-        {credito && (
-          <div className="mt-4">
-            <span className="text-xs font-semibold uppercase tracking-widest text-faint">Parcelas</span>
-            <div className="mt-2 flex flex-wrap gap-2">
-              {[1, 2, 3, 4, 6, 12].map((n) => (
-                <button
-                  key={n}
-                  onClick={() => setParcelas(n)}
-                  className={cn(
-                    "rounded-md border px-3 py-1.5 text-sm transition-colors",
-                    parcelas === n
-                      ? "border-red/60 bg-red-ghost text-ink"
-                      : "border-border bg-surface text-muted hover:text-ink",
-                  )}
-                >
-                  {n}x
-                </button>
-              ))}
-            </div>
-            {parcelas > 1 && (
-              <p className="mt-2 text-xs text-muted">
-                {parcelas}× de <span className="font-medium text-ink">{formatBRL(valorParcela)}</span>
-              </p>
-            )}
-          </div>
-        )}
+      {erro && <MensagemErro className="mt-4">{erro}</MensagemErro>}
 
-        {erro && <p className="mt-4 text-xs text-red-bright">{erro}</p>}
-
-        <button
-          onClick={confirmar}
-          disabled={enviando}
-          className="mt-6 w-full rounded-lg bg-red px-4 py-3 font-display text-sm font-semibold uppercase tracking-widest text-white transition-colors hover:bg-red-bright disabled:opacity-60"
-        >
-          {enviando ? "Confirmando…" : `Confirmar pagamento · ${formatBRL(valor)}`}
-        </button>
-        <button
-          onClick={onFechar}
-          disabled={enviando}
-          className="mt-3 w-full rounded-lg border border-border-strong px-4 py-2.5 text-sm font-semibold uppercase tracking-widest text-muted transition-colors hover:text-ink disabled:opacity-40"
-        >
-          Cancelar
-        </button>
-      </div>
-    </div>
+      <Botao
+        variante="primario"
+        tamanho="lg"
+        bloco
+        onClick={confirmar}
+        carregando={enviando}
+        className="mt-6"
+      >
+        {enviando ? "Confirmando…" : `Confirmar pagamento · ${formatBRL(valor)}`}
+      </Botao>
+      <Botao bloco onClick={onFechar} disabled={enviando} className="mt-3">
+        Cancelar
+      </Botao>
+    </Modal>
   );
 }
 
@@ -152,7 +153,7 @@ function Linha({ rotulo, valor, destaque }: { rotulo: string; valor: string; des
   return (
     <div className="flex items-center justify-between py-1">
       <span className="text-faint">{rotulo}</span>
-      <span className={cn("font-medium", destaque ? "text-lg text-red-bright" : "text-ink")}>{valor}</span>
+      <span className={cn("font-medium tabular-nums", destaque ? "text-lg text-brand" : "text-ink")}>{valor}</span>
     </div>
   );
 }

@@ -66,16 +66,16 @@ function AbaBotao({
   onClick: () => void;
 }) {
   return (
-    <button
+    <button type="button"
       onClick={onClick}
       className={cn(
-        "flex items-center gap-2 px-4 py-2.5 font-display text-[11px] font-semibold uppercase tracking-widest transition-colors sm:text-xs",
+        "flex items-center gap-2 px-4 py-2.5 text-xs font-semibold transition-colors sm:text-xs",
         ativa ? "border-b-2 border-red text-ink" : "text-faint hover:text-muted",
       )}
     >
       {label}
       {badge !== undefined && (
-        <span className="flex h-4 min-w-4 items-center justify-center rounded bg-red px-1 text-[10px] font-semibold tracking-normal text-white">
+        <span className="flex h-4 min-w-4 items-center justify-center rounded bg-red px-1 text-xs font-semibold tracking-normal text-white">
           {badge}
         </span>
       )}

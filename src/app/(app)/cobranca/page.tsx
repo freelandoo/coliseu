@@ -96,7 +96,7 @@ export default async function CobrancaPage() {
           <Stat
             label="Atrasadas"
             value={atrasadas.length}
-            tone="red"
+            tone="danger"
             hint={formatBRL(totalAtrasado)}
           />
           <Stat label="A renovar" value={aRenovar.length} tone="warn" hint="planos em até 15 dias" />

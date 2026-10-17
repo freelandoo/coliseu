@@ -1,92 +1,117 @@
 @import "tailwindcss";
 
 /* ============================================================
-   INDUSTRIAL COLISEUM — design system
-   Base cinza dark + acento vermelho fosco (desaturado)
+   COLISEU — fundação visual clara (Etapa 1)
+   Base branca + identidade vermelho-rubi. Marca e estados são
+   famílias SEPARADAS: rubi diz "Coliseu / selecionado / ação
+   principal"; vermelho de perigo diz "erro / exclusão / falha".
+   Contrastes medidos estão em docs/design/fundacao-visual.md.
    ============================================================ */
 @theme {
   /* superfícies */
-  --color-bg: #0e0f11;
-  --color-surface: #16181b;
-  --color-surface-2: #1e2126;
-  --color-elevated: #24282e;
-  --color-border: #2a2e34;
-  --color-border-strong: #3a3f47;
+  --color-bg: #f7f7f8;
+  --color-surface: #ffffff;
+  --color-surface-2: #f2f3f5;
+  --color-elevated: #ffffff;
+  --color-border: #e3e5e8;
+  --color-border-strong: #c8cbd0;
+  /* borda de controles (campo, seleção): ≥ 3:1 sobre branco */
+  --color-control: #878c96;
+  /* véu atrás de diálogos e da gaveta do menu */
+  --color-scrim: rgb(17 19 24 / 0.48);
 
-  /* texto */
-  --color-ink: #e7e8ea;
-  --color-muted: #9aa0a6;
-  --color-faint: #6b7077;
+  /* texto (grafite) */
+  --color-ink: #1b1e23;
+  --color-muted: #4a505a;
+  --color-faint: #5f6570;
 
-  /* vermelho fosco (desaturado, sem neon) */
-  --color-red: #a82824;
-  --color-red-bright: #c8302b;
-  --color-red-deep: #6e1a18;
-  --color-red-ghost: #2a1413;
+  /* marca — rubi */
+  --color-brand: #880d32;
+  --color-brand-hover: #6d0a28;
+  --color-brand-strong: #540d23;
+  --color-brand-soft: #fff4f6;
 
-  /* estados */
-  --color-ok: #3f9d6b;
-  --color-warn: #c79a3a;
-  --color-info: #3f7fae;
+  /* estados operacionais */
+  --color-danger: #b42318;
+  --color-danger-strong: #912018;
+  --color-danger-soft: #fef3f2;
+  --color-success: #067647;
+  --color-success-soft: #ecfdf3;
+  --color-warning: #b54708;
+  --color-warning-soft: #fffaeb;
+  --color-info: #175cd3;
+  --color-info-soft: #eff8ff;
+
+  /* aliases legados — mantêm as classes antigas funcionando.
+     `red-*` era usado como MARCA/SELEÇÃO na maior parte do código; os usos
+     de erro e exclusão foram migrados para `danger-*`. Não use em código novo. */
+  --color-red: var(--color-brand);
+  --color-red-bright: var(--color-brand);
+  --color-red-deep: var(--color-brand-strong);
+  --color-red-ghost: var(--color-brand-soft);
+  --color-ok: var(--color-success);
+  --color-warn: var(--color-warning);
 
   /* tipografia */
   --font-display: var(--font-oswald), "Arial Narrow", sans-serif;
   --font-sans: var(--font-sora), system-ui, sans-serif;
 
-  /* sombras com intenção (não defaults) */
-  --shadow-plate: 0 1px 0 rgba(255, 255, 255, 0.04) inset,
-    0 8px 24px -12px rgba(0, 0, 0, 0.8);
-  --shadow-red: 0 0 0 1px rgba(168, 40, 36, 0.4),
-    0 12px 32px -16px rgba(168, 40, 36, 0.55);
+  /* movimento: curto, sem rebote em controles */
+  --ease-padrao: cubic-bezier(0.2, 0, 0, 1);
+
+  /* sombras: poucas variantes, profundidade discreta */
+  --shadow-card: 0 1px 2px rgb(16 24 40 / 0.05), 0 1px 3px rgb(16 24 40 / 0.04);
+  --shadow-overlay: 0 12px 32px -8px rgb(16 24 40 / 0.18), 0 4px 8px -4px rgb(16 24 40 / 0.08);
+  /* legados (nomes antigos usados em `shadow-[var(--shadow-…)]`) */
+  --shadow-plate: var(--shadow-card);
+  --shadow-red: 0 0 0 3px rgb(136 13 50 / 0.16);
 }
 
 :root {
-  color-scheme: dark;
+  color-scheme: light;
 
   /* Instalado na tela de início, o app desenha de ponta a ponta e a barra de
-     status (relógio, bateria) fica POR CIMA do conteúdo — Android 15+ e iOS com
-     `black-translucent`. Estes recuos afastam a barra fixa do topo e a de
-     gestos do rodapé; no navegador comum valem 0 e nada muda. */
+     status (relógio, bateria) fica POR CIMA do conteúdo — Android 15+ (no iOS o
+     tema claro usa a barra `default`, opaca, e o recuo do topo vale 0). Estes
+     recuos afastam a barra fixa do topo e a de gestos do rodapé; no navegador
+     comum valem 0 e nada muda. */
   --safe-t: env(safe-area-inset-top, 0px);
   --safe-b: env(safe-area-inset-bottom, 0px);
 }
 
 html {
-  scrollbar-color: var(--color-border-strong) var(--color-bg);
+  scrollbar-color: var(--color-border-strong) transparent;
 }
 
 body {
   background-color: var(--color-bg);
   color: var(--color-ink);
   font-family: var(--font-sans);
-  /* grão sutil + halo vermelho fosco no topo, fixos */
-  background-image:
-    radial-gradient(
-      900px 480px at 78% -10%,
-      rgba(168, 40, 36, 0.14),
-      transparent 60%
-    ),
-    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='120' height='120'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.025'/%3E%3C/svg%3E");
-  background-attachment: fixed;
+  line-height: 1.5;
 }
 
-/* tracking atlético para os displays condensados */
 .font-display {
   letter-spacing: 0.01em;
 }
 
+/* números alinhados facilitam comparar valores em colunas */
+.tabular-nums,
+td,
+th {
+  font-variant-numeric: tabular-nums;
+}
+
 ::selection {
-  background: var(--color-red);
+  background: var(--color-brand);
   color: #fff;
 }
 
-/* scrollbar industrial */
 ::-webkit-scrollbar {
   width: 10px;
   height: 10px;
 }
 ::-webkit-scrollbar-track {
-  background: var(--color-bg);
+  background: transparent;
 }
 ::-webkit-scrollbar-thumb {
   background: var(--color-border-strong);
@@ -94,33 +119,43 @@ body {
   border-radius: 999px;
 }
 ::-webkit-scrollbar-thumb:hover {
-  background: var(--color-red-deep);
+  background: var(--color-control);
 }
 
-/* utilidade: chapa de aço numerada (âncora visual do fluxograma) */
+/* marcador numerado do cabeçalho de página (nome mantido por compatibilidade) */
 .steel-plate {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  background: linear-gradient(180deg, var(--color-red-bright), var(--color-red-deep));
-  box-shadow: var(--shadow-red), 0 1px 0 rgba(255, 255, 255, 0.2) inset;
+  background: var(--color-brand);
   color: #fff;
   font-family: var(--font-display);
-  font-weight: 700;
+  font-weight: 600;
 }
 
-/* foco acessível consistente */
+/* entrada do diálogo: só opacidade + leve subida, 160ms (Modal.tsx) */
+@keyframes dialogo-entra {
+  from {
+    opacity: 0;
+    transform: translateY(6px) scale(0.99);
+  }
+}
+
+/* foco acessível consistente: rubi sólido (9,8:1 sobre branco) com folga */
 :focus-visible {
-  outline: 2px solid var(--color-red-bright);
+  outline: 2px solid var(--color-brand);
   outline-offset: 2px;
 }
 
-/* respeita usuários sensíveis a movimento */
+/* respeita usuários sensíveis a movimento (CSS). As animações GSAP
+   consultam a mesma preferência em src/lib/movimento.ts. */
 @media (prefers-reduced-motion: reduce) {
   *,
   *::before,
   *::after {
     animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
     transition-duration: 0.001ms !important;
+    scroll-behavior: auto !important;
   }
 }

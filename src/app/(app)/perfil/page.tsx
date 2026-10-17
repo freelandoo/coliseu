@@ -36,10 +36,10 @@ export default async function PerfilPage() {
     <>
       <Reveal>
         <header className="mb-4">
-          <p className="text-[11px] font-medium uppercase tracking-widest text-red-bright">
+          <p className="text-xs font-medium text-red-bright">
             Conta
           </p>
-          <h1 className="mt-0.5 font-display text-2xl font-semibold uppercase tracking-wide text-ink">
+          <h1 className="mt-0.5 font-display text-2xl font-semibold text-ink">
             Perfil
           </h1>
         </header>
@@ -49,10 +49,10 @@ export default async function PerfilPage() {
         <Reveal delay={0.05}>
           <Card className="p-5">
             <div className="flex items-center justify-between">
-              <h3 className="font-display text-xl font-semibold uppercase tracking-wide text-ink">
+              <h3 className="font-display text-xl font-semibold text-ink">
                 {user.nome}
               </h3>
-              <Badge tone="red">{PAPEL_LABEL[user.role] ?? user.role}</Badge>
+              <Badge tone="brand">{PAPEL_LABEL[user.role] ?? user.role}</Badge>
             </div>
             <p className="mt-1.5 text-sm text-muted">{user.email ?? `login: ${user.login}`}</p>
             {unit && <p className="mt-1 text-xs text-faint">Unidade: {unit.nome}</p>}

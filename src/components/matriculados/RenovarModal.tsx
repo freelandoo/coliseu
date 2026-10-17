@@ -5,6 +5,10 @@ import { gsap } from "gsap";
 import { useGSAP } from "@gsap/react";
 import { cn } from "@/lib/cn";
 import { formatBRL } from "@/lib/mock-data";
+import { concluirSeReduzido } from "@/lib/movimento";
+import { DescricaoModal, Modal, TituloModal } from "@/components/ui/Modal";
+import { Botao, classeBotao } from "@/components/ui/Botao";
+import { MensagemErro } from "@/components/ui/Campo";
 import type { MetodoBalcao } from "@/components/matricula/CheckoutBalcao";
 import type { Pessoa, Plano } from "@/lib/types";
 
@@ -108,7 +112,9 @@ export function RenovarModal({
     };
   }, [pessoa.id, plano.id]);
 
-  // esteira animada (mesma da aba Renovar)
+  // esteira animada (mesma da aba Renovar). Em movimento reduzido a timeline é
+  // levada ao fim na hora: `setAnimConcluida` dispara uma vez e a venda segue.
+  // A renovação no backend NÃO depende disto — ela roda no efeito acima.
   useGSAP(
     () => {
       const itens = gsap.utils.toArray<HTMLElement>("[data-passo]");
@@ -131,6 +137,7 @@ export function RenovarModal({
           "<",
         );
       });
+      concluirSeReduzido(tl);
     },
     { scope: listaRef },
   );
@@ -166,23 +173,20 @@ export function RenovarModal({
 
   // A regra de "só fecha quando não está processando (ou deu erro)" agora vive
   // nos próprios botões: durante o processamento nenhum deles é renderizado.
+  // O Esc acompanha os botões: só fecha quando há um botão de fechar disponível
+  // (com erro no processamento, na venda fora do envio e após o pagamento).
+  const podeFecharComEsc = fase === "processando" ? Boolean(erro) : !enviando;
+
   return (
     // Clique no fundo não fecha: a renovação em andamento não pode sumir com um
     // clique torto — sai pelos botões do próprio diálogo.
-    <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/70 p-4">
-      <div
-        role="dialog"
-        aria-modal="true"
-        className="max-h-[90vh] w-full max-w-md overflow-y-auto rounded-xl border border-border bg-surface p-6 shadow-[var(--shadow-plate)]"
-      >
+    <Modal onFechar={onFechar} fecharComEsc={podeFecharComEsc}>
         {fase === "processando" && (
           <>
-            <h3 className="font-display text-xl font-semibold uppercase tracking-wide text-ink">
-              Renovando matrícula
-            </h3>
-            <p className="mt-0.5 text-xs text-faint">
+            <TituloModal>Renovando matrícula</TituloModal>
+            <DescricaoModal className="mt-0.5">
               {pessoa.nome} · {plano.nome} · {formatBRL(plano.valorMensal)}/mês
-            </p>
+            </DescricaoModal>
 
             <ol ref={listaRef} className="relative mt-6 flex flex-col gap-0">
               {PASSOS.map((passo, i) => {
@@ -201,9 +205,9 @@ export function RenovarModal({
                         className={cn(
                           "z-10 flex h-7 w-7 items-center justify-center rounded-full border text-xs font-semibold",
                           corrente
-                            ? "border-red bg-red text-white shadow-[var(--shadow-red)]"
+                            ? "border-brand bg-brand text-white shadow-[var(--shadow-red)]"
                             : feito
-                              ? "border-ok/60 bg-ok/15 text-ok"
+                              ? "border-success/60 bg-success-soft text-success"
                               : "border-border bg-surface text-faint",
                         )}
                       >
@@ -213,7 +217,7 @@ export function RenovarModal({
                         <span
                           className={cn(
                             "absolute top-7 h-full w-px",
-                            ativo > i ? "bg-ok/40" : "bg-border",
+                            ativo > i ? "bg-success/40" : "bg-border",
                           )}
                         />
                       )}
@@ -233,13 +237,10 @@ export function RenovarModal({
 
             {erro && (
               <>
-                <p className="mt-4 text-xs text-red-bright">{erro}</p>
-                <button
-                  onClick={onFechar}
-                  className="mt-3 w-full rounded-lg border border-border-strong px-4 py-2.5 text-sm font-semibold uppercase tracking-widest text-muted transition-colors hover:text-ink"
-                >
+                <MensagemErro className="mt-4">{erro}</MensagemErro>
+                <Botao bloco onClick={onFechar} className="mt-3">
                   Fechar
-                </button>
+                </Botao>
               </>
             )}
           </>
@@ -247,12 +248,10 @@ export function RenovarModal({
 
         {fase === "venda" && (
           <>
-            <h3 className="font-display text-xl font-semibold uppercase tracking-wide text-ink">
-              Venda de balcão
-            </h3>
-            <p className="mt-0.5 text-xs text-faint">
+            <TituloModal>Venda de balcão</TituloModal>
+            <DescricaoModal className="mt-0.5">
               Renovação gerada · receba agora ou envie o link de pagamento
-            </p>
+            </DescricaoModal>
 
             <div className="mt-5 rounded-lg border border-border bg-surface-2 p-4 text-sm">
               <Linha rotulo="Aluno" valor={pessoa.nome} />
@@ -265,7 +264,7 @@ export function RenovarModal({
                 href={resultado?.waLink ?? `mailto:${pessoa.email}`}
                 target={resultado?.waLink ? "_blank" : undefined}
                 rel="noreferrer"
-                className="mt-4 block rounded-lg bg-red px-4 py-3 text-center font-display text-sm font-semibold uppercase tracking-widest text-white transition-colors hover:bg-red-bright"
+                className={cn(classeBotao({ variante: "primario", tamanho: "lg", bloco: true }), "mt-4")}
               >
                 {resultado?.waLink
                   ? "Enviar link de pagamento no WhatsApp"
@@ -274,22 +273,24 @@ export function RenovarModal({
             )}
 
             <div className="mt-5">
-              <span className="text-xs font-semibold uppercase tracking-widest text-faint">
+              <p id="renovar-metodo" className="text-sm font-medium text-muted">
                 Ou receber no balcão
-              </span>
-              <div className="mt-2 grid grid-cols-2 gap-2">
+              </p>
+              <div role="group" aria-labelledby="renovar-metodo" className="mt-2 grid grid-cols-2 gap-2">
                 {METODOS.map((m) => (
                   <button
+                    type="button"
                     key={m.key}
                     onClick={() => setMetodo(m.key)}
+                    aria-pressed={metodo === m.key}
                     className={cn(
-                      "flex items-center gap-2 rounded-lg border px-3 py-2.5 text-left text-sm transition-colors",
+                      "flex min-h-11 items-center gap-2 rounded-lg border px-3 py-2.5 text-left text-sm transition-colors",
                       metodo === m.key
-                        ? "border-red/60 bg-red-ghost text-ink"
-                        : "border-border bg-surface text-muted hover:border-border-strong hover:text-ink",
+                        ? "border-brand bg-brand-soft font-semibold text-ink"
+                        : "border-border-strong bg-surface text-muted hover:border-control hover:text-ink",
                     )}
                   >
-                    <span>{m.icone}</span>
+                    <span aria-hidden>{m.icone}</span>
                     <span className="font-medium">{m.label}</span>
                   </button>
                 ))}
@@ -297,19 +298,21 @@ export function RenovarModal({
 
               {credito && (
                 <div className="mt-3">
-                  <span className="text-xs font-semibold uppercase tracking-widest text-faint">
+                  <p id="renovar-parcelas" className="text-sm font-medium text-muted">
                     Parcelas
-                  </span>
-                  <div className="mt-2 flex flex-wrap gap-2">
+                  </p>
+                  <div role="group" aria-labelledby="renovar-parcelas" className="mt-2 flex flex-wrap gap-2">
                     {[1, 2, 3, 4, 6, 12].map((n) => (
                       <button
+                        type="button"
                         key={n}
                         onClick={() => setParcelas(n)}
+                        aria-pressed={parcelas === n}
                         className={cn(
-                          "rounded-md border px-3 py-1.5 text-sm transition-colors",
+                          "min-h-9 rounded-md border px-3 py-1.5 text-sm tabular-nums transition-colors",
                           parcelas === n
-                            ? "border-red/60 bg-red-ghost text-ink"
-                            : "border-border bg-surface text-muted hover:text-ink",
+                            ? "border-brand bg-brand-soft font-semibold text-ink"
+                            : "border-border-strong bg-surface text-muted hover:border-control hover:text-ink",
                         )}
                       >
                         {n}x
@@ -325,22 +328,25 @@ export function RenovarModal({
                 </div>
               )}
 
-              {erroCheckout && <p className="mt-3 text-xs text-red-bright">{erroCheckout}</p>}
+              {erroCheckout && <MensagemErro className="mt-3">{erroCheckout}</MensagemErro>}
 
-              <button
+              <Botao
+                variante="contorno"
+                tamanho="lg"
+                bloco
                 onClick={confirmarBalcao}
-                disabled={enviando}
-                className="mt-4 w-full rounded-lg border border-red/50 px-4 py-3 font-display text-sm font-semibold uppercase tracking-widest text-red-bright transition-colors hover:bg-red-ghost disabled:opacity-60"
+                carregando={enviando}
+                className="mt-4"
               >
                 {enviando
                   ? "Confirmando…"
                   : `Confirmar pagamento · ${formatBRL(plano.valorMensal)}`}
-              </button>
+              </Botao>
             </div>
 
             {faltando.length > 0 && (
-              <div className="mt-5 rounded-lg border border-warn/30 bg-warn/5 p-4">
-                <p className="text-xs font-semibold uppercase tracking-widest text-warn">
+              <div className="mt-5 rounded-lg border border-warning/30 bg-warning-soft p-4">
+                <p className="text-sm font-semibold text-warning">
                   Obs · cadastro incompleto
                 </p>
                 <p className="mt-1 text-xs text-muted">
@@ -359,37 +365,28 @@ export function RenovarModal({
               </div>
             )}
 
-            <button
-              onClick={onFechar}
-              className="mt-4 w-full rounded-lg border border-border-strong px-4 py-2.5 text-sm font-semibold uppercase tracking-widest text-muted transition-colors hover:text-ink"
-            >
+            <Botao bloco onClick={onFechar} className="mt-4">
               Fechar
-            </button>
+            </Botao>
           </>
         )}
 
         {fase === "pago" && (
           <div className="text-center">
-            <span className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-ok/15 text-2xl text-ok">
+            <span aria-hidden className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-success-soft text-2xl text-success">
               ✓
             </span>
-            <h3 className="mt-4 font-display text-xl font-semibold uppercase tracking-wide text-ink">
-              Pagamento confirmado
-            </h3>
+            <TituloModal className="mt-4">Pagamento confirmado</TituloModal>
             <p className="mt-1 text-sm text-muted">
               {pessoa.nome} · {METODO_LABEL[metodoPago]}
             </p>
             <p className="mt-0.5 text-xs text-faint">Renovação ativa e acesso liberado.</p>
-            <button
-              onClick={onFechar}
-              className="mt-5 w-full rounded-lg bg-red px-4 py-2.5 font-display text-sm font-semibold uppercase tracking-widest text-white transition-colors hover:bg-red-bright"
-            >
+            <Botao variante="primario" bloco onClick={onFechar} className="mt-5">
               Concluir
-            </button>
+            </Botao>
           </div>
         )}
-      </div>
-    </div>
+    </Modal>
   );
 }
 
@@ -405,7 +402,7 @@ function Linha({
   return (
     <div className="flex items-center justify-between py-1">
       <span className="text-faint">{rotulo}</span>
-      <span className={cn("font-medium", destaque ? "text-lg text-red-bright" : "text-ink")}>
+      <span className={cn("font-medium tabular-nums", destaque ? "text-lg text-brand" : "text-ink")}>
         {valor}
       </span>
     </div>

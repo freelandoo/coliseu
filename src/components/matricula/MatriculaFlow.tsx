@@ -1,12 +1,16 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useMemo, useRef, useState } from "react";
+import { useId, useMemo, useRef, useState } from "react";
 import { gsap } from "gsap";
 import { useGSAP } from "@gsap/react";
 import { Badge, Card } from "@/components/ui/primitives";
 import { cn } from "@/lib/cn";
 import { formatBRL } from "@/lib/mock-data";
+import { concluirSeReduzido } from "@/lib/movimento";
+import { Modal, TituloModal } from "@/components/ui/Modal";
+import { Botao, classeBotao } from "@/components/ui/Botao";
+import { Campo as CampoBase, classeCampo } from "@/components/ui/Campo";
 import { linkPagamentoWhatsApp } from "@/lib/asaas";
 import { CheckoutBalcao, type MetodoBalcao } from "@/components/matricula/CheckoutBalcao";
 import type { Candidato, Plano } from "@/lib/types";
@@ -59,10 +63,6 @@ interface Matriculado {
 const soDigitos = (s: string) => s.replace(/\D/g, "");
 const emailValido = (s: string) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(s.trim());
 const celValido = (s: string) => soDigitos(s).length >= 10;
-
-const inputCls =
-  "w-full rounded-lg border border-border bg-surface px-3 py-2 text-sm text-ink " +
-  "placeholder:text-faint outline-none transition-colors focus:border-red/60";
 
 interface FormState {
   nome: string;
@@ -125,6 +125,7 @@ export function MatriculaFlow({
   }
 
   const listaRef = useRef<HTMLOListElement>(null);
+  const buscaId = useId();
   const [codigoSeq, setCodigoSeq] = useState(
     Number(proximoCodigoInicial.replace(/\D/g, "")) || 1,
   );
@@ -238,6 +239,9 @@ export function MatriculaFlow({
         "<",
       );
     });
+    // Movimento reduzido: a esteira vai direto ao fim e o `onComplete` chama
+    // `finalizar()` uma única vez, no mesmo clique — nunca pular com `return`.
+    concluirSeReduzido(tl);
   });
 
   async function finalizar() {
@@ -325,15 +329,17 @@ export function MatriculaFlow({
         <div className="flex flex-col gap-4">
           {!sel ? (
             <div className="flex flex-col gap-3">
-              <label className="text-xs font-semibold uppercase tracking-widest text-faint">
+              <label htmlFor={buscaId} className="text-sm font-semibold text-ink">
                 1 · Buscar pessoa
               </label>
               <input
+                id={buscaId}
                 autoFocus
                 value={busca}
                 onChange={(e) => setBusca(e.target.value)}
                 placeholder="Nome ou celular…"
-                className={inputCls}
+                autoComplete="off"
+                className={classeCampo}
               />
               <p className="text-xs text-faint">
                 Leads em aberto e alunos que precisam renovar.
@@ -347,9 +353,10 @@ export function MatriculaFlow({
                 ) : (
                   resultados.map((c) => (
                     <button
+                      type="button"
                       key={c.refId}
                       onClick={() => selecionar(c)}
-                      className="rounded-lg border border-border bg-surface px-4 py-3 text-left transition-colors hover:border-red/40 hover:bg-surface-2"
+                      className="rounded-lg border border-border bg-surface px-4 py-3 text-left transition-colors hover:border-brand/40 hover:bg-surface-2"
                     >
                       <div className="flex items-center justify-between gap-2">
                         <span className="text-sm font-medium text-ink">
@@ -369,16 +376,12 @@ export function MatriculaFlow({
           ) : (
             <div className="flex flex-col gap-4">
               <div className="flex items-center justify-between">
-                <span className="text-xs font-semibold uppercase tracking-widest text-faint">
+                <span className="text-sm font-semibold text-ink">
                   2 · Confirmar cadastro
                 </span>
-                <button
-                  onClick={cancelar}
-                  disabled={rodando}
-                  className="text-xs text-faint transition-colors hover:text-ink disabled:opacity-40"
-                >
+                <Botao variante="discreto" tamanho="sm" onClick={cancelar} disabled={rodando}>
                   ← trocar pessoa
-                </button>
+                </Botao>
               </div>
 
               <div className="flex flex-col gap-3">
@@ -390,6 +393,8 @@ export function MatriculaFlow({
                 />
                 <Campo
                   label="Celular / WhatsApp"
+                  inputMode="tel"
+                  autoComplete="off"
                   value={form.telefone}
                   erro={erros.telefone}
                   placeholder="(11) 90000-0000"
@@ -397,6 +402,8 @@ export function MatriculaFlow({
                 />
                 <Campo
                   label="E-mail"
+                  inputMode="email"
+                  autoComplete="off"
                   value={form.email}
                   erro={erros.email}
                   placeholder="nome@email.com"
@@ -404,6 +411,8 @@ export function MatriculaFlow({
                 />
                 <Campo
                   label="CPF *"
+                  inputMode="numeric"
+                  autoComplete="off"
                   value={form.cpf}
                   erro={erros.cpf}
                   placeholder="000.000.000-00"
@@ -416,12 +425,14 @@ export function MatriculaFlow({
 
               {/* endereço opcional */}
               <div className="flex flex-col gap-2">
-                <span className="text-xs font-semibold uppercase tracking-widest text-faint">
+                <span className="text-sm font-semibold text-ink">
                   Endereço (opcional)
                 </span>
                 <div className="grid grid-cols-2 gap-2">
                   <Campo
                     label="CEP"
+                    inputMode="numeric"
+                    autoComplete="off"
                     value={form.cep}
                     placeholder="00000-000"
                     onChange={(v) => {
@@ -461,30 +472,32 @@ export function MatriculaFlow({
 
               {/* planos */}
               <div className="flex flex-col gap-2">
-                <span className="text-xs font-semibold uppercase tracking-widest text-faint">
+                <span className="text-sm font-semibold text-ink">
                   3 · Escolher plano
                 </span>
                 {planos.map((p) => {
                   const sel2 = p.id === planoId;
                   return (
                     <button
+                      type="button"
                       key={p.id}
                       onClick={() => !rodando && setPlanoId(p.id)}
+                      aria-pressed={sel2}
                       className={cn(
                         "rounded-lg border px-4 py-2.5 text-left transition-colors",
                         sel2
-                          ? "border-red/50 bg-red-ghost"
-                          : "border-border bg-surface hover:border-border-strong",
+                          ? "border-brand bg-brand-soft"
+                          : "border-border-strong bg-surface hover:border-control",
                       )}
                     >
-                      <div className="flex items-center justify-between">
-                        <span className="font-display text-base font-semibold uppercase tracking-wide text-ink">
+                      <div className="flex items-center justify-between gap-3">
+                        <span className="text-sm font-semibold text-ink">
                           {p.nome}
                         </span>
                         <span
                           className={cn(
-                            "text-sm",
-                            sel2 ? "text-red-bright" : "text-muted",
+                            "text-sm tabular-nums",
+                            sel2 ? "font-semibold text-brand" : "text-muted",
                           )}
                         >
                           {formatBRL(p.valorMensal)}/mês
@@ -495,18 +508,9 @@ export function MatriculaFlow({
                 })}
               </div>
 
-              <button
-                onClick={matricular}
-                disabled={rodando}
-                className={cn(
-                  "rounded-lg px-4 py-3 font-display text-sm font-semibold uppercase tracking-widest transition-colors",
-                  rodando
-                    ? "cursor-not-allowed bg-surface-2 text-faint"
-                    : "bg-red text-white hover:bg-red-bright",
-                )}
-              >
+              <Botao variante="primario" tamanho="lg" onClick={matricular} carregando={rodando}>
                 {rodando ? "Processando…" : "Matricular"}
-              </button>
+              </Botao>
             </div>
           )}
         </div>
@@ -530,9 +534,9 @@ export function MatriculaFlow({
                       className={cn(
                         "z-10 flex h-7 w-7 items-center justify-center rounded-full border text-xs font-semibold",
                         corrente
-                          ? "border-red bg-red text-white shadow-[var(--shadow-red)]"
+                          ? "border-brand bg-brand text-white shadow-[var(--shadow-red)]"
                           : feito
-                            ? "border-ok/60 bg-ok/15 text-ok"
+                            ? "border-success/60 bg-success-soft text-success"
                             : "border-border bg-surface text-faint",
                       )}
                     >
@@ -542,7 +546,7 @@ export function MatriculaFlow({
                       <span
                         className={cn(
                           "absolute top-7 h-full w-px",
-                          ativo > i ? "bg-ok/40" : "bg-border",
+                          ativo > i ? "bg-success/40" : "bg-border",
                         )}
                       />
                     )}
@@ -564,7 +568,7 @@ export function MatriculaFlow({
 
       {/* ---------- matriculados / aguardando pagamento ---------- */}
       <section className="mt-10">
-        <h2 className="mb-4 font-display text-sm font-semibold uppercase tracking-widest text-faint">
+        <h2 className="mb-4 text-base font-semibold text-ink">
           Aguardando pagamento
         </h2>
         {matriculados.length === 0 ? (
@@ -588,7 +592,7 @@ export function MatriculaFlow({
                   <p className="text-xs text-faint">
                     {m.planoNome} · {formatBRL(m.valor)}
                     {m.faltando.length > 0 && (
-                      <span className="text-warn"> · cadastro incompleto</span>
+                      <span className="text-warning"> · cadastro incompleto</span>
                     )}
                   </p>
                 </div>
@@ -598,12 +602,9 @@ export function MatriculaFlow({
                   </Badge>
                   <div className="flex flex-col gap-1.5">
                     <ContatoLink waLink={m.waLink} email={m.email} />
-                    <button
-                      onClick={() => setCheckout(m)}
-                      className="rounded-md border border-red/50 px-3 py-1.5 text-xs font-semibold uppercase tracking-wide text-red-bright transition-colors hover:bg-red-ghost"
-                    >
+                    <Botao variante="contorno" tamanho="sm" onClick={() => setCheckout(m)}>
                       Venda de balcão
-                    </button>
+                    </Botao>
                   </div>
                 </div>
               </div>
@@ -639,34 +640,20 @@ export function MatriculaFlow({
 
       {/* ---------- confirmação de pagamento (balcão) ---------- */}
       {pagoInfo && (
-        <div
-          className="fixed inset-0 z-[60] flex items-center justify-center bg-black/70 p-4"
-          onClick={() => setPagoInfo(null)}
-        >
-          <div
-            role="dialog"
-            aria-modal="true"
-            onClick={(e) => e.stopPropagation()}
-            className="w-full max-w-sm rounded-xl border border-border bg-surface p-6 text-center shadow-[var(--shadow-plate)]"
-          >
-            <span className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-ok/15 text-2xl text-ok">
-              ✓
-            </span>
-            <h3 className="mt-4 font-display text-xl font-semibold uppercase tracking-wide text-ink">
-              Pagamento confirmado
-            </h3>
-            <p className="mt-1 text-sm text-muted">
-              {pagoInfo.nome} · {METODO_LABEL[pagoInfo.metodo]}
-            </p>
-            <p className="mt-0.5 text-xs text-faint">Matrícula ativa e acesso liberado.</p>
-            <button
-              onClick={() => setPagoInfo(null)}
-              className="mt-5 w-full rounded-lg bg-red px-4 py-2.5 font-display text-sm font-semibold uppercase tracking-widest text-white transition-colors hover:bg-red-bright"
-            >
-              Concluir
-            </button>
-          </div>
-        </div>
+        // Aviso sem dado digitado: fecha também no clique do fundo (como antes).
+        <Modal onFechar={() => setPagoInfo(null)} fecharAoClicarFora className="max-w-sm text-center">
+          <span aria-hidden className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-success-soft text-2xl text-success">
+            ✓
+          </span>
+          <TituloModal className="mt-4">Pagamento confirmado</TituloModal>
+          <p className="mt-1 text-sm text-muted">
+            {pagoInfo.nome} · {METODO_LABEL[pagoInfo.metodo]}
+          </p>
+          <p className="mt-0.5 text-xs text-faint">Matrícula ativa e acesso liberado.</p>
+          <Botao variante="primario" bloco onClick={() => setPagoInfo(null)} className="mt-5">
+            Concluir
+          </Botao>
+        </Modal>
       )}
     </>
   );
@@ -680,8 +667,7 @@ function ContatoLink({
   waLink?: string;
   email?: string;
 }) {
-  const cls =
-    "rounded-md bg-red px-3 py-1.5 text-xs font-semibold uppercase tracking-wide text-white transition-colors hover:bg-red-bright";
+  const cls = classeBotao({ variante: "primario", tamanho: "sm" });
   if (waLink) {
     return (
       <a href={waLink} target="_blank" rel="noreferrer" className={cls}>
@@ -707,6 +693,8 @@ function Campo({
   erro,
   placeholder,
   type = "text",
+  inputMode,
+  autoComplete,
 }: {
   label: string;
   value: string;
@@ -714,19 +702,24 @@ function Campo({
   erro?: string;
   placeholder?: string;
   type?: string;
+  inputMode?: "text" | "numeric" | "tel" | "email";
+  autoComplete?: string;
 }) {
   return (
-    <div>
-      <label className="mb-1 block text-xs font-medium text-muted">{label}</label>
-      <input
-        type={type}
-        value={value}
-        onChange={(e) => onChange(e.target.value)}
-        placeholder={placeholder}
-        className={cn(inputCls, erro && "border-red/70")}
-      />
-      {erro && <p className="mt-1 text-xs text-red-bright">{erro}</p>}
-    </div>
+    <CampoBase rotulo={label} erro={erro}>
+      {(a) => (
+        <input
+          {...a}
+          type={type}
+          value={value}
+          onChange={(e) => onChange(e.target.value)}
+          placeholder={placeholder}
+          inputMode={inputMode}
+          autoComplete={autoComplete}
+          className={classeCampo}
+        />
+      )}
+    </CampoBase>
   );
 }
 
@@ -742,20 +735,14 @@ function ModalSucesso({
 }) {
   return (
     // Clique no fundo não fecha: o aviso do que fazer a seguir só sai no botão.
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4">
-      <div
-        role="dialog"
-        aria-modal="true"
-        className="w-full max-w-md rounded-xl border border-border bg-surface p-6 shadow-[var(--shadow-plate)]"
-      >
+    // Esc equivale ao "Fechar", que está sempre disponível aqui.
+    <Modal onFechar={onFechar}>
         <div className="flex items-center gap-3">
-          <span className="flex h-10 w-10 items-center justify-center rounded-full bg-ok/15 text-lg text-ok">
+          <span aria-hidden className="flex h-10 w-10 items-center justify-center rounded-full bg-success-soft text-lg text-success">
             ✓
           </span>
           <div>
-            <h3 className="font-display text-xl font-semibold uppercase tracking-wide text-ink">
-              Matriculado com sucesso
-            </h3>
+            <TituloModal>Matriculado com sucesso</TituloModal>
             <p className="text-xs text-faint">Código {dados.codigo}</p>
           </div>
         </div>
@@ -771,7 +758,7 @@ function ModalSucesso({
             href={dados.waLink ?? `mailto:${dados.email}`}
             target={dados.waLink ? "_blank" : undefined}
             rel="noreferrer"
-            className="mt-4 block rounded-lg bg-red px-4 py-3 text-center font-display text-sm font-semibold uppercase tracking-widest text-white transition-colors hover:bg-red-bright"
+            className={cn(classeBotao({ variante: "primario", tamanho: "lg", bloco: true }), "mt-4")}
           >
             {dados.waLink
               ? "Enviar link de pagamento no WhatsApp"
@@ -780,23 +767,17 @@ function ModalSucesso({
         )}
 
         {/* venda de balcão — sempre abaixo do link de pagamento */}
-        <button
-          onClick={onBalcao}
-          className="mt-3 flex w-full items-center justify-center gap-2 rounded-lg border border-red/50 px-4 py-3 font-display text-sm font-semibold uppercase tracking-widest text-red-bright transition-colors hover:bg-red-ghost"
-        >
+        <Botao variante="contorno" tamanho="lg" bloco onClick={onBalcao} className="mt-3">
           Venda de balcão →
-        </button>
+        </Botao>
 
-        <button
-          onClick={onFechar}
-          className="mt-3 w-full rounded-lg border border-border-strong px-4 py-2.5 text-sm font-semibold uppercase tracking-widest text-muted transition-colors hover:text-ink"
-        >
+        <Botao bloco onClick={onFechar} className="mt-3">
           Fechar
-        </button>
+        </Botao>
 
         {dados.faltando.length > 0 && (
-          <div className="mt-5 rounded-lg border border-warn/30 bg-warn/5 p-4">
-            <p className="text-xs font-semibold uppercase tracking-widest text-warn">
+          <div className="mt-5 rounded-lg border border-warning/30 bg-warning-soft p-4">
+            <p className="text-sm font-semibold text-warning">
               Obs · cadastro incompleto
             </p>
             <p className="mt-1 text-xs text-muted">
@@ -814,8 +795,7 @@ function ModalSucesso({
             </ul>
           </div>
         )}
-      </div>
-    </div>
+    </Modal>
   );
 }
 
@@ -823,7 +803,7 @@ function Linha({ rotulo, valor }: { rotulo: string; valor: string }) {
   return (
     <div className="flex items-center justify-between py-1">
       <span className="text-faint">{rotulo}</span>
-      <span className="font-medium text-ink">{valor}</span>
+      <span className="font-medium text-ink tabular-nums">{valor}</span>
     </div>
   );
 }

@@ -9,7 +9,7 @@ import { listarAlunos, listarPlanos } from "@/lib/store";
 export const dynamic = "force-dynamic";
 
 /** Faixa de fidelidade pelo tempo de casa (em meses). */
-function faixaFidelidade(meses: number): { rotulo: string; tone: "neutral" | "ok" | "warn" | "red" } {
+function faixaFidelidade(meses: number): { rotulo: string; tone: "neutral" | "ok" | "warn" } {
   if (meses >= 12) return { rotulo: "Veterano", tone: "ok" };
   if (meses >= 6) return { rotulo: "Fiel", tone: "ok" };
   if (meses >= 3) return { rotulo: "Firmando", tone: "warn" };
@@ -70,7 +70,7 @@ export default async function FidelidadePage() {
 
       <Reveal delay={0.1}>
         <div className="mt-6">
-          <h2 className="mb-3 font-display text-sm font-semibold uppercase tracking-widest text-muted">
+          <h2 className="mb-3 font-display text-sm font-semibold text-muted">
             Ativos — tempo de casa
           </h2>
           <Card className="overflow-hidden">
@@ -139,7 +139,7 @@ export default async function FidelidadePage() {
 
       <Reveal delay={0.15}>
         <div className="mt-6">
-          <h2 className="mb-3 font-display text-sm font-semibold uppercase tracking-widest text-muted">
+          <h2 className="mb-3 font-display text-sm font-semibold text-muted">
             Cancelados — há quanto tempo saíram
           </h2>
           <Card className="overflow-hidden">
@@ -201,7 +201,7 @@ export default async function FidelidadePage() {
 
 function Th({ children }: { children: React.ReactNode }) {
   return (
-    <th className="px-4 py-3 text-xs font-semibold uppercase tracking-widest text-faint">
+    <th className="px-4 py-3 text-xs font-semibold text-faint">
       {children}
     </th>
   );

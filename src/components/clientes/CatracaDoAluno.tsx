@@ -3,6 +3,8 @@
 import Link from "next/link";
 import { useCallback, useEffect, useState } from "react";
 import { Badge, Card } from "@/components/ui/primitives";
+import { classeBotao } from "@/components/ui/Botao";
+import { MensagemErro } from "@/components/ui/Campo";
 
 type Diagnostico = {
   liberado: boolean;
@@ -60,21 +62,21 @@ export function CatracaDoAluno({ personId }: { personId: string }) {
     }
   }
 
-  if (!d) return erro ? <Card className="p-6 text-sm text-red-bright">{erro}</Card> : null;
+  if (!d) return erro ? <Card className="p-6 text-sm text-danger">{erro}</Card> : null;
   const semFace = !d.checklist.find((c) => c.item === "Face cadastrada")?.ok;
 
   return (
     <Card className="p-6">
       <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
         <div className="flex items-center gap-2">
-          <h2 className="font-display text-sm font-semibold uppercase tracking-widest text-ink">Catraca</h2>
-          <Badge tone={d.liberado ? "ok" : "red"}>{d.liberado ? "Passa" : "Não passa"}</Badge>
+          <h2 className="font-display text-sm font-semibold text-ink">Catraca</h2>
+          <Badge tone={d.liberado ? "ok" : "danger"}>{d.liberado ? "Passa" : "Não passa"}</Badge>
         </div>
         <div className="flex gap-2">
           <button
             type="button"
             onClick={() => void carregar()}
-            className="rounded-md border border-border-strong px-3 py-1.5 text-xs font-semibold uppercase tracking-wide text-muted transition-colors hover:text-ink"
+            className={classeBotao({ variante: "secundario", tamanho: "sm" })}
           >
             Atualizar
           </button>
@@ -82,7 +84,7 @@ export function CatracaDoAluno({ personId }: { personId: string }) {
             type="button"
             onClick={corrigir}
             disabled={corrigindo}
-            className="rounded-md bg-red px-3 py-1.5 text-xs font-semibold uppercase tracking-wide text-white transition-colors hover:bg-red-bright disabled:opacity-60"
+            className={classeBotao({ variante: "primario", tamanho: "sm" })}
           >
             {corrigindo ? "Enviando…" : "Corrigir agora"}
           </button>
@@ -91,13 +93,13 @@ export function CatracaDoAluno({ personId }: { personId: string }) {
 
       <p className="text-sm text-ink">{d.motivo}</p>
       {aviso && <p className="mt-2 text-xs text-ok">{aviso}</p>}
-      {erro && <p className="mt-2 text-xs text-red-bright">{erro}</p>}
+      {erro && <MensagemErro className="mt-2">{erro}</MensagemErro>}
 
       <ul className="mt-4 grid gap-2 sm:grid-cols-2">
         {d.checklist.map((c) => (
           <li key={c.item} className="rounded-lg border border-border px-3 py-2">
             <p className="flex items-center gap-2 text-sm font-medium text-ink">
-              <span aria-hidden className={c.ok ? "text-ok" : "text-red-bright"}>
+              <span aria-hidden className={c.ok ? "text-ok" : "text-danger"}>
                 {c.ok ? "✓" : "✗"}
               </span>
               {c.item}
@@ -115,7 +117,7 @@ export function CatracaDoAluno({ personId }: { personId: string }) {
 
       {d.comandos.length > 0 && (
         <div className="mt-4">
-          <p className="mb-1 text-xs font-medium uppercase tracking-widest text-faint">Últimos comandos ao aparelho</p>
+          <p className="mb-1 text-xs font-medium text-faint">Últimos comandos ao aparelho</p>
           <ul className="divide-y divide-border text-xs">
             {d.comandos.map((c, i) => (
               <li key={i} className="flex flex-wrap items-center justify-between gap-2 py-1.5">
@@ -131,13 +133,13 @@ export function CatracaDoAluno({ personId }: { personId: string }) {
                     c.status === "SUCCEEDED"
                       ? "text-ok"
                       : c.status === "FAILED" || c.status === "DEAD_LETTER"
-                        ? "text-red-bright"
+                        ? "text-danger"
                         : "text-muted"
                   }
                 >
                   {c.status}
                 </span>
-                {c.lastError && <span className="w-full text-red-bright">{c.lastError}</span>}
+                {c.lastError && <span className="w-full text-danger">{c.lastError}</span>}
               </li>
             ))}
           </ul>

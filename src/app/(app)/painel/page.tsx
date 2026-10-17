@@ -70,10 +70,10 @@ export default async function PainelPage() {
     <>
       <Reveal>
         <header className="mb-4">
-          <p className="text-[11px] font-medium uppercase tracking-widest text-red-bright">
+          <p className="text-xs font-medium text-red-bright">
             Visão geral
           </p>
-          <h1 className="mt-0.5 font-display text-2xl font-semibold uppercase tracking-wide text-ink">
+          <h1 className="mt-0.5 font-display text-2xl font-semibold text-ink">
             Painel operacional
           </h1>
         </header>
@@ -84,13 +84,13 @@ export default async function PainelPage() {
           <Stat label="Leads no funil" value={leadsAtivos} hint={`${taxaConversao}% de conversão`} href="/captacao" />
           <Stat label="Alunos ativos" value={ativos} tone="ok" hint={`de ${alunos.length} matrículas`} href="/matriculados" />
           <Stat label="Em aberto" value={formatBRL(valorEmAberto)} tone="warn" hint={`${cobrancas.filter((c) => (c.status === "pendente" || c.status === "atrasado")).length} cobranças`} href="/cobranca" />
-          <Stat label="Risco de evasão" value={ausentes.length} tone="red" hint="ausentes há 7+ dias" href="/matriculados/retencao" />
+          <Stat label="Risco de evasão" value={ausentes.length} tone="danger" hint="ausentes há 7+ dias" href="/matriculados/retencao" />
         </section>
       </Reveal>
 
       <Reveal delay={0.1}>
         <section className="mt-6">
-          <h2 className="mb-4 font-display text-sm font-semibold uppercase tracking-widest text-faint">
+          <h2 className="mb-4 font-display text-sm font-semibold text-faint">
             Pipeline em 4 estágios
           </h2>
           <div className="grid gap-4 md:grid-cols-2">
@@ -102,10 +102,10 @@ export default async function PainelPage() {
                   </span>
                   <div className="flex-1">
                     <div className="flex items-center justify-between">
-                      <h3 className="font-display text-base font-semibold uppercase tracking-wide text-ink">
+                      <h3 className="font-display text-base font-semibold text-ink">
                         {s.title}
                       </h3>
-                      <Badge tone="red">{s.metric}</Badge>
+                      <Badge tone="brand">{s.metric}</Badge>
                     </div>
                     <p className="mt-1 text-xs text-muted">{s.desc}</p>
                   </div>
@@ -119,7 +119,7 @@ export default async function PainelPage() {
       {inadimplentes.length > 0 && (
         <Reveal delay={0.15}>
           <section className="mt-6">
-            <h2 className="mb-4 font-display text-sm font-semibold uppercase tracking-widest text-faint">
+            <h2 className="mb-4 font-display text-sm font-semibold text-faint">
               Atenção imediata
             </h2>
             <Card className="divide-y divide-border">
@@ -129,7 +129,7 @@ export default async function PainelPage() {
                     <p className="text-sm font-medium text-ink">{a.nome}</p>
                     <p className="text-xs text-faint">{a.telefone}</p>
                   </div>
-                  <Badge tone="red">Inadimplente</Badge>
+                  <Badge tone="danger">Inadimplente</Badge>
                 </div>
               ))}
             </Card>
@@ -140,7 +140,7 @@ export default async function PainelPage() {
       {user.role === "ADMIN" && (
         <Reveal delay={0.2}>
           <section className="mt-6">
-            <h2 className="mb-4 font-display text-sm font-semibold uppercase tracking-widest text-faint">
+            <h2 className="mb-4 font-display text-sm font-semibold text-faint">
               Integrações
             </h2>
             <FreelandooTokenCard inicial={await statusTokenFreelandoo()} />

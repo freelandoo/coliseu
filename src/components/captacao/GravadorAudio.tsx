@@ -173,11 +173,11 @@ export function GravadorAudio({
       </button>
 
       <span className="flex flex-1 items-center gap-2">
-        <span className="h-2 w-2 animate-pulse rounded-full bg-red-bright" aria-hidden />
+        <span className="h-2 w-2 animate-pulse rounded-full bg-danger" aria-hidden />
         <span className="font-mono text-sm text-ink" aria-live="off">
           {duracao(segundos)}
         </span>
-        <span className="text-[11px] font-light text-faint">gravando…</span>
+        <span className="text-xs font-light text-faint">gravando…</span>
       </span>
 
       <button
@@ -185,7 +185,7 @@ export function GravadorAudio({
         onClick={() => encerrar(true)}
         title="Enviar áudio"
         aria-label="Enviar áudio"
-        className="shrink-0 rounded-lg bg-red p-2 text-white transition-colors hover:bg-red-bright"
+        className="shrink-0 rounded-lg bg-brand p-2 text-white transition-colors hover:bg-brand-hover"
       >
         <svg
           viewBox="0 0 24 24"

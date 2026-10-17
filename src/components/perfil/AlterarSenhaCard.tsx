@@ -1,14 +1,10 @@
 "use client";
 import { useState } from "react";
 import { Card } from "@/components/ui/primitives";
+import { MensagemErro, classeCampo } from "@/components/ui/Campo";
+import { classeBotao } from "@/components/ui/Botao";
 
-const inputCls =
-  "w-full rounded-lg border border-border bg-surface px-3 py-2 text-sm text-ink " +
-  "placeholder:text-faint outline-none transition-colors focus:border-red/60";
-
-const btnCls =
-  "rounded-lg bg-red px-4 py-2.5 font-display text-xs font-semibold uppercase tracking-widest " +
-  "text-white transition-colors hover:bg-red-bright disabled:opacity-60";
+const btnCls = classeBotao({ variante: "primario" });
 
 export function AlterarSenhaCard() {
   const [senhaAtual, setSenhaAtual] = useState("");
@@ -45,7 +41,7 @@ export function AlterarSenhaCard() {
 
   return (
     <Card className="p-5">
-      <h3 className="font-display text-xl font-semibold uppercase tracking-wide text-ink">
+      <h3 className="font-display text-xl font-semibold text-ink">
         Alterar senha
       </h3>
       <p className="mt-1.5 text-sm text-muted">
@@ -54,7 +50,7 @@ export function AlterarSenhaCard() {
 
       <div className="mt-4 flex max-w-sm flex-col gap-3">
         <input
-          className={inputCls}
+          className={classeCampo}
           type="password"
           placeholder="Senha atual"
           autoComplete="current-password"
@@ -62,7 +58,7 @@ export function AlterarSenhaCard() {
           onChange={(e) => setSenhaAtual(e.target.value)}
         />
         <input
-          className={inputCls}
+          className={classeCampo}
           type="password"
           placeholder="Nova senha (mín. 8 caracteres)"
           autoComplete="new-password"
@@ -70,7 +66,7 @@ export function AlterarSenhaCard() {
           onChange={(e) => setNovaSenha(e.target.value)}
         />
         <input
-          className={inputCls}
+          className={classeCampo}
           type="password"
           placeholder="Confirmar nova senha"
           autoComplete="new-password"
@@ -79,7 +75,7 @@ export function AlterarSenhaCard() {
         />
       </div>
 
-      {erro && <p className="mt-3 text-xs text-red-bright">{erro}</p>}
+      {erro && <MensagemErro className="mt-3">{erro}</MensagemErro>}
       {ok && <p className="mt-3 text-xs text-ok">Senha alterada com sucesso.</p>}
 
       <button

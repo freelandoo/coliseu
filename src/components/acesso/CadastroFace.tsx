@@ -3,6 +3,8 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { Card, Badge } from "@/components/ui/primitives";
+import { classeBotao } from "@/components/ui/Botao";
+import { MensagemErro } from "@/components/ui/Campo";
 
 export interface AlunoFaceOpcao {
   id: string;
@@ -53,7 +55,7 @@ export function CadastroFace({ alunos, devices }: { alunos: AlunoFaceOpcao[]; de
 
   return (
     <section>
-      <h2 className="mb-4 font-display text-sm font-semibold uppercase tracking-widest text-faint">
+      <h2 className="mb-4 font-display text-sm font-semibold text-faint">
         Cadastro de face
       </h2>
       <Card className="p-5">
@@ -65,7 +67,7 @@ export function CadastroFace({ alunos, devices }: { alunos: AlunoFaceOpcao[]; de
 
         <div className="flex flex-col gap-3 sm:flex-row sm:items-end">
           <label className="flex-1">
-            <span className="text-xs font-semibold uppercase tracking-widest text-faint">Aluno</span>
+            <span className="text-xs font-semibold text-faint">Aluno</span>
             <select
               value={personId}
               onChange={(e) => { setPersonId(e.target.value); setErro(""); setOkMsg(""); }}
@@ -81,7 +83,7 @@ export function CadastroFace({ alunos, devices }: { alunos: AlunoFaceOpcao[]; de
           </label>
 
           <label className="flex-1">
-            <span className="text-xs font-semibold uppercase tracking-widest text-faint">Catraca</span>
+            <span className="text-xs font-semibold text-faint">Catraca</span>
             <select
               value={deviceId}
               onChange={(e) => { setDeviceId(e.target.value); setErro(""); setOkMsg(""); }}
@@ -96,16 +98,16 @@ export function CadastroFace({ alunos, devices }: { alunos: AlunoFaceOpcao[]; de
             </select>
           </label>
 
-          <button
+          <button type="button"
             onClick={cadastrar}
             disabled={enviando || !personId || !deviceId}
-            className="rounded-lg bg-red px-5 py-2.5 font-display text-sm font-semibold uppercase tracking-widest text-white transition-colors hover:bg-red-bright disabled:opacity-60"
+            className={classeBotao({ variante: "primario" })}
           >
             {enviando ? "Enviando…" : "Cadastrar face"}
           </button>
         </div>
 
-        {erro && <p className="mt-4 text-xs text-red-bright">{erro}</p>}
+        {erro && <MensagemErro className="mt-4">{erro}</MensagemErro>}
         {okMsg && (
           <div className="mt-4 flex items-center gap-2">
             <Badge tone="ok">ENROLL enviado</Badge>

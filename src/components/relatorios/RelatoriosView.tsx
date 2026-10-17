@@ -6,9 +6,11 @@ import { useGSAP } from "@gsap/react";
 import { Card } from "@/components/ui/primitives";
 import { cn } from "@/lib/cn";
 import { formatBRL } from "@/lib/mock-data";
+import { prefereMovimentoReduzido } from "@/lib/movimento";
 import type { PontoMensal } from "@/lib/types";
 
-export type Tone = "red" | "ok" | "warn" | "neutral";
+/** `brand` = destaque de identidade; `danger` = atraso, risco, saída de caixa. */
+export type Tone = "brand" | "danger" | "ok" | "warn" | "neutral";
 
 export interface BarDatum {
   label: string;
@@ -36,17 +38,21 @@ export interface RelatoriosData {
   retencaoCoorte: BarDatum[]; // #2 curva de retenção por coorte (% ainda ativo)
 }
 
+// Preenchimento tingido + borda sólida no fim da barra: o valor (grafite) fica
+// legível mesmo quando a barra ocupa a largura toda.
 const BAR_TONE: Record<Tone, string> = {
-  red: "bg-gradient-to-r from-red-deep to-red-bright",
-  ok: "bg-gradient-to-r from-[#2c6f4c] to-ok",
-  warn: "bg-gradient-to-r from-[#8a6a24] to-warn",
-  neutral: "bg-gradient-to-r from-elevated to-border-strong",
+  brand: "bg-brand/20 shadow-[inset_-3px_0_0_var(--color-brand)]",
+  danger: "bg-danger/20 shadow-[inset_-3px_0_0_var(--color-danger)]",
+  ok: "bg-success/20 shadow-[inset_-3px_0_0_var(--color-success)]",
+  warn: "bg-warning/20 shadow-[inset_-3px_0_0_var(--color-warning)]",
+  neutral: "bg-border-strong/60 shadow-[inset_-3px_0_0_var(--color-control)]",
 };
 
 const KPI_TONE: Record<Tone, string> = {
-  red: "text-red-bright",
-  ok: "text-ok",
-  warn: "text-warn",
+  brand: "text-brand",
+  danger: "text-danger",
+  ok: "text-success",
+  warn: "text-warning",
   neutral: "text-ink",
 };
 
@@ -62,7 +68,7 @@ function fmtInt(v: number) {
 }
 const FORMATADOR = { moeda: fmtMoeda, pct: fmtPct, int: fmtInt } as const;
 
-/* ---------- número com count-up ---------- */
+/* ---------- número com count-up (estático em movimento reduzido) ---------- */
 function CountUp({
   value,
   formato,
@@ -75,7 +81,9 @@ function CountUp({
 
   useGSAP(
     () => {
+      if (prefereMovimentoReduzido() || !ref.current) return;
       const alvo = { v: 0 };
+      ref.current.textContent = fmt(0);
       gsap.to(alvo, {
         v: value,
         duration: 1.1,
@@ -88,7 +96,7 @@ function CountUp({
     { dependencies: [value] },
   );
 
-  return <span ref={ref}>{fmt(0)}</span>;
+  return <span ref={ref}>{fmt(value)}</span>;
 }
 
 /* ---------- gráfico de barras horizontais ---------- */
@@ -106,6 +114,7 @@ function BarChart({
 
   useGSAP(
     () => {
+      if (prefereMovimentoReduzido()) return;
       gsap.from("[data-bar-fill]", {
         scaleX: 0,
         transformOrigin: "left center",
@@ -121,7 +130,7 @@ function BarChart({
     <div ref={ref} className="flex flex-col gap-3">
       {data.map((d) => (
         <div key={d.label} className="flex items-center gap-3">
-          <span className="w-24 shrink-0 truncate text-xs font-medium uppercase tracking-wide text-muted">
+          <span className="w-28 shrink-0 truncate text-xs font-medium text-muted" title={d.label}>
             {d.label}
           </span>
           <div className="relative h-7 flex-1 overflow-hidden rounded-md bg-surface-2">
@@ -130,7 +139,7 @@ function BarChart({
               className={cn("h-full rounded-md", BAR_TONE[d.tone])}
               style={{ width: `${(Math.max(d.valor, 0) / max) * 100}%` }}
             />
-            <span className="absolute right-2 top-1/2 -translate-y-1/2 text-xs font-semibold text-ink">
+            <span className="absolute right-2 top-1/2 -translate-y-1/2 text-xs font-semibold text-ink tabular-nums">
               {moeda ? formatBRL(d.valor) : `${d.valor}${sufixo}`}
             </span>
           </div>
@@ -175,6 +184,7 @@ function LineChart({ serie }: { serie: PontoMensal[] }) {
 
   useGSAP(
     () => {
+      if (prefereMovimentoReduzido()) return;
       for (const path of [receitaRef.current, churnRef.current]) {
         if (!path) continue;
         const len = path.getTotalLength();
@@ -197,13 +207,13 @@ function LineChart({ serie }: { serie: PontoMensal[] }) {
   return (
     <div>
       {/* legenda */}
-      <div className="mb-3 flex items-center gap-4 text-[11px] uppercase tracking-wide text-muted">
+      <div className="mb-3 flex items-center gap-4 text-xs text-muted">
         <span className="flex items-center gap-1.5">
-          <span className="inline-block h-2 w-2 rounded-full bg-red-bright" />
+          <span className="inline-block h-2 w-2 rounded-full bg-brand" />
           Receita
         </span>
         <span className="flex items-center gap-1.5">
-          <span className="inline-block h-2 w-2 rounded-full bg-warn" />
+          <span className="inline-block h-2 w-2 rounded-full bg-warning" />
           Cancelamentos
         </span>
       </div>
@@ -211,8 +221,8 @@ function LineChart({ serie }: { serie: PontoMensal[] }) {
       <svg ref={ref} viewBox={`0 0 ${W} ${H}`} className="w-full">
         <defs>
           <linearGradient id="grad-receita" x1="0" y1="0" x2="0" y2="1">
-            <stop offset="0%" stopColor="var(--color-red-bright)" stopOpacity="0.35" />
-            <stop offset="100%" stopColor="var(--color-red-bright)" stopOpacity="0" />
+            <stop offset="0%" stopColor="var(--color-brand)" stopOpacity="0.18" />
+            <stop offset="100%" stopColor="var(--color-brand)" stopOpacity="0" />
           </linearGradient>
         </defs>
 
@@ -223,7 +233,7 @@ function LineChart({ serie }: { serie: PontoMensal[] }) {
           ref={churnRef}
           d={linhaChurn}
           fill="none"
-          stroke="var(--color-warn)"
+          stroke="var(--color-warning)"
           strokeWidth={2}
           strokeDasharray="1 0"
           strokeLinecap="round"
@@ -237,7 +247,7 @@ function LineChart({ serie }: { serie: PontoMensal[] }) {
             cx={x(i)}
             cy={yChurn(p.cancelamentos)}
             r={3}
-            fill="var(--color-warn)"
+            fill="var(--color-warning)"
           />
         ))}
 
@@ -246,7 +256,7 @@ function LineChart({ serie }: { serie: PontoMensal[] }) {
           ref={receitaRef}
           d={linhaRec}
           fill="none"
-          stroke="var(--color-red-bright)"
+          stroke="var(--color-brand)"
           strokeWidth={2.5}
           strokeLinecap="round"
           strokeLinejoin="round"
@@ -258,14 +268,14 @@ function LineChart({ serie }: { serie: PontoMensal[] }) {
             cx={x(i)}
             cy={yRec(p.receita)}
             r={4}
-            fill="var(--color-bg)"
-            stroke="var(--color-red-bright)"
+            fill="var(--color-surface)"
+            stroke="var(--color-brand)"
             strokeWidth={2}
           />
         ))}
       </svg>
 
-      <div className="mt-1 flex justify-between px-1 text-[11px] uppercase tracking-wide text-faint">
+      <div className="mt-1 flex justify-between px-1 text-xs text-faint">
         {serie.map((p) => (
           <span key={p.mes}>{p.mes}</span>
         ))}
@@ -281,6 +291,7 @@ function BarrasVerticais({ serie }: { serie: PontoMensal[] }) {
 
   useGSAP(
     () => {
+      if (prefereMovimentoReduzido()) return;
       gsap.from("[data-vbar]", {
         scaleY: 0,
         transformOrigin: "bottom center",
@@ -296,15 +307,15 @@ function BarrasVerticais({ serie }: { serie: PontoMensal[] }) {
     <div ref={ref} className="flex h-48 items-stretch justify-between gap-3">
       {serie.map((p) => (
         <div key={p.mes} className="flex flex-1 flex-col items-center gap-1">
-          <span className="text-xs font-semibold text-ink">{p.matriculas}</span>
+          <span className="text-xs font-semibold text-ink tabular-nums">{p.matriculas}</span>
           <div className="relative w-full flex-1">
             <div
               data-vbar
-              className="absolute bottom-0 w-full rounded-t bg-gradient-to-t from-red-deep to-red-bright"
+              className="absolute bottom-0 w-full rounded-t bg-brand"
               style={{ height: `${(p.matriculas / max) * 100}%` }}
             />
           </div>
-          <span className="text-[11px] uppercase tracking-wide text-faint">
+          <span className="text-xs text-faint">
             {p.mes}
           </span>
         </div>
@@ -330,7 +341,7 @@ function ChartCard({
 }) {
   return (
     <Card className={cn("p-5", className)}>
-      <h3 className="font-display text-sm font-semibold uppercase tracking-widest text-ink">
+      <h3 className="text-base font-semibold text-ink">
         {titulo}
       </h3>
       <p className="mb-4 mt-0.5 text-xs text-faint">{descricao}</p>
@@ -345,6 +356,7 @@ export function RelatoriosView({ data }: { data: RelatoriosData }) {
 
   useGSAP(
     () => {
+      if (prefereMovimentoReduzido()) return;
       gsap.from("[data-kpi]", {
         opacity: 0,
         y: 16,
@@ -367,7 +379,7 @@ export function RelatoriosView({ data }: { data: RelatoriosData }) {
             data-kpi
             className="grid grid-cols-[1fr_auto] items-center gap-x-3 p-4 sm:block"
           >
-            <p className="col-start-1 row-start-1 text-[11px] font-medium uppercase tracking-widest text-faint">
+            <p className="col-start-1 row-start-1 text-sm font-medium text-muted">
               {k.label}
             </p>
             <p
@@ -379,7 +391,7 @@ export function RelatoriosView({ data }: { data: RelatoriosData }) {
             >
               <CountUp value={k.valor} formato={k.formato} />
             </p>
-            <p className="col-start-1 row-start-2 mt-0.5 text-xs text-muted sm:mt-1.5">
+            <p className="col-start-1 row-start-2 mt-0.5 text-xs text-faint sm:mt-2">
               {k.hint}
             </p>
           </Card>
@@ -436,13 +448,13 @@ export function RelatoriosView({ data }: { data: RelatoriosData }) {
         <Card className="p-5">
           <div className="flex items-baseline justify-between">
             <div>
-              <h3 className="font-display text-sm font-semibold uppercase tracking-widest text-ink">
+              <h3 className="text-base font-semibold text-ink">
                 Evolução da receita
               </h3>
               <p className="mt-0.5 text-xs text-faint">MRR nos últimos meses</p>
             </div>
             {data.serie.length > 0 && (
-              <span className="font-display text-2xl font-semibold text-red-bright tabular-nums">
+              <span className="font-display text-2xl font-semibold text-brand tabular-nums">
                 {fmtMoeda(data.serie[data.serie.length - 1].receita)}
               </span>
             )}
@@ -453,7 +465,7 @@ export function RelatoriosView({ data }: { data: RelatoriosData }) {
         </Card>
 
         <Card className="p-5">
-          <h3 className="font-display text-sm font-semibold uppercase tracking-widest text-ink">
+          <h3 className="text-base font-semibold text-ink">
             Novas matrículas
           </h3>
           <p className="mb-4 mt-0.5 text-xs text-faint">Por mês</p>

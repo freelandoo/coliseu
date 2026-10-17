@@ -2,9 +2,10 @@
 
 import { useEffect, useRef, useState } from "react";
 import { Badge, Card } from "@/components/ui/primitives";
-import { Modal } from "@/components/ui/Modal";
+import { Modal, TituloModal } from "@/components/ui/Modal";
 import { cn } from "@/lib/cn";
 import { INTERESSE_LABEL, type ConversaBackupItem, type MensagemItem } from "@/lib/types";
+import { classeBotao } from "@/components/ui/Botao";
 
 /** "2026-08-03" — o que o <input type="date"> espera. */
 function paraInput(d: Date): string {
@@ -101,7 +102,7 @@ export function BackupView({ inicial }: { inicial: ConversaBackupItem[] }) {
   return (
     <div className="flex flex-col gap-4">
       <Card className="flex flex-wrap items-end gap-4 p-4">
-        <label className="flex flex-col gap-1 text-[11px] uppercase tracking-widest text-faint">
+        <label className="flex flex-col gap-1 text-xs text-faint">
           Excluídas de
           <input
             type="date"
@@ -111,7 +112,7 @@ export function BackupView({ inicial }: { inicial: ConversaBackupItem[] }) {
             className="rounded-lg border border-border bg-surface-2 px-3 py-2 text-sm normal-case tracking-normal text-ink"
           />
         </label>
-        <label className="flex flex-col gap-1 text-[11px] uppercase tracking-widest text-faint">
+        <label className="flex flex-col gap-1 text-xs text-faint">
           até
           <input
             type="date"
@@ -139,7 +140,7 @@ export function BackupView({ inicial }: { inicial: ConversaBackupItem[] }) {
       </Card>
 
       {erro && (
-        <p className="rounded-lg border border-red/40 bg-red-ghost px-4 py-3 text-sm text-red-bright">
+        <p className="rounded-lg border border-danger/ bg-danger-soft px-4 py-3 text-sm text-danger">
           {erro}
         </p>
       )}
@@ -158,7 +159,7 @@ export function BackupView({ inicial }: { inicial: ConversaBackupItem[] }) {
               <div className="min-w-0 flex-1">
                 <p className="flex flex-wrap items-center gap-2 text-sm font-medium text-ink">
                   {b.nome}
-                  <Badge tone={b.motivo === "remover" ? "red" : "neutral"}>
+                  <Badge tone={b.motivo === "remover" ? "danger" : "neutral"}>
                     {b.motivo === "remover" ? "Removida" : "Limpa"}
                   </Badge>
                   {b.restauradoEm && <Badge tone="ok">Restaurada</Badge>}
@@ -171,7 +172,7 @@ export function BackupView({ inicial }: { inicial: ConversaBackupItem[] }) {
                 {b.preview && <p className="mt-1 truncate text-xs text-muted">{b.preview}</p>}
               </div>
 
-              <div className="text-right text-[11px] text-faint">
+              <div className="text-right text-xs text-faint">
                 <p>{dataHora(b.excluidoEm)}</p>
                 <p>por {b.excluidoPor}</p>
               </div>
@@ -180,7 +181,7 @@ export function BackupView({ inicial }: { inicial: ConversaBackupItem[] }) {
                 <button
                   type="button"
                   onClick={() => setEspiando(b)}
-                  className="text-[11px] font-medium text-faint transition-colors hover:text-ink"
+                  className="text-xs font-medium text-faint transition-colors hover:text-ink"
                 >
                   Ver
                 </button>
@@ -189,7 +190,7 @@ export function BackupView({ inicial }: { inicial: ConversaBackupItem[] }) {
                   disabled={!!b.restauradoEm}
                   onClick={() => setConfirmando(b)}
                   className={cn(
-                    "text-[11px] font-medium transition-colors",
+                    "text-xs font-medium transition-colors",
                     b.restauradoEm
                       ? "cursor-not-allowed text-faint/50"
                       : "text-faint hover:text-ok",
@@ -207,9 +208,9 @@ export function BackupView({ inicial }: { inicial: ConversaBackupItem[] }) {
 
       {confirmando && (
         <Modal onFechar={() => setConfirmando(null)}>
-          <h3 className="font-display text-lg font-semibold uppercase tracking-wide text-ink">
+          <TituloModal>
             Restaurar conversa
-          </h3>
+          </TituloModal>
           <p className="mt-2 text-sm text-muted">
             Devolve <strong className="text-ink">{confirmando.nome}</strong> ao atendimento com{" "}
             {confirmando.mensagens} mensagem(ns).
@@ -220,15 +221,15 @@ export function BackupView({ inicial }: { inicial: ConversaBackupItem[] }) {
               : "As mensagens voltam para a conversa que ficou na lista."}
           </p>
           <div className="mt-5 flex gap-3">
-            <button
+            <button type="button"
               onClick={() => restaurar(confirmando)}
-              className="flex-1 rounded-lg bg-red px-4 py-2.5 font-display text-sm font-semibold uppercase tracking-widest text-white transition-colors hover:bg-red-bright"
+              className={cn(classeBotao({ variante: "primario" }), "flex-1")}
             >
               Restaurar
             </button>
-            <button
+            <button type="button"
               onClick={() => setConfirmando(null)}
-              className="rounded-lg border border-border-strong px-4 py-2.5 text-sm font-medium text-muted transition-colors hover:text-ink"
+              className={classeBotao({ variante: "secundario" })}
             >
               Cancelar
             </button>
@@ -258,9 +259,9 @@ function Espiar({ backup, onFechar }: { backup: ConversaBackupItem; onFechar: ()
 
   return (
     <Modal onFechar={onFechar} className="max-w-lg">
-      <h3 className="font-display text-lg font-semibold uppercase tracking-wide text-ink">
+      <TituloModal>
         {backup.nome}
-      </h3>
+      </TituloModal>
       <p className="mt-1 text-xs text-faint">
         {backup.motivo === "remover" ? "Removida" : "Limpa"} em {dataHora(backup.excluidoEm)} por{" "}
         {backup.excluidoPor}
@@ -283,18 +284,18 @@ function Espiar({ backup, onFechar }: { backup: ConversaBackupItem; onFechar: ()
                     : "self-end border-red/40 bg-red-ghost text-ink",
                 )}
               >
-                {m.remetente && <p className="text-[10px] text-faint">{m.remetente}</p>}
+                {m.remetente && <p className="text-xs text-faint">{m.remetente}</p>}
                 <p className="whitespace-pre-wrap break-words">{m.texto}</p>
-                <p className="mt-1 text-[10px] text-faint">{dataHora(m.enviadaEm)}</p>
+                <p className="mt-1 text-xs text-faint">{dataHora(m.enviadaEm)}</p>
               </div>
             ))}
           </div>
         )}
       </div>
 
-      <button
+      <button type="button"
         onClick={onFechar}
-        className="mt-5 w-full rounded-lg border border-border-strong px-4 py-2.5 text-sm font-medium text-muted transition-colors hover:text-ink"
+        className={cn(classeBotao({ variante: "secundario", bloco: true }), "mt-5")}
       >
         Fechar
       </button>

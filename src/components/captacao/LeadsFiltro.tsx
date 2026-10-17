@@ -53,7 +53,7 @@ export function LeadsFiltro({ leads, planos }: { leads: Lead[]; planos: Plano[] 
         {chips.map((chip) => {
           const ativo = filtro === chip.key;
           return (
-            <button
+            <button type="button"
               key={chip.key}
               onClick={() => setFiltro(chip.key)}
               className={cn(
@@ -66,10 +66,10 @@ export function LeadsFiltro({ leads, planos }: { leads: Lead[]; planos: Plano[] 
               {/* A bandeira do estágio na frente do nome — a mesma que
                   classifica a conversa no Atendimento. "Todos" não tem. */}
               {chip.key !== "todos" && <Bandeira estagio={chip.key} />}
-              <span className="uppercase tracking-wide">{chip.label}</span>
+              <span className="">{chip.label}</span>
               <span
                 className={cn(
-                  "flex h-4 min-w-4 items-center justify-center rounded-md px-1 text-[10px] font-semibold sm:h-5 sm:min-w-5 sm:text-xs",
+                  "flex h-4 min-w-4 items-center justify-center rounded-md px-1 text-xs font-semibold sm:h-5 sm:min-w-5 sm:text-xs",
                   ativo
                     ? "bg-red text-white"
                     : "bg-surface-2 text-faint",
@@ -104,13 +104,13 @@ export function LeadsFiltro({ leads, planos }: { leads: Lead[]; planos: Plano[] 
                       <p className="mt-0.5 text-xs text-faint">{lead.motivoPerdido}</p>
                     )}
                   </div>
-                  <span className="inline-flex shrink-0 items-center gap-1.5 text-[11px] font-medium text-muted">
+                  <span className="inline-flex shrink-0 items-center gap-1.5 text-xs font-medium text-muted">
                     <Bandeira estagio={lead.estagio} />
                     {LEAD_ESTAGIO_LABEL[lead.estagio]}
                   </span>
                 </div>
                 <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-1.5">
-                  <span className="inline-flex items-center gap-2 text-[11px] text-faint">
+                  <span className="inline-flex items-center gap-2 text-xs text-faint">
                     <Badge>{ORIGEM_LABEL[lead.origem]}</Badge>
                     {formatData(lead.criadoEm)}
                   </span>
@@ -221,7 +221,7 @@ function Th({
   return (
     <th
       className={cn(
-        "px-4 py-3 text-xs font-semibold uppercase tracking-widest text-faint",
+        "px-4 py-3 text-xs font-semibold text-faint",
         className,
       )}
     >

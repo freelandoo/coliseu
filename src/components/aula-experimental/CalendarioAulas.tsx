@@ -4,6 +4,7 @@ import { useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { gsap } from "gsap";
 import { useGSAP } from "@gsap/react";
+import { prefereMovimentoReduzido } from "@/lib/movimento";
 import { Badge, Card } from "@/components/ui/primitives";
 import { cn } from "@/lib/cn";
 import { formatarDataCompleta, formatarHora, OBSERVACAO_MAX } from "@/lib/aula-experimental";
@@ -17,6 +18,7 @@ import {
   semanasDoMes,
 } from "@/lib/calendario";
 import type { AulaExperimentalItem } from "@/lib/types";
+import { classeBotao } from "@/components/ui/Botao";
 
 /**
  * A agenda da Captação vista como mês.
@@ -60,6 +62,7 @@ export function CalendarioAulas({
   // que dá ao usuário o sentido de "página nova" sem piscar a tela.
   useGSAP(
     () => {
+      if (prefereMovimentoReduzido()) return;
       gsap.from("[data-dia]", {
         opacity: 0,
         y: 8,
@@ -81,6 +84,7 @@ export function CalendarioAulas({
   // separado da entrada do mês para não reanimar a grade inteira a cada dia.
   useGSAP(
     () => {
+      if (prefereMovimentoReduzido()) return;
       gsap.fromTo(
         "[data-marca-selecao]",
         { scale: 0.7, opacity: 0.4 },
@@ -92,6 +96,7 @@ export function CalendarioAulas({
 
   useGSAP(
     () => {
+      if (prefereMovimentoReduzido()) return;
       gsap.from("[data-agendamento]", {
         opacity: 0,
         y: 12,
@@ -136,11 +141,11 @@ export function CalendarioAulas({
             <div className="min-w-0 text-center">
               <p
                 data-mes-rotulo
-                className="truncate font-display text-base font-semibold uppercase tracking-widest text-ink sm:text-lg"
+                className="truncate font-display text-base font-semibold text-ink sm:text-lg"
               >
                 {rotuloMes(ancora.ano, ancora.mes)}
               </p>
-              <p className="mt-0.5 text-[11px] text-faint">
+              <p className="mt-0.5 text-xs text-faint">
                 {noMes === 0
                   ? "nenhuma aula marcada"
                   : `${noMes} aula${noMes > 1 ? "s" : ""} marcada${noMes > 1 ? "s" : ""}`}
@@ -154,7 +159,7 @@ export function CalendarioAulas({
               <span
                 key={i}
                 aria-hidden
-                className="pb-1 text-center text-[11px] font-semibold uppercase tracking-widest text-faint"
+                className="pb-1 text-center text-xs font-semibold text-faint"
               >
                 {inicial}
               </span>
@@ -222,7 +227,7 @@ export function CalendarioAulas({
           <button
             type="button"
             onClick={voltarParaHoje}
-            className="mt-3 w-full rounded-lg border border-border px-3 py-2 text-xs font-semibold uppercase tracking-widest text-muted transition-colors hover:border-border-strong hover:text-ink"
+            className="mt-3 w-full rounded-lg border border-border px-3 py-2 text-xs font-semibold text-muted transition-colors hover:border-border-strong hover:text-ink"
           >
             Voltar para hoje
           </button>
@@ -231,7 +236,7 @@ export function CalendarioAulas({
 
       <div ref={listaRef} className="flex flex-col gap-3">
         <div className="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-1">
-          <h2 className="font-display text-sm font-semibold uppercase tracking-widest text-ink">
+          <h2 className="font-display text-sm font-semibold text-ink">
             {selecionado === hoje ? "Hoje" : formatarDataCompleta(selecionado)}
           </h2>
           <span className="text-xs text-faint">
@@ -360,7 +365,7 @@ function ObservacaoCampo({ aula }: { aula: AulaExperimentalItem }) {
     <div className="mt-3 border-t border-border pt-3">
       <label
         htmlFor={`obs-${aula.id}`}
-        className="text-[11px] font-semibold uppercase tracking-widest text-faint"
+        className="text-xs font-semibold text-faint"
       >
         Observações
       </label>
@@ -375,7 +380,7 @@ function ObservacaoCampo({ aula }: { aula: AulaExperimentalItem }) {
       />
 
       <div className="mt-1.5 flex flex-wrap items-center justify-between gap-x-3 gap-y-1">
-        <span className={cn("text-[11px]", excedeu ? "text-red-bright" : "text-faint")}>
+        <span className={cn("text-xs", excedeu ? "text-danger" : "text-faint")}>
           {erro
             ? ""
             : mudou
@@ -384,14 +389,14 @@ function ObservacaoCampo({ aula }: { aula: AulaExperimentalItem }) {
                 ? "salvo"
                 : `${texto.trim().length}/${OBSERVACAO_MAX}`}
         </span>
-        {erro && <span className="text-[11px] text-red-bright">{erro}</span>}
+        {erro && <span className="text-xs text-danger">{erro}</span>}
 
         {mudou && (
           <button
             type="button"
             onClick={salvar}
             disabled={salvando || excedeu}
-            className="rounded-lg border border-red/50 px-3 py-1.5 text-xs font-semibold uppercase tracking-widest text-red-bright transition-colors hover:bg-red-ghost disabled:opacity-60"
+            className={classeBotao({ variante: "contorno", tamanho: "sm" })}
           >
             {salvando ? "Salvando…" : "Salvar"}
           </button>

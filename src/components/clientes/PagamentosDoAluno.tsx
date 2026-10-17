@@ -3,6 +3,8 @@
 import { useCallback, useEffect, useState } from "react";
 import { Badge, Card } from "@/components/ui/primitives";
 import { formatBRL, formatData } from "@/lib/mock-data";
+import { classeBotao } from "@/components/ui/Botao";
+import { MensagemErro, classeCampo, classeRotulo } from "@/components/ui/Campo";
 
 type Pagamento = {
   id: string;
@@ -18,12 +20,12 @@ type Pagamento = {
 };
 type Assinatura = { valor: number; status: string; asaasId: string } | null;
 
-const STATUS: Record<Pagamento["status"], { rotulo: string; tom: "ok" | "warn" | "red" | "neutral" }> = {
+const STATUS: Record<Pagamento["status"], { rotulo: string; tom: "ok" | "warn" | "danger" | "neutral" }> = {
   PAID: { rotulo: "Pago", tom: "ok" },
   PENDING: { rotulo: "Pendente", tom: "neutral" },
-  OVERDUE: { rotulo: "Vencido", tom: "red" },
+  OVERDUE: { rotulo: "Vencido", tom: "danger" },
   REFUNDED: { rotulo: "Estornado", tom: "warn" },
-  CHARGEBACK: { rotulo: "Chargeback", tom: "red" },
+  CHARGEBACK: { rotulo: "Chargeback", tom: "danger" },
   CANCELED: { rotulo: "Cancelado", tom: "neutral" },
 };
 
@@ -46,12 +48,7 @@ function formaLegivel(p: Pagamento): string {
   }
 }
 
-const inputCls =
-  "w-full rounded-lg border border-border bg-surface px-3 py-2 text-sm text-ink " +
-  "placeholder:text-faint outline-none transition-colors focus:border-red/60";
-const btnGhost =
-  "rounded-md border border-border-strong px-3 py-1.5 text-xs font-semibold uppercase tracking-wide " +
-  "text-muted transition-colors hover:text-ink disabled:opacity-60";
+const btnGhost = classeBotao({ variante: "secundario", tamanho: "sm" });
 
 export function PagamentosDoAluno({
   personId,
@@ -157,7 +154,7 @@ export function PagamentosDoAluno({
   return (
     <Card className="p-6">
       <div className="mb-4 flex flex-wrap items-center justify-between gap-2">
-        <h2 className="font-display text-sm font-semibold uppercase tracking-widest text-ink">
+        <h2 className="font-display text-sm font-semibold text-ink">
           Pagamentos
         </h2>
         {podeGerir && (
@@ -190,46 +187,46 @@ export function PagamentosDoAluno({
 
       {novaAberta && (
         <div className="mb-4 grid gap-2 rounded-lg border border-border bg-surface-2 p-3 sm:grid-cols-[1fr_1fr_2fr_auto] sm:items-end">
-          <div>
-            <label className="mb-1 block text-xs font-medium text-muted">Valor (R$)</label>
+          <label className="block">
+            <span className={classeRotulo}>Valor (R$)</span>
             <input
               inputMode="decimal"
               value={nova.valor}
               onChange={(e) => setNova((n) => ({ ...n, valor: e.target.value }))}
               placeholder="0,00"
-              className={inputCls}
+              className={classeCampo}
             />
-          </div>
-          <div>
-            <label className="mb-1 block text-xs font-medium text-muted">Vencimento</label>
+          </label>
+          <label className="block">
+            <span className={classeRotulo}>Vencimento</span>
             <input
               type="date"
               value={nova.vencimento}
               onChange={(e) => setNova((n) => ({ ...n, vencimento: e.target.value }))}
-              className={inputCls}
+              className={classeCampo}
             />
-          </div>
-          <div>
-            <label className="mb-1 block text-xs font-medium text-muted">Descrição (o aluno vê)</label>
+          </label>
+          <label className="block">
+            <span className={classeRotulo}>Descrição (o aluno vê)</span>
             <input
               value={nova.descricao}
               onChange={(e) => setNova((n) => ({ ...n, descricao: e.target.value }))}
               placeholder="Ex.: taxa do cartão de acesso"
-              className={inputCls}
+              className={classeCampo}
             />
-          </div>
+          </label>
           <button
             type="button"
             onClick={gerarAvulsa}
             disabled={ocupado || !nova.valor || !nova.vencimento || !nova.descricao.trim()}
-            className="rounded-lg bg-red px-4 py-2 font-display text-xs font-semibold uppercase tracking-widest text-white transition-colors hover:bg-red-bright disabled:opacity-60"
+            className={classeBotao({ variante: "primario", tamanho: "sm" })}
           >
             {ocupado ? "Gerando…" : "Gerar"}
           </button>
         </div>
       )}
 
-      {erro && <p className="mb-3 text-xs text-red-bright">{erro}</p>}
+      {erro && <MensagemErro className="mb-3">{erro}</MensagemErro>}
 
       {pagamentos === null ? (
         <p className="text-sm text-faint">Carregando…</p>

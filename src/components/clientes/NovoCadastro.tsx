@@ -2,19 +2,17 @@
 
 import { useRouter } from "next/navigation";
 import { useState } from "react";
-import { Modal } from "@/components/ui/Modal";
+import { Modal, TituloModal } from "@/components/ui/Modal";
 import { cn } from "@/lib/cn";
 import { formatBRL } from "@/lib/mock-data";
 import { ORIGEM_LABEL, type Endereco, type Origem, type Plano } from "@/lib/types";
+import { classeBotao } from "@/components/ui/Botao";
+import { MensagemErro, classeCampo, classeRotulo } from "@/components/ui/Campo";
 
 const ORIGENS = Object.entries(ORIGEM_LABEL) as [Origem, string][];
 
 const soDigitos = (s: string) => s.replace(/\D/g, "");
 const emailValido = (s: string) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(s.trim());
-
-const inputCls =
-  "w-full rounded-lg border border-border bg-surface px-3 py-2 text-sm text-ink " +
-  "placeholder:text-faint outline-none transition-colors focus:border-red/60";
 
 interface FormState {
   nome: string;
@@ -83,7 +81,7 @@ export function NovoCadastro({
         type="button"
         onClick={() => setAberto(true)}
         className={cn(
-          "font-display font-semibold uppercase tracking-wide transition-colors",
+          "font-display font-semibold transition-colors",
           compacto
             ? "rounded-md bg-red px-3 py-1.5 text-xs text-white hover:bg-red-bright"
             : "rounded-lg bg-red px-4 py-2.5 text-sm tracking-widest text-white hover:bg-red-bright",
@@ -251,9 +249,9 @@ function ModalCadastro({
         {sucesso ? (
           <div className="text-center">
             <span className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-ok/15 text-2xl text-ok">✓</span>
-            <h3 className="mt-4 font-display text-xl font-semibold uppercase tracking-wide text-ink">
+            <TituloModal className="mt-4">
               Matriculado com sucesso
-            </h3>
+            </TituloModal>
             <p className="mt-1 text-sm text-muted">
               {sucesso.nome} · {sucesso.planoNome}
             </p>
@@ -265,23 +263,23 @@ function ModalCadastro({
                 href={sucesso.waLink ?? sucesso.linkPagamento}
                 target="_blank"
                 rel="noreferrer"
-                className="mt-5 block rounded-lg bg-red px-4 py-3 font-display text-sm font-semibold uppercase tracking-widest text-white transition-colors hover:bg-red-bright"
+                className={cn(classeBotao({ variante: "primario", tamanho: "lg" }), "mt-5")}
               >
                 {sucesso.waLink ? "Enviar link de pagamento no WhatsApp" : "Abrir link de pagamento"}
               </a>
             )}
-            <button
+            <button type="button"
               onClick={onCriado}
-              className="mt-3 w-full rounded-lg border border-border-strong px-4 py-2.5 text-sm font-semibold uppercase tracking-widest text-muted transition-colors hover:text-ink"
+              className={cn(classeBotao({ variante: "secundario", bloco: true }), "mt-3")}
             >
               Concluir
             </button>
           </div>
         ) : (
         <>
-        <h3 className="font-display text-xl font-semibold uppercase tracking-wide text-ink">
+        <TituloModal>
           {lead ? "Matricular lead" : "Novo cadastro"}
-        </h3>
+        </TituloModal>
         <p className="mt-0.5 text-xs text-faint">
           {lead ? (
             <>Complete o cadastro de <strong className="text-muted">{lead.nome}</strong> e escolha o plano. O CPF é exigido para gerar a cobrança.</>
@@ -300,12 +298,12 @@ function ModalCadastro({
             onChange={(v) => set("nome", v)}
           />
 
-          <div>
-            <label className="mb-1 block text-xs font-medium text-muted">Origem *</label>
+          <label className="block">
+            <span className={classeRotulo}>Origem *</span>
             <select
               value={form.origem}
               onChange={(e) => set("origem", e.target.value)}
-              className={inputCls}
+              className={classeCampo}
             >
               {ORIGENS.map(([val, label]) => (
                 <option key={val} value={val}>
@@ -313,7 +311,7 @@ function ModalCadastro({
                 </option>
               ))}
             </select>
-          </div>
+          </label>
 
           <Campo
             label="Celular / WhatsApp"
@@ -354,7 +352,7 @@ function ModalCadastro({
             Vendedor: registrado automaticamente como quem está logado.
           </p>
 
-          <span className="mt-1 text-xs font-semibold uppercase tracking-widest text-faint">
+          <span className="mt-1 text-xs font-semibold text-faint">
             Endereço (opcional)
           </span>
           <div className="grid grid-cols-2 gap-2">
@@ -375,7 +373,7 @@ function ModalCadastro({
 
           {matriculaDireta && (
             <>
-              <span className="mt-1 text-xs font-semibold uppercase tracking-widest text-faint">
+              <span className="mt-1 text-xs font-semibold text-faint">
                 Plano *
               </span>
               {planos!.map((p) => {
@@ -393,7 +391,7 @@ function ModalCadastro({
                     )}
                   >
                     <div className="flex items-center justify-between">
-                      <span className="font-display text-base font-semibold uppercase tracking-wide text-ink">
+                      <span className="font-display text-base font-semibold text-ink">
                         {p.nome}
                       </span>
                       <span className={cn("text-sm", selecionado ? "text-red-bright" : "text-muted")}>
@@ -407,14 +405,14 @@ function ModalCadastro({
           )}
         </div>
 
-        {erroApi && <p className="mt-3 text-xs text-red-bright">{erroApi}</p>}
+        {erroApi && <MensagemErro className="mt-3">{erroApi}</MensagemErro>}
 
         <div className="mt-5 flex gap-3">
-          <button
+          <button type="button"
             onClick={enviar}
             disabled={enviando}
             className={cn(
-              "flex-1 rounded-lg px-4 py-3 font-display text-sm font-semibold uppercase tracking-widest transition-colors",
+              "flex-1 rounded-lg px-4 py-3 text-sm font-semibold transition-colors",
               enviando
                 ? "cursor-not-allowed bg-surface-2 text-faint"
                 : "bg-red text-white hover:bg-red-bright",
@@ -422,9 +420,9 @@ function ModalCadastro({
           >
             {enviando ? "Salvando…" : matriculaDireta ? "Matricular" : "Cadastrar"}
           </button>
-          <button
+          <button type="button"
             onClick={onFechar}
-            className="rounded-lg border border-border-strong px-4 py-3 text-sm font-medium text-muted transition-colors hover:text-ink"
+            className={classeBotao({ variante: "secundario", tamanho: "lg" })}
           >
             Cancelar
           </button>
@@ -451,16 +449,16 @@ function Campo({
   type?: string;
 }) {
   return (
-    <div>
-      <label className="mb-1 block text-xs font-medium text-muted">{label}</label>
+    <label className="block">
+      <span className={classeRotulo}>{label}</span>
       <input
         type={type}
         value={value}
         onChange={(e) => onChange(e.target.value)}
         placeholder={placeholder}
-        className={cn(inputCls, erro && "border-red/70")}
+        className={cn(classeCampo, erro && "border-danger/")}
       />
-      {erro && <p className="mt-1 text-xs text-red-bright">{erro}</p>}
-    </div>
+      {erro && <MensagemErro className="mt-1">{erro}</MensagemErro>}
+    </label>
   );
 }

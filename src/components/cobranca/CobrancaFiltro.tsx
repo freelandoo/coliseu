@@ -26,10 +26,10 @@ const CHIPS: { key: Filtro; label: string }[] = [
 
 function situacao(l: LinhaCobranca): {
   rotulo: string;
-  tone: "neutral" | "warn" | "red";
+  tone: "neutral" | "warn" | "danger";
 } {
   if (l.categoria === "atrasada")
-    return { rotulo: `Atrasado ${l.dias}d`, tone: "red" };
+    return { rotulo: `Atrasado ${l.dias}d`, tone: "danger" };
   if (l.categoria === "arenovar")
     return { rotulo: `Expira em ${l.dias}d`, tone: "warn" };
   // a vencer
@@ -62,7 +62,7 @@ export function CobrancaFiltro({ linhas }: { linhas: LinhaCobranca[] }) {
         {CHIPS.map((chip) => {
           const ativo = filtro === chip.key;
           return (
-            <button
+            <button type="button"
               key={chip.key}
               onClick={() => setFiltro(chip.key)}
               className={cn(
@@ -72,10 +72,10 @@ export function CobrancaFiltro({ linhas }: { linhas: LinhaCobranca[] }) {
                   : "border-border bg-surface text-muted hover:border-border-strong hover:text-ink",
               )}
             >
-              <span className="uppercase tracking-wide">{chip.label}</span>
+              <span className="">{chip.label}</span>
               <span
                 className={cn(
-                  "flex h-4 min-w-4 items-center justify-center rounded-md px-1 text-[10px] font-semibold sm:h-5 sm:min-w-5 sm:text-xs",
+                  "flex h-4 min-w-4 items-center justify-center rounded-md px-1 text-xs font-semibold sm:h-5 sm:min-w-5 sm:text-xs",
                   ativo ? "bg-red text-white" : "bg-surface-2 text-faint",
                 )}
               >
@@ -185,7 +185,7 @@ function Th({
   return (
     <th
       className={cn(
-        "px-4 py-3 text-xs font-semibold uppercase tracking-widest text-faint",
+        "px-4 py-3 text-xs font-semibold text-faint",
         className,
       )}
     >

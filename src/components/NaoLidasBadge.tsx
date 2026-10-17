@@ -47,7 +47,7 @@ export function NaoLidasBadge() {
 
   if (naoLidas <= 0) return null;
   return (
-    <span className="flex h-4 min-w-4 items-center justify-center rounded bg-red px-1 text-[10px] font-semibold text-white">
+    <span className="flex h-4 min-w-4 items-center justify-center rounded bg-red px-1 text-xs font-semibold text-white">
       {naoLidas}
     </span>
   );

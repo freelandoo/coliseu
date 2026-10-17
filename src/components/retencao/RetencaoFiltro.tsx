@@ -26,12 +26,12 @@ const CHIPS: { key: Filtro; label: string }[] = [
 
 const FAIXA_INFO: Record<
   "frequente" | "7" | "14" | "21",
-  { rotulo: string; tone: "ok" | "warn" | "red" }
+  { rotulo: string; tone: "ok" | "warn" | "danger" }
 > = {
   frequente: { rotulo: "Em dia", tone: "ok" },
   "7": { rotulo: "Acompanhamento", tone: "warn" },
-  "14": { rotulo: "Alerta de risco", tone: "red" },
-  "21": { rotulo: "Reativação", tone: "red" },
+  "14": { rotulo: "Alerta de risco", tone: "danger" },
+  "21": { rotulo: "Reativação", tone: "danger" },
 };
 
 function infoDe(faixa: LinhaRetencao["faixa"]) {
@@ -65,7 +65,7 @@ export function RetencaoFiltro({ linhas }: { linhas: LinhaRetencao[] }) {
         {CHIPS.map((chip) => {
           const ativo = filtro === chip.key;
           return (
-            <button
+            <button type="button"
               key={String(chip.key)}
               onClick={() => setFiltro(chip.key)}
               className={cn(
@@ -75,10 +75,10 @@ export function RetencaoFiltro({ linhas }: { linhas: LinhaRetencao[] }) {
                   : "border-border bg-surface text-muted hover:border-border-strong hover:text-ink",
               )}
             >
-              <span className="uppercase tracking-wide">{chip.label}</span>
+              <span className="">{chip.label}</span>
               <span
                 className={cn(
-                  "flex h-4 min-w-4 items-center justify-center rounded-md px-1 text-[10px] font-semibold sm:h-5 sm:min-w-5 sm:text-xs",
+                  "flex h-4 min-w-4 items-center justify-center rounded-md px-1 text-xs font-semibold sm:h-5 sm:min-w-5 sm:text-xs",
                   ativo ? "bg-red text-white" : "bg-surface-2 text-faint",
                 )}
               >
@@ -111,7 +111,7 @@ export function RetencaoFiltro({ linhas }: { linhas: LinhaRetencao[] }) {
                       <span
                         className={cn(
                           "font-semibold",
-                          l.faixa === null ? "text-ok" : "text-red-bright",
+                          l.faixa === null ? "text-ok" : "text-danger",
                         )}
                       >
                         {l.dias}d
@@ -164,7 +164,7 @@ export function RetencaoFiltro({ linhas }: { linhas: LinhaRetencao[] }) {
                         <span
                           className={cn(
                             "text-sm font-semibold",
-                            l.faixa === null ? "text-ok" : "text-red-bright",
+                            l.faixa === null ? "text-ok" : "text-danger",
                           )}
                         >
                           {l.dias}d
@@ -206,7 +206,7 @@ function Th({
   return (
     <th
       className={cn(
-        "px-4 py-3 text-xs font-semibold uppercase tracking-widest text-faint",
+        "px-4 py-3 text-xs font-semibold text-faint",
         className,
       )}
     >

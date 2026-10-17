@@ -1,6 +1,7 @@
 "use client";
 import { useEffect, useRef, useState } from "react";
 import { EVENTO_LIBERACAO } from "@/components/acesso/HistoricoLiberacoes";
+import { MensagemErro } from "@/components/ui/Campo";
 
 type Estado = "idle" | "enviando" | "aguardando" | "liberada" | "erro";
 
@@ -82,22 +83,22 @@ export function LiberarCatraca({ deviceId, online }: { deviceId: string; online:
           placeholder="Motivo (opcional): visitante, sem face…"
           maxLength={120}
           disabled={!online || ocupado}
-          className="min-w-0 flex-1 rounded-lg border border-border bg-surface px-3 py-2 text-sm text-ink outline-none placeholder:text-faint focus:border-red/60 disabled:opacity-60"
+          className="min-w-0 flex-1 rounded-lg border border-control bg-surface px-3 py-2 text-sm text-ink outline-none placeholder:text-faint focus:border-brand disabled:opacity-60"
         />
         <button
           type="button"
           onClick={liberar}
           disabled={!online || ocupado}
           className={
-            "shrink-0 rounded-lg px-4 py-2 font-display text-xs font-semibold uppercase tracking-widest text-white transition-colors disabled:opacity-60 " +
+            "shrink-0 rounded-lg px-4 py-2 text-xs font-semibold text-white transition-colors disabled:opacity-60 " +
             (estado === "liberada" ? "bg-ok" : "bg-red hover:bg-red-bright")
           }
         >
           {estado === "enviando" ? "Enviando…" : estado === "aguardando" ? "Liberando…" : estado === "liberada" ? "Liberada ✓" : "Liberar catraca"}
         </button>
       </div>
-      {!online && <p className="text-[11px] text-faint">Catraca offline — liberação indisponível.</p>}
-      {estado === "erro" && <p className="text-xs text-red-bright">{erro}</p>}
+      {!online && <p className="text-xs text-faint">Catraca offline — liberação indisponível.</p>}
+      {estado === "erro" && <MensagemErro>{erro}</MensagemErro>}
     </div>
   );
 }

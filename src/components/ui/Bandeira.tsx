@@ -10,7 +10,7 @@ export const BANDEIRA_COR: Record<LeadEstagio, string> = {
   qualificado: "text-info",
   interesse: "text-warn",
   convertido: "text-ok",
-  perdido: "text-red-bright",
+  perdido: "text-danger",
 };
 
 /**

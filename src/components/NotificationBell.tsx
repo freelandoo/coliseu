@@ -5,6 +5,8 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { formatarTelefone } from "@/lib/whatsapp/telefone";
 import { assinarMensagens } from "@/lib/whatsapp/stream-cliente";
 import { AtivarNotificacoes } from "@/components/pwa/AtivarNotificacoes";
+import { classeBotao } from "@/components/ui/Botao";
+import { cn } from "@/lib/cn";
 
 interface Aviso {
   id: string;
@@ -122,7 +124,7 @@ export function NotificationBell() {
           <path d="M6.5 13.7a1.6 1.6 0 0 0 3 0" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" />
         </svg>
         {total > 0 && (
-          <span className="absolute -right-1 -top-1 flex h-4 min-w-4 items-center justify-center rounded-full bg-red-bright px-1 text-[9px] font-bold text-white">
+          <span className="absolute -right-1 -top-1 flex h-4 min-w-4 items-center justify-center rounded-full bg-red-bright px-1 text-xs font-bold text-white">
             {total > 9 ? "9+" : total}
           </span>
         )}
@@ -133,7 +135,7 @@ export function NotificationBell() {
           <div onClick={() => setAberto(false)} aria-hidden className="fixed inset-0 z-30" />
           <div className="fixed right-4 top-[calc(4rem_+_var(--safe-t))] z-40 w-80 max-w-[calc(100vw-2rem)] rounded-xl border border-border bg-surface shadow-xl">
             <div className="border-b border-border px-4 py-3">
-              <p className="font-display text-sm font-semibold uppercase tracking-wide text-ink">
+              <p className="font-display text-sm font-semibold text-ink">
                 {leads.length === 0
                   ? "Notificações"
                   : leads.length === 1
@@ -159,7 +161,7 @@ export function NotificationBell() {
                       <span className="min-w-0">
                         <span className="block truncate text-sm font-medium text-ink">{a.titulo}</span>
                         <span className="block text-xs text-muted">{a.corpo}</span>
-                        <span className="block text-[11px] text-faint">
+                        <span className="block text-xs text-faint">
                           {new Date(a.createdAt).toLocaleString("pt-BR", { dateStyle: "short", timeStyle: "short" })}
                         </span>
                       </span>
@@ -187,7 +189,7 @@ export function NotificationBell() {
                       <Link
                         href={`/atendimento?c=${l.conversaId}`}
                         onClick={() => setAberto(false)}
-                        className="shrink-0 rounded-md bg-red px-3 py-1.5 font-display text-xs font-semibold uppercase tracking-wide text-white transition-colors hover:bg-red-bright"
+                        className={cn(classeBotao({ variante: "primario", tamanho: "sm" }), "shrink-0")}
                       >
                         Responder →
                       </Link>

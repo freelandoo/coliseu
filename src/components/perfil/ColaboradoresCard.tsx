@@ -2,8 +2,10 @@
 
 import { useState } from "react";
 import { Badge, Card } from "@/components/ui/primitives";
-import { Modal } from "@/components/ui/Modal";
+import { Modal, TituloModal } from "@/components/ui/Modal";
 import { cn } from "@/lib/cn";
+import { classeBotao } from "@/components/ui/Botao";
+import { MensagemErro, classeCampo, classeRotulo } from "@/components/ui/Campo";
 
 export type Papel = "ADMIN" | "RECEPCAO" | "TECNICO";
 
@@ -25,10 +27,6 @@ const PAPEL_LABEL: Record<Papel, string> = {
 };
 
 const PAPEIS = Object.entries(PAPEL_LABEL) as [Papel, string][];
-
-const inputCls =
-  "w-full rounded-lg border border-border bg-surface px-3 py-2 text-sm text-ink " +
-  "placeholder:text-faint outline-none transition-colors focus:border-red/60";
 
 /** Senha inicial legível: o admin dita para a pessoa e ela troca no 1º acesso. */
 function senhaProvisoria(): string {
@@ -86,7 +84,7 @@ export function ColaboradoresCard({
     <Card className="p-5">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
-          <h3 className="font-display text-xl font-semibold uppercase tracking-wide text-ink">
+          <h3 className="font-display text-xl font-semibold tracking-wide text-ink">
             Colaboradores
           </h3>
           <p className="mt-1.5 text-sm text-muted">
@@ -94,15 +92,15 @@ export function ColaboradoresCard({
             primeiro acesso.
           </p>
         </div>
-        <button
+        <button type="button"
           onClick={() => setNovo(true)}
-          className="rounded-lg bg-red px-4 py-2.5 font-display text-xs font-semibold uppercase tracking-widest text-white transition-colors hover:bg-red-bright"
+          className={classeBotao({ variante: "primario", tamanho: "sm" })}
         >
           + Colaborador
         </button>
       </div>
 
-      {erro && <p className="mt-3 text-xs text-red-bright">{erro}</p>}
+      {erro && <MensagemErro className="mt-3">{erro}</MensagemErro>}
 
       <ul className="mt-4 divide-y divide-border rounded-lg border border-border">
         {lista.map((c) => (
@@ -124,7 +122,7 @@ export function ColaboradoresCard({
               <select
                 value={c.role}
                 onChange={(e) => patch(c.id, { role: e.target.value })}
-                className="rounded-lg border border-border bg-surface px-2 py-1.5 text-xs text-ink outline-none focus:border-red/60"
+                className="rounded-lg border border-control bg-surface px-2 py-1.5 text-xs text-ink outline-none focus:border-brand"
               >
                 {PAPEIS.map(([valor, label]) => (
                   <option key={valor} value={valor}>
@@ -132,18 +130,18 @@ export function ColaboradoresCard({
                   </option>
                 ))}
               </select>
-              <button
+              <button type="button"
                 onClick={() => resetarSenha(c)}
                 className="rounded-md border border-border px-2.5 py-1.5 text-xs font-medium text-faint transition-colors hover:text-ink"
               >
                 Nova senha
               </button>
-              <button
+              <button type="button"
                 onClick={() => patch(c.id, { ativo: !c.ativo })}
                 className={cn(
                   "rounded-md border px-2.5 py-1.5 text-xs font-medium transition-colors",
                   c.ativo
-                    ? "border-border text-faint hover:border-red/60 hover:text-red-bright"
+                    ? "border-border text-faint hover:border-danger/ hover:text-danger"
                     : "border-ok/40 text-ok hover:bg-ok/10",
                 )}
               >
@@ -205,37 +203,37 @@ function ModalNovoColaborador({
 
   return (
     <Modal onFechar={onFechar}>
-      <h3 className="font-display text-xl font-semibold uppercase tracking-wide text-ink">
+      <TituloModal>
         Novo colaborador
-      </h3>
+      </TituloModal>
       <p className="mt-0.5 text-xs text-faint">
         Sem e-mail: o acesso é por nome de login e senha.
       </p>
 
       <div className="mt-5 flex flex-col gap-3">
-        <div>
-          <label className="mb-1 block text-xs font-medium text-muted">Nome *</label>
-          <input value={nome} onChange={(e) => setNome(e.target.value)} className={inputCls} />
-        </div>
-        <div>
-          <label className="mb-1 block text-xs font-medium text-muted">Login</label>
+        <label className="block">
+          <span className={classeRotulo}>Nome *</span>
+          <input value={nome} onChange={(e) => setNome(e.target.value)} className={classeCampo} />
+        </label>
+        <label className="block">
+          <span className={classeRotulo}>Login</span>
           <input
             value={login}
             onChange={(e) => setLogin(e.target.value)}
             placeholder="deixe vazio para gerar a partir do nome"
-            className={inputCls}
+            className={classeCampo}
           />
-        </div>
-        <div>
-          <label className="mb-1 block text-xs font-medium text-muted">Senha provisória *</label>
-          <input value={senha} onChange={(e) => setSenha(e.target.value)} className={inputCls} />
-        </div>
-        <div>
-          <label className="mb-1 block text-xs font-medium text-muted">Papel</label>
+        </label>
+        <label className="block">
+          <span className={classeRotulo}>Senha provisória *</span>
+          <input value={senha} onChange={(e) => setSenha(e.target.value)} className={classeCampo} />
+        </label>
+        <label className="block">
+          <span className={classeRotulo}>Papel</span>
           <select
             value={role}
             onChange={(e) => setRole(e.target.value as Papel)}
-            className={inputCls}
+            className={classeCampo}
           >
             {PAPEIS.map(([valor, label]) => (
               <option key={valor} value={valor}>
@@ -243,17 +241,17 @@ function ModalNovoColaborador({
               </option>
             ))}
           </select>
-        </div>
+        </label>
       </div>
 
-      {erro && <p className="mt-3 text-xs text-red-bright">{erro}</p>}
+      {erro && <MensagemErro className="mt-3">{erro}</MensagemErro>}
 
       <div className="mt-5 flex gap-3">
-        <button
+        <button type="button"
           onClick={salvar}
           disabled={salvando || !nome.trim() || senha.length < 8}
           className={cn(
-            "flex-1 rounded-lg px-4 py-3 font-display text-sm font-semibold uppercase tracking-widest transition-colors",
+            "flex-1 rounded-lg px-4 py-3 text-sm font-semibold transition-colors",
             salvando || !nome.trim() || senha.length < 8
               ? "cursor-not-allowed bg-surface-2 text-faint"
               : "bg-red text-white hover:bg-red-bright",
@@ -261,9 +259,9 @@ function ModalNovoColaborador({
         >
           {salvando ? "Criando…" : "Criar acesso"}
         </button>
-        <button
+        <button type="button"
           onClick={onFechar}
-          className="rounded-lg border border-border-strong px-4 py-3 text-sm font-medium text-muted transition-colors hover:text-ink"
+          className={classeBotao({ variante: "secundario", tamanho: "lg" })}
         >
           Cancelar
         </button>
@@ -282,9 +280,9 @@ function ModalCredencial({
 }) {
   return (
     <Modal onFechar={onFechar} className="text-center">
-      <h3 className="font-display text-xl font-semibold uppercase tracking-wide text-ink">
+      <TituloModal>
         Acesso de {dados.nome}
-      </h3>
+      </TituloModal>
       <p className="mt-2 text-sm text-muted">
         Passe estes dados para a pessoa. Ela troca a senha no primeiro acesso.
       </p>
@@ -301,9 +299,9 @@ function ModalCredencial({
       <p className="mt-3 text-xs text-warn">
         Anote agora: a senha não pode ser consultada depois, só redefinida.
       </p>
-      <button
+      <button type="button"
         onClick={onFechar}
-        className="mt-5 w-full rounded-lg bg-red px-4 py-3 font-display text-sm font-semibold uppercase tracking-widest text-white transition-colors hover:bg-red-bright"
+        className={cn(classeBotao({ variante: "primario", tamanho: "lg", bloco: true }), "mt-5")}
       >
         Anotei
       </button>

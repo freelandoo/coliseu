@@ -1,14 +1,12 @@
 "use client";
 import { useState } from "react";
 import { Badge, Card } from "@/components/ui/primitives";
+import { MensagemErro, classeCampoEmLinha } from "@/components/ui/Campo";
+import { classeBotao } from "@/components/ui/Botao";
 
-const btnCls =
-  "rounded-lg bg-red px-4 py-2.5 font-display text-xs font-semibold uppercase tracking-widest " +
-  "text-white transition-colors hover:bg-red-bright disabled:opacity-60";
+const btnCls = classeBotao({ variante: "primario" });
 
-const selectCls =
-  "rounded-lg border border-border bg-surface px-3 py-2 text-sm text-ink " +
-  "outline-none transition-colors focus:border-red/60";
+const selectCls = classeCampoEmLinha;
 
 export type DeviceOpcao = { id: string; name: string };
 export type KitInfoOpcao = {
@@ -60,7 +58,7 @@ export function AgentKitCard({
   return (
     <Card className="p-5">
       <div className="flex items-center justify-between">
-        <h3 className="font-display text-xl font-semibold uppercase tracking-wide text-ink">
+        <h3 className="font-display text-xl font-semibold text-ink">
           Agente da recepção
         </h3>
         {pronto ? <Badge tone="ok">Pronto para baixar</Badge> : <Badge>Pendências</Badge>}
@@ -91,7 +89,7 @@ export function AgentKitCard({
         </p>
       )}
 
-      {erro && <p className="mt-3 text-xs text-red-bright">{erro}</p>}
+      {erro && <MensagemErro className="mt-3">{erro}</MensagemErro>}
 
       <div className="mt-4 flex flex-wrap items-center gap-3">
         {devices.length > 1 && (
@@ -114,7 +112,7 @@ export function AgentKitCard({
       </div>
 
       {kitInfo && (
-        <p className="mt-4 border-t border-border pt-3 font-mono text-[11px] text-faint">
+        <p className="mt-4 border-t border-border pt-3 font-mono text-xs text-faint">
           Última versão: {kitInfo.version ?? "—"}
           {kitInfo.commit ? ` (${kitInfo.commit})` : ""} · gerada em{" "}
           {new Date(kitInfo.builtAt).toLocaleString("pt-BR")}
@@ -123,13 +121,13 @@ export function AgentKitCard({
 
       {kitInfo?.changelog && kitInfo.changelog.length > 0 && (
         <details className="mt-3 text-sm" open>
-          <summary className="cursor-pointer font-display text-xs font-semibold uppercase tracking-widest text-muted">
+          <summary className="cursor-pointer font-display text-xs font-semibold text-muted">
             Registro de atualizações
           </summary>
           <ol className="mt-3 space-y-4">
             {kitInfo.changelog.map((e) => (
               <li key={e.version}>
-                <p className="font-mono text-[11px] text-faint">
+                <p className="font-mono text-xs text-faint">
                   {e.version} · {dataBR(e.date)}
                 </p>
                 <ul className="mt-1 list-disc space-y-1 pl-5 text-muted">

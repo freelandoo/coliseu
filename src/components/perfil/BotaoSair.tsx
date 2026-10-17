@@ -2,12 +2,23 @@
 
 import { useState } from "react";
 import { cn } from "@/lib/cn";
+import { classeBotao, type TamanhoBotao, type VarianteBotao } from "@/components/ui/Botao";
 
 /**
  * Encerra a sessão. Usa assign em vez do router: a navegação dura descarta o
  * cache de RSC da sessão antiga, senão a tela anterior reaparece no "voltar".
  */
-export function BotaoSair({ className, rotulo = "Sair da conta" }: { className?: string; rotulo?: string }) {
+export function BotaoSair({
+  className,
+  rotulo = "Sair da conta",
+  variante = "secundario",
+  tamanho = "md",
+}: {
+  className?: string;
+  rotulo?: string;
+  variante?: VarianteBotao;
+  tamanho?: TamanhoBotao;
+}) {
   const [saindo, setSaindo] = useState(false);
 
   async function sair() {
@@ -21,12 +32,8 @@ export function BotaoSair({ className, rotulo = "Sair da conta" }: { className?:
       type="button"
       onClick={sair}
       disabled={saindo}
-      className={cn(
-        "inline-flex items-center gap-2 rounded-lg border border-border px-4 py-2.5",
-        "font-display text-xs font-semibold uppercase tracking-widest text-muted",
-        "transition-colors hover:border-red/50 hover:bg-red-ghost hover:text-ink disabled:opacity-60",
-        className,
-      )}
+      aria-busy={saindo || undefined}
+      className={cn(classeBotao({ variante, tamanho }), className)}
     >
       <svg width="14" height="14" viewBox="0 0 14 14" fill="none" aria-hidden>
         <path

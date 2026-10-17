@@ -15,6 +15,7 @@ import {
   type Pessoa,
   type Plano,
 } from "@/lib/types";
+import { classeBotao } from "@/components/ui/Botao";
 
 type Filtro = "todos" | "ativo" | "pendente" | "inadimplente" | "cancelado";
 
@@ -30,7 +31,7 @@ const soDigitos = (s: string) => s.replace(/\D/g, "");
 
 export function situacaoDe(p: Pessoa): {
   rotulo: string;
-  tone: "neutral" | "ok" | "warn" | "red";
+  tone: "neutral" | "ok" | "warn" | "danger";
 } {
   if (p.fase === "lead") {
     return {
@@ -38,10 +39,10 @@ export function situacaoDe(p: Pessoa): {
       tone: p.estagio === "perdido" ? "neutral" : "warn",
     };
   }
-  const tone: Record<string, "neutral" | "ok" | "warn" | "red"> = {
+  const tone: Record<string, "neutral" | "ok" | "warn" | "danger"> = {
     ativo: "ok",
     pendente: "warn",
-    inadimplente: "red",
+    inadimplente: "danger",
     cancelado: "neutral",
   };
   const s = p.status ?? "ativo";
@@ -87,13 +88,13 @@ export function ClientesView({
     if (!plano) return null;
     const pendente = p.status === "pendente";
     return (
-      <button
+      <button type="button"
         onClick={(e) => {
           e.stopPropagation();
           if (pendente) setPagando(p);
           else setRenovando(p);
         }}
-        className="rounded-md border border-red/50 px-3 py-1.5 text-xs font-semibold uppercase tracking-wide text-red-bright transition-colors hover:bg-red-ghost"
+        className={classeBotao({ variante: "contorno", tamanho: "sm" })}
       >
         {pendente ? "Confirmar pgto" : "Renovar"}
       </button>
@@ -122,7 +123,7 @@ export function ClientesView({
           value={busca}
           onChange={(e) => setBusca(e.target.value)}
           placeholder="Buscar por nome, código, CPF ou telefone…"
-          className="w-full max-w-sm rounded-lg border border-border bg-surface px-3 py-2 text-sm text-ink placeholder:text-faint outline-none transition-colors focus:border-red/60"
+          className="w-full max-w-sm rounded-lg border border-control bg-surface px-3 py-2 text-sm text-ink placeholder:text-faint outline-none transition-colors focus:border-brand"
         />
         <NovoCadastro planos={planos} />
       </div>
@@ -131,7 +132,7 @@ export function ClientesView({
         {CHIPS.map((chip) => {
           const ativo = filtro === chip.key;
           return (
-            <button
+            <button type="button"
               key={chip.key}
               onClick={() => setFiltro(chip.key)}
               className={cn(
@@ -141,10 +142,10 @@ export function ClientesView({
                   : "border-border bg-surface text-muted hover:border-border-strong hover:text-ink",
               )}
             >
-              <span className="uppercase tracking-wide">{chip.label}</span>
+              <span className="">{chip.label}</span>
               <span
                 className={cn(
-                  "flex h-4 min-w-4 items-center justify-center rounded-md px-1 text-[10px] font-semibold sm:h-5 sm:min-w-5 sm:text-xs",
+                  "flex h-4 min-w-4 items-center justify-center rounded-md px-1 text-xs font-semibold sm:h-5 sm:min-w-5 sm:text-xs",
                   ativo ? "bg-red text-white" : "bg-surface-2 text-faint",
                 )}
               >
@@ -269,7 +270,7 @@ export function ClientesView({
 
 function Th({ children }: { children: React.ReactNode }) {
   return (
-    <th className="px-4 py-3 text-xs font-semibold uppercase tracking-widest text-faint">
+    <th className="px-4 py-3 text-xs font-semibold text-faint">
       {children}
     </th>
   );

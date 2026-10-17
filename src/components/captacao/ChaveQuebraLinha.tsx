@@ -33,7 +33,7 @@ export function ChaveQuebraLinha({
           : "Enter envia; Shift+Enter quebra linha"
       }
       className={cn(
-        "group flex items-center gap-2 text-[11px] font-light text-faint transition-colors hover:text-muted",
+        "group flex items-center gap-2 text-xs font-light text-faint transition-colors hover:text-muted",
         salvando && "opacity-60",
       )}
     >

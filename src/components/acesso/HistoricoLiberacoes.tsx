@@ -19,8 +19,8 @@ export const EVENTO_LIBERACAO = "coliseu:liberacao";
 function resultado(l: Liberacao): { texto: string; cls: string } {
   if (l.situacao === "executada") return { texto: "Liberada no aparelho", cls: "text-ok" };
   if (l.situacao === "aguardando") return { texto: "Aguardando o agente", cls: "text-warn" };
-  if (l.situacao === "expirada") return { texto: "Não liberou (agente sem resposta)", cls: "text-red-bright" };
-  return { texto: "Falhou", cls: "text-red-bright" };
+  if (l.situacao === "expirada") return { texto: "Não liberou (agente sem resposta)", cls: "text-danger" };
+  return { texto: "Falhou", cls: "text-danger" };
 }
 
 export function HistoricoLiberacoes() {
@@ -49,7 +49,7 @@ export function HistoricoLiberacoes() {
   return (
     <section>
       <div className="mb-4 flex items-center justify-between">
-        <h2 className="font-display text-sm font-semibold uppercase tracking-widest text-faint">
+        <h2 className="font-display text-sm font-semibold text-faint">
           Liberações manuais
         </h2>
         <button

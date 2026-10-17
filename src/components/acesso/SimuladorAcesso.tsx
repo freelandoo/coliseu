@@ -4,6 +4,8 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { Card, Badge } from "@/components/ui/primitives";
 import { cn } from "@/lib/cn";
+import { classeBotao } from "@/components/ui/Botao";
+import { MensagemErro } from "@/components/ui/Campo";
 
 export interface AlunoOpcao {
   id: string;
@@ -64,20 +66,20 @@ export function SimuladorAcesso({ alunos }: { alunos: AlunoOpcao[] }) {
 
   return (
     <section>
-      <h2 className="mb-4 font-display text-sm font-semibold uppercase tracking-widest text-faint">
+      <h2 className="mb-4 font-display text-sm font-semibold text-faint">
         Simulador de acesso · teste
       </h2>
       <Card className="p-5">
         <p className="mb-4 text-sm text-muted">
           Reconhece a face de um aluno e passa pela política real de acesso — a catraca{" "}
           <span className="text-ok">libera</span> se estiver em dia,{" "}
-          <span className="text-red-bright">bloqueia</span> se inativo/inadimplente. O giro é
+          <span className="text-danger">bloqueia</span> se inativo/inadimplente. O giro é
           registrado em “Acessos recentes”.
         </p>
 
         <div className="flex flex-col gap-3 sm:flex-row sm:items-end">
           <label className="flex-1">
-            <span className="text-xs font-semibold uppercase tracking-widest text-faint">Aluno</span>
+            <span className="text-xs font-semibold text-faint">Aluno</span>
             <select
               value={personId}
               onChange={(e) => { setPersonId(e.target.value); setResultado(null); setErro(""); }}
@@ -93,27 +95,27 @@ export function SimuladorAcesso({ alunos }: { alunos: AlunoOpcao[] }) {
             </select>
           </label>
 
-          <button
+          <button type="button"
             onClick={verificar}
             disabled={enviando || !personId}
-            className="rounded-lg bg-red px-5 py-2.5 font-display text-sm font-semibold uppercase tracking-widest text-white transition-colors hover:bg-red-bright disabled:opacity-60"
+            className={classeBotao({ variante: "primario" })}
           >
             {enviando ? "Verificando…" : "Verificar face"}
           </button>
         </div>
 
-        {erro && <p className="mt-4 text-xs text-red-bright">{erro}</p>}
+        {erro && <MensagemErro className="mt-4">{erro}</MensagemErro>}
 
         {resultado && (
           <div
             className={cn(
               "mt-5 rounded-lg border p-5",
-              resultado.allow ? "border-ok/40 bg-ok/10" : "border-red/40 bg-red-ghost",
+              resultado.allow ? "border-ok/40 bg-ok/10" : "border-danger/ bg-danger-soft",
             )}
           >
             <div className="flex items-center justify-between gap-3">
               <div>
-                <p className="font-display text-2xl font-semibold uppercase tracking-wide text-ink">
+                <p className="font-display text-2xl font-semibold text-ink">
                   {resultado.allow ? "Catraca liberou ✓" : "Bloqueado"}
                 </p>
                 <p className="mt-1 text-sm text-muted">
@@ -121,7 +123,7 @@ export function SimuladorAcesso({ alunos }: { alunos: AlunoOpcao[] }) {
                   {resultado.deviceName ? ` · ${resultado.deviceName}` : ""}
                 </p>
               </div>
-              <Badge tone={resultado.allow ? "ok" : "red"}>{resultado.allow ? "ALLOWED" : "DENIED"}</Badge>
+              <Badge tone={resultado.allow ? "ok" : "danger"}>{resultado.allow ? "ALLOWED" : "DENIED"}</Badge>
             </div>
             <div className="mt-4 flex flex-wrap gap-2 text-xs">
               <Badge tone="neutral">motivo: {resultado.reason}</Badge>
