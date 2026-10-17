@@ -2,6 +2,7 @@ import { Reveal } from "@/components/ui/Reveal";
 import { Badge, Card, PageHeader, Stat } from "@/components/ui/primitives";
 import { MatriculadosTabs } from "@/components/matriculados/MatriculadosTabs";
 import { FidelidadeSubTabs } from "@/components/matriculados/FidelidadeSubTabs";
+import { LimitacaoIndicadores } from "@/components/matriculados/LimitacaoIndicadores";
 import { formatBRL } from "@/lib/mock-data";
 import {
   altoValorEmRisco,
@@ -45,6 +46,10 @@ export default async function IndicadoresFidelidadePage() {
 
       <Reveal delay={0.03}>
         <FidelidadeSubTabs />
+      </Reveal>
+
+      <Reveal delay={0.04}>
+        <LimitacaoIndicadores tela="indicadores" />
       </Reveal>
 
       {/* #6 LTV + #7 churn */}

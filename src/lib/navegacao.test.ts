@@ -116,6 +116,13 @@ describe("retorno da ficha", () => {
     expect(retornoDaFicha("fidelidade", null, "ADMIN").href).toBe("/matriculados/fidelidade");
   });
 
+  it("retenção volta na faixa do filtro, só se for uma faixa conhecida", () => {
+    expect(retornoDaFicha("retencao", null, "ADMIN", "14").href).toBe("/matriculados/retencao?faixa=14");
+    expect(retornoDaFicha("retencao", null, "ADMIN", "todos").href).toBe("/matriculados/retencao");
+    expect(retornoDaFicha("retencao", null, "ADMIN", "x&y=1").href).toBe("/matriculados/retencao");
+    expect(retornoDaFicha("captacao", null, "ADMIN", "14").href).toBe("/captacao");
+  });
+
   it("origem nova não aceita destino montado pela URL", () => {
     expect(retornoDaFicha("captacao", "https://evil.com", "ADMIN").href).toBe("/captacao");
     expect(retornoDaFicha("/captacao", null, "ADMIN").href).toBe("/matriculados");

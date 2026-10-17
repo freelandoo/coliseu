@@ -1,7 +1,9 @@
 import { Reveal } from "@/components/ui/Reveal";
-import { Badge, Card, PageHeader, Stat } from "@/components/ui/primitives";
+import { PageHeader, Stat } from "@/components/ui/primitives";
 import { MatriculadosTabs } from "@/components/matriculados/MatriculadosTabs";
 import { FidelidadeSubTabs } from "@/components/matriculados/FidelidadeSubTabs";
+import { FidelidadeListas } from "@/components/matriculados/FidelidadeListas";
+import { LimitacaoIndicadores } from "@/components/matriculados/LimitacaoIndicadores";
 import { diasEntre, formatData } from "@/lib/mock-data";
 import { formatMeses } from "@/lib/fidelidade";
 import { listarAlunos, listarPlanos } from "@/lib/store";
@@ -59,6 +61,10 @@ export default async function FidelidadePage() {
         <FidelidadeSubTabs />
       </Reveal>
 
+      <Reveal delay={0.04}>
+        <LimitacaoIndicadores tela="fidelidade" />
+      </Reveal>
+
       <Reveal delay={0.05}>
         <section className="grid grid-cols-2 gap-4 lg:grid-cols-4">
           <Stat label="Veteranos" value={veteranos} tone="ok" hint="12+ meses de casa" />
@@ -69,140 +75,25 @@ export default async function FidelidadePage() {
       </Reveal>
 
       <Reveal delay={0.1}>
-        <div className="mt-6">
-          <h2 className="mb-3 font-display text-sm font-semibold text-muted">
-            Ativos — tempo de casa
-          </h2>
-          <Card className="overflow-hidden">
-            {ativos.length === 0 ? (
-              <p className="px-5 py-10 text-center text-sm text-faint">Nenhum aluno ativo.</p>
-            ) : (
-              <>
-              {/* mobile: cards empilhados, sem scroll horizontal */}
-              <div className="divide-y divide-border sm:hidden">
-                {ativos.map((a) => (
-                  <div key={a.id} className="flex flex-col gap-2 px-4 py-3">
-                    <div className="min-w-0">
-                      <p className="truncate text-sm font-medium text-ink">{a.nome}</p>
-                      <p className="text-xs text-muted">
-                        {planoNome(a.planoId)}
-                        <span className="ml-2 font-mono text-faint">{a.codigo}</span>
-                      </p>
-                      <p className="text-xs text-faint">
-                        Matriculado em {formatData(a.matriculadoEm)}
-                      </p>
-                    </div>
-                    <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-2">
-                      <Badge tone={a.faixa.tone}>{a.faixa.rotulo}</Badge>
-                      <span className="ml-auto text-sm font-medium text-ink">
-                        {formatMeses(a.meses)}
-                      </span>
-                    </div>
-                  </div>
-                ))}
-              </div>
-
-              {/* desktop: tabela */}
-              <div className="hidden overflow-x-auto sm:block">
-                <table className="w-full min-w-[640px] border-collapse text-sm">
-                  <thead>
-                    <tr className="border-b border-border text-left">
-                      <Th>Código</Th>
-                      <Th>Nome</Th>
-                      <Th>Plano</Th>
-                      <Th>Matriculado em</Th>
-                      <Th>Tempo de casa</Th>
-                      <Th>Fidelidade</Th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {ativos.map((a) => (
-                      <tr key={a.id} className="border-b border-border last:border-0">
-                        <td className="px-4 py-3 font-mono text-xs text-faint">{a.codigo}</td>
-                        <td className="px-4 py-3 font-medium text-ink">{a.nome}</td>
-                        <td className="px-4 py-3 text-muted">{planoNome(a.planoId)}</td>
-                        <td className="px-4 py-3 text-muted">{formatData(a.matriculadoEm)}</td>
-                        <td className="px-4 py-3 font-medium text-ink">{formatMeses(a.meses)}</td>
-                        <td className="px-4 py-3">
-                          <Badge tone={a.faixa.tone}>{a.faixa.rotulo}</Badge>
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-              </>
-            )}
-          </Card>
-        </div>
-      </Reveal>
-
-      <Reveal delay={0.15}>
-        <div className="mt-6">
-          <h2 className="mb-3 font-display text-sm font-semibold text-muted">
-            Cancelados — há quanto tempo saíram
-          </h2>
-          <Card className="overflow-hidden">
-            {inativos.length === 0 ? (
-              <p className="px-5 py-10 text-center text-sm text-faint">
-                Nenhum matriculado cancelado.
-              </p>
-            ) : (
-              <>
-              {/* mobile: cards empilhados, sem scroll horizontal */}
-              <div className="divide-y divide-border sm:hidden">
-                {inativos.map((a) => (
-                  <div key={a.id} className="flex items-start justify-between gap-3 px-4 py-3">
-                    <div className="min-w-0">
-                      <p className="truncate text-sm font-medium text-ink">{a.nome}</p>
-                      <p className="text-xs text-muted">
-                        Última presença {formatData(a.ultimaPresenca)}
-                        <span className="ml-2 font-mono text-faint">{a.codigo}</span>
-                      </p>
-                    </div>
-                    <span className="shrink-0 text-sm font-medium text-red-bright">
-                      {formatMeses(a.meses)}
-                    </span>
-                  </div>
-                ))}
-              </div>
-
-              {/* desktop: tabela */}
-              <div className="hidden overflow-x-auto sm:block">
-                <table className="w-full min-w-[560px] border-collapse text-sm">
-                  <thead>
-                    <tr className="border-b border-border text-left">
-                      <Th>Código</Th>
-                      <Th>Nome</Th>
-                      <Th>Última presença</Th>
-                      <Th>Inativo há</Th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {inativos.map((a) => (
-                      <tr key={a.id} className="border-b border-border last:border-0">
-                        <td className="px-4 py-3 font-mono text-xs text-faint">{a.codigo}</td>
-                        <td className="px-4 py-3 font-medium text-ink">{a.nome}</td>
-                        <td className="px-4 py-3 text-muted">{formatData(a.ultimaPresenca)}</td>
-                        <td className="px-4 py-3 font-medium text-red-bright">{formatMeses(a.meses)}</td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-              </>
-            )}
-          </Card>
-        </div>
+        <FidelidadeListas
+          ativos={ativos.map((a) => ({
+            id: a.id,
+            codigo: a.codigo,
+            nome: a.nome,
+            planoNome: planoNome(a.planoId),
+            matriculadoEm: formatData(a.matriculadoEm),
+            meses: a.meses,
+            faixa: a.faixa,
+          }))}
+          cancelados={inativos.map((a) => ({
+            id: a.id,
+            codigo: a.codigo,
+            nome: a.nome,
+            ultimaPresenca: formatData(a.ultimaPresenca),
+            meses: a.meses,
+          }))}
+        />
       </Reveal>
     </>
-  );
-}
-
-function Th({ children }: { children: React.ReactNode }) {
-  return (
-    <th className="px-4 py-3 text-xs font-semibold text-faint">
-      {children}
-    </th>
   );
 }

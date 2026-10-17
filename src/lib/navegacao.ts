@@ -238,14 +238,20 @@ export const ORIGENS_FICHA = [
 ] as const;
 export type OrigemFicha = (typeof ORIGENS_FICHA)[number];
 
+/** Faixas do filtro da Retenção (7 / 14 / 21 dias), como vão na URL. */
+export const FAIXAS_RETENCAO = ["todos", "frequente", "7", "14", "21"] as const;
+export type FaixaRetencao = (typeof FAIXAS_RETENCAO)[number];
+
 /**
  * Para onde o "voltar" da ficha leva. Só destinos conhecidos (allowlist) e só
  * se a conta abre o módulo; o resto cai na lista de alunos. Nunca aceita URL.
+ * A Retenção volta na faixa em que estava (`faixa`, também por allowlist).
  */
 export function retornoDaFicha(
   de: string | null | undefined,
   conversa: string | null | undefined,
   papel: Papel,
+  faixa?: string | null,
 ): { href: string; rotulo: string; origem: OrigemFicha } {
   const origem = lerEnum(de, ORIGENS_FICHA, "alunos");
   if (origem === "atendimento" && podeModulo(papel, "atendimento")) {
@@ -263,7 +269,9 @@ export function retornoDaFicha(
     return { href: "/captacao", rotulo: "Captação", origem };
   }
   if (origem === "retencao" && podeModulo(papel, "matriculados")) {
-    return { href: "/matriculados/retencao", rotulo: "Retenção", origem };
+    const f = lerEnum(faixa, FAIXAS_RETENCAO, "todos");
+    const href = f === "todos" ? "/matriculados/retencao" : `/matriculados/retencao?faixa=${f}`;
+    return { href, rotulo: "Retenção", origem };
   }
   if (origem === "fidelidade" && podeModulo(papel, "matriculados")) {
     return { href: "/matriculados/fidelidade", rotulo: "Fidelidade", origem };

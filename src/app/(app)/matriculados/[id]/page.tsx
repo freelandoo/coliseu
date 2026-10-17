@@ -16,8 +16,11 @@ export default async function MatriculadoPage({
   searchParams,
 }: {
   params: Promise<{ id: string }>;
-  /** `de` (origem, por allowlist) e `c` (conversa, quando veio do Atendimento). */
-  searchParams: Promise<{ de?: string | string[]; c?: string | string[] }>;
+  /**
+   * `de` (origem, por allowlist), `c` (conversa, quando veio do Atendimento) e
+   * `faixa` (filtro da Retenção a restaurar na volta).
+   */
+  searchParams: Promise<{ de?: string | string[]; c?: string | string[]; faixa?: string | string[] }>;
 }) {
   const [{ id }, busca] = await Promise.all([params, searchParams]);
   const [user, pessoa] = await Promise.all([requireUser(), obterPessoa(id)]);
@@ -41,7 +44,7 @@ export default async function MatriculadoPage({
         plano={plano}
         podeGerirAcesso={isAdmin}
         acesso={(acesso as AcessoDaPessoa | null) ?? undefined}
-        retorno={retornoDaFicha(umValor(busca.de), umValor(busca.c), user.role as Papel)}
+        retorno={retornoDaFicha(umValor(busca.de), umValor(busca.c), user.role as Papel, umValor(busca.faixa))}
       />
     </Reveal>
   );
