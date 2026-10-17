@@ -60,6 +60,22 @@ export async function listarAulasExperimentaisRepo(): Promise<AulaExperimentalIt
 }
 
 /**
+ * Só os dias de `de` a `ate` (inclusive), para resumos que não precisam do
+ * histórico inteiro. `data` é "AAAA-MM-DD": a ordem do texto é a do calendário.
+ */
+export async function listarAulasExperimentaisEntreRepo(
+  de: string,
+  ate: string,
+): Promise<AulaExperimentalItem[]> {
+  const aulas = await prisma.aulaExperimental.findMany({
+    where: { data: { gte: de, lte: ate } },
+    orderBy: [{ data: "asc" }, { hora: "asc" }],
+    select: SELECT,
+  });
+  return aulas.map(toItem);
+}
+
+/**
  * Grava o compromisso. Cada agendamento é uma linha nova — remarcar não apaga
  * o anterior, e a lista mostra a conversa inteira de tentativas.
  */

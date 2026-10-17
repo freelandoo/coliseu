@@ -58,16 +58,18 @@ export function podeBackup(user: { desenvolvedor?: boolean } | null | undefined)
 /**
  * Para onde mandar o usuário depois do login (ou quando bate numa tela vedada).
  *
- * Atendimento na frente porque é a tela que não pode esperar: mensagem de lead
- * chega o dia inteiro e quem abre o sistema abre para responder. Painel e
- * matriculados continuam a um toque no menu — quem vai até eles vai de
- * propósito, quem precisa do atendimento precisa já.
+ * O admin entra na central (/painel): ela junta as conversas esperando
+ * resposta, a agenda de aulas experimentais e o que está em aberto — e leva
+ * direto a cada uma. Quem atende (recepção) cai no Atendimento, a tela que
+ * não pode esperar: mensagem de lead chega o dia inteiro e quem abre o
+ * sistema abre para responder.
  *
- * Quem não tem o módulo (o técnico só enxerga a catraca) cai no primeiro da sua
- * lista: mandar todo mundo para /atendimento faria o guard de módulo devolver
- * essa gente para cá em looping.
+ * Quem não tem nenhum dos dois (o técnico só enxerga a catraca) cai no
+ * primeiro módulo da sua lista: mandar todo mundo para uma tela fixa faria o
+ * guard de módulo devolver essa gente para cá em looping.
  */
 export function rotaInicial(papel: Papel): string {
+  if (podeModulo(papel, "painel")) return "/painel";
   if (podeModulo(papel, "atendimento")) return "/atendimento";
   return `/${modulosDoPapel(papel)[0] ?? "perfil"}`;
 }

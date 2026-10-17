@@ -1,152 +1,346 @@
 import Link from "next/link";
-import { Reveal } from "@/components/ui/Reveal";
-import { Badge, Card, Stat } from "@/components/ui/primitives";
-import { diasSemPresenca, faixaAusencia, formatBRL } from "@/lib/mock-data";
-import { listarAlunos, listarCobrancas, listarLeads } from "@/lib/store";
+import { cache, Suspense, type CSSProperties, type ReactNode } from "react";
 import { requireModulo } from "@/lib/auth/rbac";
+import { hojeNaAcademia, FUSO_ACADEMIA } from "@/lib/aula-experimental";
+import {
+  CONVERSAS_NA_CENTRAL,
+  dataPorExtenso,
+  faixaDeDias,
+  mesEAno,
+  primeiroNome,
+  saudacao,
+} from "@/lib/central";
+import { formatBRL } from "@/lib/mock-data";
+import { cn } from "@/lib/cn";
+import { listarAulasExperimentaisEntreRepo } from "@/lib/repositories/aulas-experimentais";
+import { cobrancasEmAbertoRepo } from "@/lib/repositories/cobrancas";
+import { contarAlunosAtivosRepo } from "@/lib/repositories/pessoas";
+import { conversasComNaoLidasRepo, paginaConversasRepo, totaisNaoLidasRepo } from "@/lib/repositories/whatsapp";
 import { statusTokenFreelandoo } from "@/lib/freelandoo/token";
 import { FreelandooTokenCard } from "@/components/painel/FreelandooTokenCard";
+import { CentralAgenda } from "@/components/painel/CentralAgenda";
+import { CentralAtendimento } from "@/components/painel/CentralAtendimento";
+import { OrbitaData } from "@/components/painel/OrbitaData";
+import {
+  IconeCalendario,
+  IconeCobranca,
+  IconeConversa,
+  IconeMatricula,
+  IconePessoas,
+  IconeSeta,
+  PainelCarregando,
+} from "@/components/painel/central-ui";
 
 export const dynamic = "force-dynamic";
 
-export default async function PainelPage() {
-  const user = await requireModulo("painel");
-  const [alunos, cobrancas, leads] = await Promise.all([
-    listarAlunos(),
-    listarCobrancas(),
-    listarLeads(),
-  ]);
+/**
+ * Falha de uma consulta vira `null` — "indisponível", que a tela diz como tal
+ * (nunca zero). Cada bloco cai sozinho: conversa fora do ar não apaga a agenda.
+ */
+async function tentar<T>(rotulo: string, consulta: () => Promise<T>): Promise<T | null> {
+  try {
+    return await consulta();
+  } catch (e) {
+    console.error(`[central] ${rotulo} indisponível:`, e);
+    return null;
+  }
+}
 
-  const leadsAtivos = leads.filter(
-    (l) => l.estagio !== "perdido" && l.estagio !== "convertido",
-  ).length;
-  // Leads convertidos já viraram alunos (fase "aluno"), então a base de
-  // convertidos é a de alunos; a taxa considera o total que passou pelo funil.
-  const convertidos = alunos.length;
-  const taxaConversao = Math.round(
-    (convertidos / (convertidos + leadsAtivos || 1)) * 100,
-  );
+// Faixa e blocos pedem os mesmos totais: uma consulta por requisição.
+const totaisNaoLidas = cache(() => tentar("não lidas", totaisNaoLidasRepo));
+const emAberto = cache(() => tentar("cobranças em aberto", cobrancasEmAbertoRepo));
 
-  const ativos = alunos.filter((a) => a.status === "ativo").length;
-  const inadimplentes = alunos.filter((a) => a.status === "inadimplente");
-  const valorEmAberto = cobrancas
-    .filter((c) => (c.status === "pendente" || c.status === "atrasado"))
-    .reduce((s, c) => s + c.valor, 0);
+const atraso = (ms: number) => ({ "--atraso": `${ms}ms` }) as CSSProperties;
 
-  const ausentes = alunos.filter((a) => faixaAusencia(diasSemPresenca(a)));
-
-  const stages = [
-    {
-      step: 1,
-      title: "Captação",
-      href: "/captacao",
-      metric: `${leadsAtivos} leads no funil`,
-      desc: "WhatsApp, redes, balcão e indicação entram no CRM e são qualificados.",
-    },
-    {
-      step: 2,
-      title: "Matrícula",
-      href: "/matriculados/renovar",
-      metric: `${alunos.filter((a) => a.status === "pendente").length} aguardando pagamento`,
-      desc: "Plano → cadastro → Asaas → link via WhatsApp → webhook confirma.",
-    },
-    {
-      step: 3,
-      title: "Cobrança",
-      href: "/cobranca",
-      metric: `${inadimplentes.length} inadimplentes`,
-      desc: "Avisos de vencimento, inadimplência e renovação de plano.",
-    },
-    {
-      step: 4,
-      title: "Retenção",
-      href: "/matriculados/retencao",
-      metric: `${ausentes.length} em risco de evasão`,
-      desc: "Monitora presença e dispara campanhas em 7, 14 e 21 dias.",
-    },
-  ];
-
+/** "R$ 3.240,00" → número grande com "R$" e centavos menores. */
+function ValorBRL({ valor }: { valor: number }) {
+  const texto = formatBRL(valor); // "R$ 3.240,00"
+  const m = texto.match(/^(\D*?)\s*([\d.]+)(,\d+)$/);
+  if (!m) return <>{texto}</>;
   return (
     <>
-      <Reveal>
-        <header className="mb-4">
-          <p className="text-xs font-medium text-red-bright">
-            Visão geral
-          </p>
-          <h1 className="mt-0.5 font-display text-2xl font-semibold text-ink">
-            Painel operacional
-          </h1>
-        </header>
-      </Reveal>
-
-      <Reveal delay={0.05}>
-        <section className="grid grid-cols-2 gap-4 lg:grid-cols-4">
-          <Stat label="Leads no funil" value={leadsAtivos} hint={`${taxaConversao}% de conversão`} href="/captacao" />
-          <Stat label="Alunos ativos" value={ativos} tone="ok" hint={`de ${alunos.length} matrículas`} href="/matriculados" />
-          <Stat label="Em aberto" value={formatBRL(valorEmAberto)} tone="warn" hint={`${cobrancas.filter((c) => (c.status === "pendente" || c.status === "atrasado")).length} cobranças`} href="/cobranca" />
-          <Stat label="Risco de evasão" value={ausentes.length} tone="danger" hint="ausentes há 7+ dias" href="/matriculados/retencao" />
-        </section>
-      </Reveal>
-
-      <Reveal delay={0.1}>
-        <section className="mt-6">
-          <h2 className="mb-4 font-display text-sm font-semibold text-faint">
-            Pipeline em 4 estágios
-          </h2>
-          <div className="grid gap-4 md:grid-cols-2">
-            {stages.map((s) => (
-              <Link key={s.step} href={s.href} className="group">
-                <Card className="flex h-full items-start gap-3 p-4 transition-colors group-hover:border-border-strong group-hover:bg-surface-2">
-                  <span className="steel-plate h-8 w-8 shrink-0 rounded-md text-base">
-                    {s.step}
-                  </span>
-                  <div className="flex-1">
-                    <div className="flex items-center justify-between">
-                      <h3 className="font-display text-base font-semibold text-ink">
-                        {s.title}
-                      </h3>
-                      <Badge tone="brand">{s.metric}</Badge>
-                    </div>
-                    <p className="mt-1 text-xs text-muted">{s.desc}</p>
-                  </div>
-                </Card>
-              </Link>
-            ))}
-          </div>
-        </section>
-      </Reveal>
-
-      {inadimplentes.length > 0 && (
-        <Reveal delay={0.15}>
-          <section className="mt-6">
-            <h2 className="mb-4 font-display text-sm font-semibold text-faint">
-              Atenção imediata
-            </h2>
-            <Card className="divide-y divide-border">
-              {inadimplentes.map((a) => (
-                <div key={a.id} className="flex items-center justify-between px-4 py-2.5">
-                  <div>
-                    <p className="text-sm font-medium text-ink">{a.nome}</p>
-                    <p className="text-xs text-faint">{a.telefone}</p>
-                  </div>
-                  <Badge tone="danger">Inadimplente</Badge>
-                </div>
-              ))}
-            </Card>
-          </section>
-        </Reveal>
-      )}
-
-      {user.role === "ADMIN" && (
-        <Reveal delay={0.2}>
-          <section className="mt-6">
-            <h2 className="mb-4 font-display text-sm font-semibold text-faint">
-              Integrações
-            </h2>
-            <FreelandooTokenCard inicial={await statusTokenFreelandoo()} />
-          </section>
-        </Reveal>
-      )}
+      <span className="mr-1 text-lg font-normal">{m[1]}</span>
+      {m[2]}
+      <span className="text-lg font-normal">{m[3]}</span>
     </>
+  );
+}
+
+function Indicador({
+  icone,
+  rotulo,
+  href,
+  valor,
+  nota,
+  className,
+}: {
+  icone: ReactNode;
+  rotulo: string;
+  href: string;
+  /** `null` = indisponível */
+  valor: ReactNode | null;
+  nota: ReactNode;
+  className?: string;
+}) {
+  // A divisória fica no invólucro: no próprio link (arredondado para o hover)
+  // ela sairia curva nas pontas.
+  return (
+    <div className={cn("min-w-0 py-1.5", className)}>
+      <Link
+        href={href}
+        className="group mx-1.5 flex min-w-0 flex-col justify-center gap-1 rounded-xl px-3 py-3 transition-colors duration-200 hover:bg-surface-2 sm:px-4"
+      >
+        <span className="flex items-center gap-2 text-sm text-muted">
+          <span className="text-brand">{icone}</span>
+          {rotulo}
+        </span>
+        {valor === null ? (
+          <span className="text-base font-semibold text-danger">Indisponível agora</span>
+        ) : (
+          <span className="font-display text-4xl font-medium leading-tight tracking-[-0.01em] text-ink tabular-nums">
+            {valor}
+          </span>
+        )}
+        <span className="text-xs text-muted">{nota}</span>
+      </Link>
+    </div>
+  );
+}
+
+async function FaixaIndicadores({ agora }: { agora: string }) {
+  const [ativos, naoLidas, abertas] = await Promise.all([
+    tentar("alunos ativos", contarAlunosAtivosRepo),
+    totaisNaoLidas(),
+    emAberto(),
+  ]);
+  return (
+    <section
+      aria-label="Números de agora"
+      style={atraso(80)}
+      className="entrada grid grid-cols-2 rounded-[18px] border border-border bg-surface p-1 text-ink shadow-[var(--shadow-card)] md:grid-cols-[1fr_1fr_1.2fr] md:p-2"
+    >
+      <Indicador
+        icone={<IconePessoas className="h-4 w-4" />}
+        rotulo="Alunos ativos"
+        href="/matriculados?situacao=ativo"
+        valor={ativos}
+        nota="Última matrícula de cada um está ativa"
+        className="border-r border-border"
+      />
+      <Indicador
+        icone={<IconeConversa className="h-4 w-4" />}
+        rotulo="Mensagens não lidas"
+        href="/atendimento"
+        valor={naoLidas?.mensagens ?? null}
+        nota={
+          naoLidas === null
+            ? "WhatsApp"
+            : naoLidas.conversas === 1
+              ? "Em 1 conversa"
+              : `Em ${naoLidas.conversas} conversas`
+        }
+        className="md:border-r md:border-border"
+      />
+      <Indicador
+        icone={<IconeCobranca className="h-4 w-4" />}
+        rotulo="Cobranças em aberto"
+        href="/cobranca"
+        valor={abertas === null ? null : <ValorBRL valor={abertas.valor} />}
+        nota={
+          abertas === null
+            ? "Cobrança"
+            : `${abertas.quantidade} pendentes ou atrasadas · posição às ${agora}`
+        }
+        className="col-span-2 border-t border-border md:col-span-1 md:border-t-0"
+      />
+    </section>
+  );
+}
+
+function FaixaCarregando() {
+  return (
+    <section
+      aria-label="Números de agora"
+      aria-busy="true"
+      className="grid h-[132px] grid-cols-3 gap-6 rounded-[18px] border border-border bg-surface p-6 shadow-[var(--shadow-card)]"
+    >
+      <p className="sr-only">Carregando os números…</p>
+      {[0, 1, 2].map((i) => (
+        <span key={i} aria-hidden className="flex flex-col gap-3">
+          <span className="h-3 w-1/2 rounded bg-surface-2" />
+          <span className="h-8 w-1/3 rounded bg-surface-2" />
+        </span>
+      ))}
+    </section>
+  );
+}
+
+async function BlocoAtendimento({ hoje }: { hoje: string }) {
+  const [naoLidas, recentes, totais] = await Promise.all([
+    tentar("conversas não lidas", () => conversasComNaoLidasRepo(CONVERSAS_NA_CENTRAL)),
+    tentar("conversas recentes", async () => (await paginaConversasRepo({ limite: CONVERSAS_NA_CENTRAL })).conversas),
+    totaisNaoLidas(),
+  ]);
+  return (
+    <CentralAtendimento
+      naoLidas={naoLidas}
+      recentes={recentes}
+      totalMensagens={totais?.mensagens ?? null}
+      hoje={hoje}
+      atraso={160}
+    />
+  );
+}
+
+async function BlocoAgenda({ hoje }: { hoje: string }) {
+  const dias = faixaDeDias(hoje);
+  const aulas = await tentar("agenda", () => listarAulasExperimentaisEntreRepo(hoje, dias[dias.length - 1].data));
+  return <CentralAgenda aulas={aulas} dias={dias} hoje={hoje} atraso={230} />;
+}
+
+async function Fechamento() {
+  const abertas = await emAberto();
+  let titulo: string;
+  let texto: string;
+  if (abertas === null) {
+    titulo = "Pendências financeiras indisponíveis agora";
+    texto = "A tela de Cobrança mostra os registros.";
+  } else if (abertas.atrasadas.quantidade > 0) {
+    const n = abertas.atrasadas.quantidade;
+    titulo = `${n} ${n === 1 ? "cobrança atrasada" : "cobranças atrasadas"} · ${formatBRL(abertas.atrasadas.valor)}`;
+    texto = "Vencidas sem pagamento registrado. Confira os registros antes de cobrar.";
+  } else if (abertas.quantidade > 0) {
+    titulo = "Nenhuma cobrança atrasada";
+    texto = `${abertas.quantidade} ${abertas.quantidade === 1 ? "cobrança a vencer" : "cobranças a vencer"}.`;
+  } else {
+    titulo = "Nenhuma cobrança em aberto";
+    texto = "Sem pendentes nem atrasadas registradas.";
+  }
+
+  const atalho =
+    "flex min-h-14 items-center justify-center gap-2 rounded-[14px] border border-border-strong bg-surface-2 px-3 py-3 text-center text-sm font-medium text-ink transition-[background-color,border-color] duration-200 hover:border-destaque/50 hover:bg-[rgb(186_82_115/0.16)]";
+
+  return (
+    <div style={atraso(300)} className="entrada mt-4 grid gap-4 md:grid-cols-2">
+      <Link
+        href="/cobranca"
+        className="flex items-center justify-between gap-4 rounded-[14px] border border-[#b1748b]/30 bg-bg-deep/70 px-5 py-4 transition-colors duration-200 hover:border-destaque/50"
+      >
+        <span className="min-w-0">
+          <span className="block text-sm font-semibold text-ink">{titulo}</span>
+          <span className="mt-1 block text-[13px] text-muted">{texto}</span>
+        </span>
+        <IconeCobranca className="text-destaque" />
+      </Link>
+      <nav aria-label="Atalhos" className="grid grid-cols-2 gap-3">
+        <Link href="/matriculados/renovar" className={atalho}>
+          <IconeMatricula className="text-destaque" />
+          Matrículas e renovações
+        </Link>
+        <Link href="/matriculados" className={atalho}>
+          <IconePessoas className="text-destaque" />
+          Alunos e cadastro
+        </Link>
+      </nav>
+    </div>
+  );
+}
+
+async function Integracoes() {
+  const status = await tentar("token Freelandoo", statusTokenFreelandoo);
+  if (status === null) {
+    return <p className="px-1 pt-3 text-sm text-muted">Situação do token indisponível agora.</p>;
+  }
+  return (
+    <div className="pt-3">
+      <FreelandooTokenCard inicial={status} />
+    </div>
+  );
+}
+
+/**
+ * Central do admin: a primeira tela depois do login (ver `rotaInicial`).
+ * Mensagens, agenda e o que está em aberto, cada bloco com sua fonte real e
+ * seu próprio estado de carregando / indisponível / vazio.
+ *
+ * Só ADMIN: `requireModulo("painel")` barra recepção e técnico antes de
+ * qualquer consulta — nenhum número financeiro sai para outro papel.
+ */
+export default async function PainelPage() {
+  const user = await requireModulo("painel");
+  const agoraData = new Date();
+  const hoje = hojeNaAcademia(agoraData);
+  const agora = new Intl.DateTimeFormat("pt-BR", {
+    timeZone: FUSO_ACADEMIA,
+    hour: "2-digit",
+    minute: "2-digit",
+  }).format(agoraData);
+  const extenso = dataPorExtenso(hoje);
+  const nome = primeiroNome(user.nome);
+
+  return (
+    <div className="pb-2">
+      {/* overflow-x-clip: a caixa da órbita gira, e os cantos do quadrado
+          girado passariam da borda da tela (rolagem lateral) */}
+      <section
+        aria-labelledby="central-titulo"
+        className="entrada grid grid-cols-[minmax(0,1fr)_auto] items-center gap-2 overflow-x-clip pb-6 pt-1 sm:gap-6 sm:pb-8 sm:pt-3"
+      >
+        <div className="min-w-0">
+          <p className="mb-3 flex items-center gap-2.5 text-xs uppercase tracking-[0.18em] text-[#dfaabd]">
+            <span aria-hidden className="h-px w-6 bg-[#d36c89]" />
+            {extenso}
+          </p>
+          <h1
+            id="central-titulo"
+            className="text-[clamp(1.75rem,4.6vw,3rem)] font-medium leading-[1.08] tracking-[-0.035em] text-ink"
+          >
+            {saudacao(agoraData)}
+            {nome ? `, ${nome}` : ""}.
+            <span className="block text-[#d6a1b2]">Este é o dia do Coliseu.</span>
+          </h1>
+          <p className="mt-3 max-w-[34em] text-sm text-muted">
+            Conversas esperando resposta, aulas marcadas e cobranças em aberto.
+          </p>
+        </div>
+        <OrbitaData dia={String(Number(hoje.slice(8)))} mesAno={mesEAno(hoje)} />
+      </section>
+
+      <Suspense fallback={<FaixaCarregando />}>
+        <FaixaIndicadores agora={agora} />
+      </Suspense>
+
+      <div style={atraso(130)} className="entrada mb-3 mt-7 flex items-baseline justify-between gap-3 px-1">
+        <h2 className="text-sm font-semibold text-ink">No balcão agora</h2>
+        <span className="text-xs text-faint">Dados de quando a página abriu ({agora})</span>
+      </div>
+
+      <div className="grid items-stretch gap-4 lg:grid-cols-[minmax(0,1.45fr)_minmax(0,1fr)]">
+        <Suspense
+          fallback={<PainelCarregando icone={<IconeConversa />} titulo="Atendimento agora" id="central-atendimento" />}
+        >
+          <BlocoAtendimento hoje={hoje} />
+        </Suspense>
+        <Suspense
+          fallback={<PainelCarregando icone={<IconeCalendario />} titulo="Aulas experimentais" id="central-agenda" />}
+        >
+          <BlocoAgenda hoje={hoje} />
+        </Suspense>
+      </div>
+
+      <Suspense fallback={null}>
+        <Fechamento />
+      </Suspense>
+
+      <details className="group mt-8 rounded-[14px] border border-border px-4 py-3">
+        <summary className="flex min-h-8 cursor-pointer list-none items-center justify-between gap-3 text-sm text-muted transition-colors hover:text-ink [&::-webkit-details-marker]:hidden">
+          <span>Integração API (Freelandoo)</span>
+          <IconeSeta className="transition-transform duration-200 group-open:rotate-90" />
+        </summary>
+        <Suspense fallback={<p className="pt-3 text-sm text-muted">Carregando…</p>}>
+          <Integracoes />
+        </Suspense>
+      </details>
+    </div>
   );
 }

@@ -42,8 +42,9 @@ export default function LoginPage() {
       const d = await r.json().catch(() => ({}));
       setErro(d?.erro ?? "Falha na operação"); setEnviando(false); return;
     }
-    // A raiz decide o destino conforme o papel (admin → painel, colaborador →
-    // matriculados), então não fixamos a tela aqui.
+    // A raiz decide o destino conforme o papel (admin → central, recepção →
+    // atendimento, técnico → catraca), então não fixamos a tela aqui. Não há
+    // returnTo: o proxy manda ao /login sem guardar a rota pedida.
     window.location.assign("/");
   }
 

@@ -338,6 +338,35 @@ export async function contarNaoLidasRepo(): Promise<number> {
   return r._sum.naoLidas ?? 0;
 }
 
+/**
+ * Totais da central do admin, numa consulta só: MENSAGENS não lidas (a mesma
+ * soma do badge) e quantas CONVERSAS as têm. São números diferentes — três
+ * mensagens da mesma pessoa são uma conversa — e a tela rotula cada um.
+ */
+export async function totaisNaoLidasRepo(): Promise<{ mensagens: number; conversas: number }> {
+  const r = await prisma.conversa.aggregate({
+    where: { naoLidas: { gt: 0 } },
+    _sum: { naoLidas: true },
+    _count: { _all: true },
+  });
+  return { mensagens: r._sum.naoLidas ?? 0, conversas: r._count._all };
+}
+
+/**
+ * As conversas mais recentes que têm mensagem não lida, filtradas no banco —
+ * não é um recorte da primeira página da inbox (conversa antiga com não lida
+ * ficaria de fora). Só lê o resumo: nada aqui marca como lida.
+ */
+export async function conversasComNaoLidasRepo(limite = 6): Promise<ConversaResumo[]> {
+  const rows = await prisma.conversa.findMany({
+    where: { naoLidas: { gt: 0 } },
+    include: RESUMO_INCLUDE,
+    orderBy: [{ ultimaMensagemEm: "desc" }, { id: "desc" }],
+    take: limite,
+  });
+  return rows.map(toResumo);
+}
+
 export async function obterConversaRepo(id: string): Promise<ConversaResumo | null> {
   const row = await prisma.conversa.findUnique({ where: { id }, include: RESUMO_INCLUDE });
   return row ? toResumo(row) : null;

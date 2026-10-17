@@ -26,9 +26,12 @@ test("a lixeira de conversas é só do desenvolvedor — nem ADMIN entra", () =>
   expect(podeBackup(null)).toBe(false);
 });
 
-test("quem atende cai no Atendimento; quem não atende, na sua própria tela", () => {
-  expect(rotaInicial("ADMIN")).toBe("/atendimento");
+test("admin entra na central; quem atende, no Atendimento; o resto, na sua própria tela", () => {
+  expect(rotaInicial("ADMIN")).toBe("/painel");
   expect(rotaInicial("RECEPCAO")).toBe("/atendimento");
+  // A central é só do admin: recepção e técnico nunca são mandados para lá.
+  expect(podeModulo("RECEPCAO", "painel")).toBe(false);
+  expect(podeModulo("TECNICO", "painel")).toBe(false);
   // Técnico não tem o módulo: mandá-lo para lá seria um looping de redirect.
   expect(rotaInicial("TECNICO")).toBe("/acesso");
 });

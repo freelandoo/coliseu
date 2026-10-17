@@ -2,7 +2,7 @@ import { Reveal } from "@/components/ui/Reveal";
 import { PageHeader } from "@/components/ui/primitives";
 import { AulaExperimentalAbas } from "@/components/aula-experimental/AulaExperimentalAbas";
 import { listarAulasExperimentais } from "@/lib/store";
-import { hojeNaAcademia } from "@/lib/aula-experimental";
+import { ehDataISO, hojeNaAcademia } from "@/lib/aula-experimental";
 import { requireModulo } from "@/lib/auth/rbac";
 
 export const dynamic = "force-dynamic";
@@ -15,9 +15,17 @@ export const dynamic = "force-dynamic";
  * hoje, que dia ainda cabe gente. Era uma aba escondida atrás de outra tela e
  * virava consulta que ninguém fazia.
  */
-export default async function AulaExperimentalPage() {
+export default async function AulaExperimentalPage({
+  searchParams,
+}: {
+  /** `dia`: "AAAA-MM-DD" vindo da central — abre o calendário nesse dia. */
+  searchParams: Promise<{ dia?: string | string[] }>;
+}) {
   await requireModulo("aula-experimental");
+  const { dia } = await searchParams;
+  const pedido = Array.isArray(dia) ? dia[0] : dia;
   const aulas = await listarAulasExperimentais();
+  const hoje = hojeNaAcademia();
 
   return (
     <>
@@ -32,7 +40,9 @@ export default async function AulaExperimentalPage() {
         <AulaExperimentalAbas
           aulas={aulas}
           // O dia é do relógio da academia, não do servidor (UTC) nem do celular.
-          hoje={hojeNaAcademia()}
+          hoje={hoje}
+          // Data inválida ou ausente: o calendário abre em hoje, como sempre.
+          diaInicial={ehDataISO(pedido) ? pedido : hoje}
         />
       </Reveal>
     </>

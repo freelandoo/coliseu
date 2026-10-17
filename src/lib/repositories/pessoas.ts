@@ -33,6 +33,25 @@ export async function listarPessoasRepo(): Promise<Pessoa[]> {
   return rows.map(toPessoa);
 }
 
+/**
+ * Alunos cuja matrícula mais recente está ATIVA — o mesmo critério do filtro
+ * "Ativos" da lista de alunos (`?situacao=ativo`: fase aluno e última matrícula
+ * ACTIVE, ver `membershipToStatus`). Aluno sem matrícula nenhuma não conta.
+ * A contagem é no banco, sem carregar a base para a memória.
+ */
+export async function contarAlunosAtivosRepo(): Promise<number> {
+  const [r] = await prisma.$queryRaw<{ total: number }[]>`
+    SELECT count(*)::int AS total FROM (
+      SELECT DISTINCT ON (m."personId") m.status
+      FROM "Membership" m
+      JOIN "Person" p ON p.id = m."personId"
+      WHERE p.fase = 'aluno'
+      ORDER BY m."personId", m."matriculadoEm" DESC
+    ) ultima
+    WHERE ultima.status = 'ACTIVE'`;
+  return r?.total ?? 0;
+}
+
 export async function obterPessoaRepo(id: string): Promise<Pessoa | undefined> {
   const row = await prisma.person.findUnique({ where: { id }, include: withMemberships });
   return row ? toPessoa(row) : undefined;

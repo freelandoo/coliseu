@@ -21,14 +21,17 @@ import type { AulaExperimentalItem } from "@/lib/types";
 export function AulaExperimentalAbas({
   aulas,
   hoje,
+  diaInicial = hoje,
 }: {
   aulas: AulaExperimentalItem[];
   /** Hoje no fuso da academia, calculado no servidor. */
   hoje: string;
+  /** Dia que o calendário abre selecionado (`?dia=`, vindo da central). */
+  diaInicial?: string;
 }) {
   const [visao, setVisao] = useParametroUrl("visao", VISOES_AGENDA, "calendario");
-  const [ancora, setAncora] = useState<MesAncora>(() => mesDaData(hoje));
-  const [selecionado, setSelecionado] = useState(hoje);
+  const [ancora, setAncora] = useState<MesAncora>(() => mesDaData(diaInicial));
+  const [selecionado, setSelecionado] = useState(diaInicial);
   // A lista abre no que interessa ao balcão: de hoje em diante.
   const [filtro, setFiltro] = useState<FiltroAulas>("proximas");
   const idBase = useIdAbas();
