@@ -62,7 +62,7 @@ export function ListaAulas({
       ? "Ninguém marcou aula experimental para hoje."
       : filtro === "proximas"
         ? "Nenhuma aula experimental marcada daqui para frente."
-        : "Nenhuma aula experimental marcada ainda. Marque pela conversa do WhatsApp, no retrátil em cima da caixa de texto.";
+        : "Nenhuma aula experimental marcada ainda. Marque pela conversa do WhatsApp da pessoa, em “Aula experimental”.";
 
   return (
     <div className="flex flex-col gap-5">
@@ -73,10 +73,11 @@ export function ListaAulas({
             <button type="button"
               key={chip.key}
               onClick={() => setFiltro(chip.key)}
+              aria-pressed={ativo}
               className={cn(
-                "flex items-center gap-1.5 rounded-lg border px-2.5 py-1.5 text-xs font-medium transition-colors sm:gap-2 sm:px-3.5 sm:py-2 sm:text-sm",
+                "flex min-h-9 items-center gap-1.5 rounded-lg border px-2.5 py-1.5 text-sm font-medium transition-colors sm:gap-2 sm:px-3.5 sm:py-2",
                 ativo
-                  ? "border-red/60 bg-red-ghost text-ink"
+                  ? "border-brand/60 bg-brand-soft text-ink"
                   : "border-border bg-surface text-muted hover:border-border-strong hover:text-ink",
               )}
             >
@@ -84,7 +85,7 @@ export function ListaAulas({
               <span
                 className={cn(
                   "flex h-4 min-w-4 items-center justify-center rounded-md px-1 text-xs font-semibold sm:h-5 sm:min-w-5 sm:text-xs",
-                  ativo ? "bg-red text-white" : "bg-surface-2 text-faint",
+                  ativo ? "bg-brand text-white" : "bg-surface-2 text-muted",
                 )}
               >
                 {contagem[chip.key]}
@@ -96,7 +97,7 @@ export function ListaAulas({
 
       <Card className="overflow-hidden">
         {visiveis.length === 0 ? (
-          <p className="px-5 py-10 text-center text-sm text-faint">{vazio}</p>
+          <p className="px-5 py-10 text-center text-sm text-muted">{vazio}</p>
         ) : (
           <>
             {/* mobile: cards empilhados, sem scroll horizontal */}
@@ -110,6 +111,7 @@ export function ListaAulas({
                     </div>
                     <QuandoEtiqueta aula={a} hoje={hoje} />
                   </div>
+                  {a.observacao && <p className="line-clamp-2 text-xs text-muted">Obs.: {a.observacao}</p>}
                   <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-1.5">
                     <Badge>{a.modalidade}</Badge>
                     <Acoes aula={a} hoje={hoje} />
@@ -123,7 +125,7 @@ export function ListaAulas({
               <table className="w-full min-w-[640px] border-collapse text-sm">
                 <thead>
                   <tr className="border-b border-border text-left">
-                    <Th>Aluno</Th>
+                    <Th>Pessoa</Th>
                     <Th>Contato</Th>
                     <Th>Modalidade</Th>
                     <Th>Aula</Th>
@@ -137,7 +139,14 @@ export function ListaAulas({
                       key={a.id}
                       className="border-b border-border transition-colors last:border-0 hover:bg-surface-2"
                     >
-                      <td className="px-4 py-3 font-medium text-ink">{a.nome}</td>
+                      <td className="px-4 py-3">
+                        <p className="font-medium text-ink">{a.nome}</p>
+                        {a.observacao && (
+                          <p className="mt-0.5 line-clamp-1 max-w-xs text-xs text-muted" title={a.observacao}>
+                            Obs.: {a.observacao}
+                          </p>
+                        )}
+                      </td>
                       <td className="px-4 py-3 text-muted">{a.telefone}</td>
                       <td className="px-4 py-3">
                         <Badge>{a.modalidade}</Badge>
@@ -169,7 +178,7 @@ function QuandoEtiqueta({ aula, hoje }: { aula: AulaExperimentalItem; hoje: stri
     <span
       className={cn(
         "inline-flex shrink-0 items-center gap-1.5 text-xs font-medium",
-        ehHoje ? "text-red-bright" : passou ? "text-faint" : "text-muted",
+        ehHoje ? "font-semibold text-brand" : passou ? "text-faint" : "text-ink",
       )}
     >
       {ehHoje ? "Hoje" : formatarDataCompleta(aula.data)} · {formatarHora(aula.hora)}
@@ -178,30 +187,31 @@ function QuandoEtiqueta({ aula, hoje }: { aula: AulaExperimentalItem; hoje: stri
 }
 
 /**
- * "Não compareceu" abre a conversa da pessoa com o convite para remarcar já
- * escrito na caixa de texto — quem lê e envia é a recepção, como em toda
- * resposta do Coliseu. O botão só existe depois que o dia da aula chegou: até
- * lá não há falta, só aula marcada.
+ * "Convidar para remarcar" abre a conversa da pessoa com o convite já escrito
+ * na caixa de texto — quem lê e envia é a recepção. Não registra falta nem
+ * presença (o sistema não guarda comparecimento): é só o atalho para o
+ * convite. Aparece a partir do dia da aula.
  */
 function Acoes({ aula, hoje }: { aula: AulaExperimentalItem; hoje: string }) {
   // Sem conversa não há para onde levar (aula marcada por conversa apagada).
-  if (!aula.conversaId) return <span className="text-xs text-faint">sem conversa</span>;
+  if (!aula.conversaId) return <span className="text-xs text-muted">sem conversa</span>;
 
   return (
     <span className="inline-flex items-center gap-3">
       {aula.data <= hoje && (
         <Link
           href={`/atendimento?c=${aula.conversaId}&remarcar=${aula.data}`}
+          title="Abre a conversa com um convite pronto para revisar e enviar. Não registra falta."
           className="text-xs font-medium text-muted transition-colors hover:text-ink hover:underline"
         >
-          Não compareceu
+          Convidar para remarcar
         </Link>
       )}
       <Link
         href={`/atendimento?c=${aula.conversaId}`}
-        className="text-xs font-medium text-red-bright hover:underline"
+        className="text-xs font-semibold text-brand hover:underline"
       >
-        Conversa →
+        Abrir conversa →
       </Link>
     </span>
   );

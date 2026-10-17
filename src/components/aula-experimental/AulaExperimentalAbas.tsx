@@ -11,10 +11,9 @@ import type { AulaExperimentalItem } from "@/lib/types";
 /**
  * As duas leituras da mesma agenda.
  *
- * O calendário abre primeiro porque é a pergunta de quem está com a pessoa na
- * linha: "que dias já estão cheios?" — o mês inteiro de uma vez, sem abrir dia
- * por dia. A lista continua a um clique, para quem quer a leitura corrida com
- * filtro e histórico.
+ * O calendário abre primeiro: o mês inteiro de uma vez, com os dias que já têm
+ * visita marcada (não é controle de vagas — não há capacidade cadastrada). A
+ * lista continua a um clique, para a leitura corrida com filtro e histórico.
  *
  * A visão vai na URL (`?visao=lista`). Mês, dia e filtro moram aqui, e não nos
  * painéis: trocar de visão desmonta o painel, mas não perde onde se estava.
@@ -30,7 +29,8 @@ export function AulaExperimentalAbas({
   const [visao, setVisao] = useParametroUrl("visao", VISOES_AGENDA, "calendario");
   const [ancora, setAncora] = useState<MesAncora>(() => mesDaData(hoje));
   const [selecionado, setSelecionado] = useState(hoje);
-  const [filtro, setFiltro] = useState<FiltroAulas>("todas");
+  // A lista abre no que interessa ao balcão: de hoje em diante.
+  const [filtro, setFiltro] = useState<FiltroAulas>("proximas");
   const idBase = useIdAbas();
   const aulasHoje = aulas.filter((a) => a.data === hoje).length;
 

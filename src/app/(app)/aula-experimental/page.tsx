@@ -24,7 +24,7 @@ export default async function AulaExperimentalPage() {
       <Reveal>
         <PageHeader
           title="Aula experimental"
-          subtitle="Calendário e visitas marcadas. Marcar continua sendo pela conversa do WhatsApp, no retrátil em cima da caixa de texto."
+          subtitle="Visitas marcadas por dia. Para marcar, abra a conversa da pessoa no Atendimento e use “Aula experimental” — o envio da confirmação é sempre revisado antes."
         />
       </Reveal>
 

@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useRef, useState, type Dispatch, type SetStateAction } from "react";
+import { useEffect, useMemo, useRef, useState, type Dispatch, type SetStateAction } from "react";
 import Link from "next/link";
 import { gsap } from "gsap";
 import { useGSAP } from "@gsap/react";
@@ -18,15 +18,17 @@ import {
   semanasDoMes,
 } from "@/lib/calendario";
 import type { AulaExperimentalItem } from "@/lib/types";
-import { classeBotao } from "@/components/ui/Botao";
+import { Botao, classeBotao } from "@/components/ui/Botao";
+import { MensagemErro, classeCampo } from "@/components/ui/Campo";
+import { lerResultado } from "@/lib/operacao";
 
 /**
- * A agenda da Captação vista como mês.
+ * A agenda de aulas experimentais vista como mês.
  *
- * A lista de aulas responde "quem vem hoje?"; o calendário responde a outra
- * pergunta, a de quem está marcando: "que dias já estão cheios?". Por isso o
- * dia com aula é vermelho na grade — a recepção enxerga o mês inteiro de uma
- * vez e escolhe o horário olhando para ele, sem abrir dia por dia.
+ * A lista responde "quem vem hoje?"; o calendário mostra em que dias já há
+ * visita marcada — o dia com aula fica em rubi na grade. Não é controle de
+ * vagas: a academia não tem capacidade por horário cadastrada, então a grade
+ * só conta o que foi marcado.
  *
  * Clicar num dia abre embaixo tudo que está marcado nele, com o campo de
  * observação de cada visita. `hoje` vem pronto do servidor, no relógio da
@@ -197,7 +199,7 @@ export function CalendarioAulas({
                     ehSelecionado
                       ? "text-white"
                       : marcadas > 0
-                        ? "font-semibold text-red-bright hover:bg-red-ghost"
+                        ? "font-semibold text-brand hover:bg-brand-soft"
                         : "text-muted hover:bg-surface-2 hover:text-ink",
                   )}
                 >
@@ -208,7 +210,7 @@ export function CalendarioAulas({
                       className={cn(
                         "absolute inset-0.5 rounded-full",
                         marcadas > 0
-                          ? "bg-red shadow-[var(--shadow-red)]"
+                          ? "bg-brand shadow-[var(--shadow-red)]"
                           : "bg-elevated ring-1 ring-border-strong",
                       )}
                     />
@@ -225,7 +227,7 @@ export function CalendarioAulas({
                       aria-hidden
                       className={cn(
                         "absolute bottom-1 h-1 w-1 rounded-full",
-                        ehSelecionado ? "bg-white/80" : "bg-red-bright",
+                        ehSelecionado ? "bg-white/80" : "bg-brand",
                       )}
                     />
                   )}
@@ -239,7 +241,7 @@ export function CalendarioAulas({
           <button
             type="button"
             onClick={voltarParaHoje}
-            className="mt-3 w-full rounded-lg border border-border px-3 py-2 text-xs font-semibold text-muted transition-colors hover:border-border-strong hover:text-ink"
+            className={cn(classeBotao({ variante: "secundario", tamanho: "sm", bloco: true }), "mt-3")}
           >
             Voltar para hoje
           </button>
@@ -260,11 +262,11 @@ export function CalendarioAulas({
 
         {doDia.length === 0 ? (
           <Card data-agendamento className="px-5 py-8 text-center">
-            <p className="text-sm text-faint">
+            <p className="text-sm text-muted">
               Nenhuma aula experimental marcada para {formatarDataCompleta(selecionado)}.
             </p>
             <p className="mt-1 text-xs text-faint">
-              Marcar é pela conversa do WhatsApp, no retrátil em cima da caixa de texto.
+              Marcar é pela conversa do WhatsApp da pessoa, em “Aula experimental”.
             </p>
           </Card>
         ) : (
@@ -305,7 +307,7 @@ function LinhaDoDia({ aula }: { aula: AulaExperimentalItem }) {
           <p className="text-xs text-muted">{aula.telefone}</p>
         </div>
         <div className="flex shrink-0 items-center gap-2">
-          <span className="font-display text-sm font-semibold tracking-widest text-red-bright">
+          <span className="font-display text-sm font-semibold text-brand">
             {formatarHora(aula.hora)}
           </span>
           <Badge>{aula.modalidade}</Badge>
@@ -313,16 +315,18 @@ function LinhaDoDia({ aula }: { aula: AulaExperimentalItem }) {
       </div>
 
       <div className="mt-2 flex flex-wrap items-center justify-between gap-x-3 gap-y-1">
-        <span className="text-xs text-faint">
+        <span className="text-xs text-muted">
           Marcada por {aula.agendadoPor ?? "—"}
         </span>
-        {aula.conversaId && (
+        {aula.conversaId ? (
           <Link
             href={`/atendimento?c=${aula.conversaId}`}
-            className="text-xs font-medium text-red-bright hover:underline"
+            className="text-xs font-semibold text-brand hover:underline"
           >
-            Conversa →
+            Abrir conversa →
           </Link>
+        ) : (
+          <span className="text-xs text-muted">sem conversa</span>
         )}
       </div>
 
@@ -332,44 +336,74 @@ function LinhaDoDia({ aula }: { aula: AulaExperimentalItem }) {
 }
 
 /**
- * O campo de observação da visita.
+ * Rascunhos de observação ainda não salvos, por aula — só na memória da aba.
+ * Trocar de dia ou de visão desmonta o campo; o que foi digitado volta quando
+ * ele reaparece, e sair da página com rascunho pendente pede confirmação.
+ */
+const rascunhosObservacao = new Map<string, string>();
+
+function avisarSaida(e: BeforeUnloadEvent) {
+  if (rascunhosObservacao.size > 0) e.preventDefault();
+}
+
+function ehAulaSalva(v: unknown): v is { aula: AulaExperimentalItem } {
+  return typeof v === "object" && v !== null && typeof (v as { aula?: { id?: unknown } }).aula?.id === "string";
+}
+
+/**
+ * O campo de observação da visita — recado interno, nunca vai para o WhatsApp.
  *
- * Salva só no botão, e o botão só existe quando há mudança: o balcão é um lugar
- * de clique torto, e salvar sozinho enquanto alguém digita transformaria meia
- * frase em recado oficial. O rascunho vive no próprio campo — sair da tela sem
- * salvar não grava nada, e é isso que o texto embaixo avisa.
+ * Salva só no botão: salvar sozinho enquanto alguém digita transformaria meia
+ * frase em recado oficial. Texto vazio salvo apaga a observação.
  */
 function ObservacaoCampo({ aula }: { aula: AulaExperimentalItem }) {
-  const [texto, setTexto] = useState(aula.observacao ?? "");
   const [salvo, setSalvo] = useState(aula.observacao ?? "");
+  const [texto, setTextoEstado] = useState(() => rascunhosObservacao.get(aula.id) ?? aula.observacao ?? "");
   const [salvando, setSalvando] = useState(false);
   const [erro, setErro] = useState("");
 
   const mudou = texto.trim() !== salvo.trim();
   const excedeu = texto.trim().length > OBSERVACAO_MAX;
 
+  useEffect(() => {
+    window.addEventListener("beforeunload", avisarSaida);
+    return () => window.removeEventListener("beforeunload", avisarSaida);
+  }, []);
+
+  function setTexto(t: string) {
+    setTextoEstado(t);
+    if (t.trim() !== salvo.trim()) rascunhosObservacao.set(aula.id, t);
+    else rascunhosObservacao.delete(aula.id);
+  }
+
+  function descartar() {
+    rascunhosObservacao.delete(aula.id);
+    setTextoEstado(salvo);
+    setErro("");
+  }
+
   async function salvar() {
+    if (salvando || excedeu) return;
     setErro("");
     setSalvando(true);
-    try {
-      const r = await fetch(`/api/captacao/aulas/${aula.id}/observacao`, {
+    const res = await lerResultado(
+      fetch(`/api/captacao/aulas/${aula.id}/observacao`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ observacao: texto }),
-      });
-      if (!r.ok) {
-        const d = (await r.json().catch(() => ({}))) as { erro?: string };
-        setErro(d?.erro ?? "Não deu para salvar a observação.");
-        return;
-      }
-      const d = (await r.json()) as { aula: AulaExperimentalItem };
-      const gravado = d.aula.observacao ?? "";
+      }),
+      ehAulaSalva,
+      "Não deu para salvar a observação.",
+    );
+    setSalvando(false);
+    if (res.tipo === "ok") {
+      const gravado = res.dados.aula.observacao ?? "";
+      rascunhosObservacao.delete(aula.id);
       setSalvo(gravado);
-      setTexto(gravado);
-    } catch {
-      setErro("Sem conexão com o servidor.");
-    } finally {
-      setSalvando(false);
+      setTextoEstado(gravado);
+    } else {
+      // O rascunho continua no campo para tentar de novo.
+      setErro(res.tipo === "falha" ? res.erro : "Sem confirmação do servidor. Recarregue para ver o que ficou salvo.");
     }
   }
 
@@ -379,7 +413,7 @@ function ObservacaoCampo({ aula }: { aula: AulaExperimentalItem }) {
         htmlFor={`obs-${aula.id}`}
         className="text-xs font-semibold text-faint"
       >
-        Observações
+        Observação interna
       </label>
       <textarea
         id={`obs-${aula.id}`}
@@ -388,32 +422,31 @@ function ObservacaoCampo({ aula }: { aula: AulaExperimentalItem }) {
         rows={2}
         maxLength={OBSERVACAO_MAX}
         placeholder="Recado para quem receber essa pessoa — combinado de horário, quem vem junto, o que já foi falado."
-        className="mt-1.5 w-full resize-y rounded-lg border border-border bg-surface-2 px-3 py-2 text-sm text-ink placeholder:text-faint focus:border-border-strong focus:outline-none"
+        aria-describedby={`obs-${aula.id}-estado`}
+        className={cn(classeCampo, "mt-1.5 resize-y")}
       />
 
       <div className="mt-1.5 flex flex-wrap items-center justify-between gap-x-3 gap-y-1">
-        <span className={cn("text-xs", excedeu ? "text-danger" : "text-faint")}>
-          {erro
-            ? ""
-            : mudou
-              ? `${texto.trim().length}/${OBSERVACAO_MAX} · não salvo`
-              : salvo
-                ? "salvo"
-                : `${texto.trim().length}/${OBSERVACAO_MAX}`}
+        <span id={`obs-${aula.id}-estado`} className={cn("text-xs", excedeu ? "text-danger" : mudou ? "text-warning" : "text-muted")}>
+          {mudou
+            ? `${texto.trim().length}/${OBSERVACAO_MAX} · não salvo${!texto.trim() && salvo ? " (salvar vazio apaga a observação)" : ""}`
+            : salvo
+              ? "Salvo · não é enviado à pessoa"
+              : `${texto.trim().length}/${OBSERVACAO_MAX} · não é enviado à pessoa`}
         </span>
-        {erro && <span className="text-xs text-danger">{erro}</span>}
 
         {mudou && (
-          <button
-            type="button"
-            onClick={salvar}
-            disabled={salvando || excedeu}
-            className={classeBotao({ variante: "contorno", tamanho: "sm" })}
-          >
-            {salvando ? "Salvando…" : "Salvar"}
-          </button>
+          <span className="flex gap-2">
+            <Botao variante="discreto" tamanho="sm" onClick={descartar} disabled={salvando}>
+              Descartar
+            </Botao>
+            <Botao variante="contorno" tamanho="sm" onClick={() => void salvar()} carregando={salvando} disabled={excedeu}>
+              {salvando ? "Salvando…" : "Salvar"}
+            </Botao>
+          </span>
         )}
       </div>
+      {erro && <MensagemErro className="mt-1.5 text-xs">{erro}</MensagemErro>}
     </div>
   );
 }
