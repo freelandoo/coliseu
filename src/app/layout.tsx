@@ -23,17 +23,18 @@ export const metadata: Metadata = {
   appleWebApp: {
     capable: true,
     title: "Coliseu",
-    // Tema claro: "default" mantém relógio e bateria escuros sobre a barra clara
-    // ("black-translucent" desenha os dois em branco, ilegíveis sobre o branco).
-    statusBarStyle: "default",
+    // Shell escuro: "black" é uma barra opaca escura com relógio e bateria
+    // claros. Opaca de propósito — "black-translucent" desenharia o app por baixo
+    // da barra e exigiria o recuo do topo também no iOS.
+    statusBarStyle: "black",
   },
 };
 
 export const viewport: Viewport = {
   width: "device-width",
   initialScale: 1,
-  // cor da barra do navegador/sistema = superfície do topo (branco)
-  themeColor: "#ffffff",
+  // cor da barra do navegador/sistema = fundo do shell (rubi muito escuro)
+  themeColor: "#21070f",
   viewportFit: "cover",
 };
 
