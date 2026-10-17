@@ -134,14 +134,18 @@ export function Sidebar({
           onClick={onFechar}
           aria-current={atual ? "page" : undefined}
           className={cn(
-            "relative flex min-h-10 items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-colors",
-            atual ? "bg-brand-soft text-brand" : "text-muted hover:bg-surface-2 hover:text-ink",
+            "relative flex min-h-10 items-center gap-3 rounded-[10px] px-3 py-2 text-sm font-medium",
+            "transition-[background-color,color,box-shadow] duration-200 ease-padrao",
+            atual
+              ? "bg-[linear-gradient(100deg,#861d3c,#501226)] text-ink shadow-[inset_0_1px_0_rgb(234_166_183/0.17)]"
+              : "text-muted hover:bg-surface-2 hover:text-ink",
           )}
         >
+          {/* marcador de posição: rosa, fora do item, colado na borda do menu */}
           {atual && (
-            <span aria-hidden className="absolute left-0 top-1/2 h-5 w-[3px] -translate-y-1/2 rounded-r bg-brand" />
+            <span aria-hidden className="absolute -left-3 top-1/2 h-5 w-[3px] -translate-y-1/2 rounded-r bg-destaque" />
           )}
-          <span className={cn("shrink-0", atual ? "text-brand" : "text-faint")}>{ICONES[d.icone]}</span>
+          <span className={cn("shrink-0", atual ? "text-ink" : "text-faint")}>{ICONES[d.icone]}</span>
           <span className="min-w-0 flex-1 truncate">{d.rotulo}</span>
           {/* Não lidas do WhatsApp — só no Atendimento, some quando zera. */}
           {d.modulo === "atendimento" && <NaoLidasBadge />}
@@ -162,22 +166,22 @@ export function Sidebar({
         aria-label="Menu principal"
         tabIndex={-1}
         className={cn(
-          "fixed inset-y-0 left-0 z-50 flex h-dvh w-72 max-w-[85vw] shrink-0 flex-col border-r border-border bg-surface outline-none",
+          "fixed inset-y-0 left-0 z-50 flex h-dvh w-72 max-w-[85vw] shrink-0 flex-col border-r border-border bg-menu outline-none",
           // de ponta a ponta: o topo não nasce sob o relógio nem o rodapé some na barra de gestos
           "pt-[var(--safe-t)] pb-[var(--safe-b)]",
           "transition-[transform,visibility] duration-200 ease-padrao motion-reduce:transition-none",
-          "lg:visible lg:sticky lg:top-0 lg:z-auto lg:w-60 lg:max-w-none lg:translate-x-0",
+          "lg:visible lg:sticky lg:top-0 lg:z-auto lg:w-[17rem] lg:max-w-none lg:translate-x-0 lg:bg-menu/85",
           aberta ? "visible translate-x-0 shadow-[var(--shadow-overlay)]" : "invisible -translate-x-full",
         )}
       >
-        <div className="flex h-[var(--altura-topo)] shrink-0 items-center gap-3 border-b border-border px-4">
+        <div className="flex shrink-0 items-center gap-3 px-4 pb-3 pt-5">
           <Link href="/" onClick={onFechar} className="flex min-w-0 flex-1 items-center gap-3 rounded-md">
-            <span className="steel-plate h-8 w-8 shrink-0 rounded-md text-sm">CT</span>
+            <span className="steel-plate h-9 w-9 shrink-0 rounded-[10px] text-sm">CT</span>
             <span className="min-w-0 leading-tight">
-              <span className="block truncate font-display text-base font-semibold uppercase tracking-wide text-ink">
+              <span className="block truncate font-display text-xl font-semibold uppercase tracking-[0.08em] text-ink">
                 Coliseu CRM
               </span>
-              <span className="block truncate text-[11px] uppercase tracking-widest text-faint">
+              <span className="mt-0.5 block truncate text-[11px] uppercase tracking-[0.1em] text-faint">
                 Academia Coliseu Team
               </span>
             </span>
@@ -196,10 +200,10 @@ export function Sidebar({
         </div>
 
         {/* só os links rolam: topo e conta ficam sempre alcançáveis */}
-        <nav aria-label="Módulos" className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-3 py-3">
+        <nav aria-label="Módulos" className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-3 pb-3 pt-2">
           {principais.map((g) => (
-            <section key={g.id} aria-labelledby={`grupo-${g.id}`} className="mb-4 last:mb-0">
-              <h2 id={`grupo-${g.id}`} className="mb-1 px-3 text-xs font-semibold text-faint">
+            <section key={g.id} aria-labelledby={`grupo-${g.id}`} className="mb-5 last:mb-0">
+              <h2 id={`grupo-${g.id}`} className="mb-1.5 px-3 text-xs font-medium uppercase tracking-[0.14em] text-faint">
                 {g.rotulo}
               </h2>
               <ul className="flex flex-col gap-0.5">{g.itens.map(item)}</ul>

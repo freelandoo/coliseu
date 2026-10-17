@@ -112,7 +112,7 @@ export function ExportarRelatorio() {
               <span
                 className={cn(
                   "font-display text-sm font-semibold",
-                  ativo ? "text-red-bright" : "text-ink",
+                  ativo ? "text-destaque" : "text-ink",
                 )}
               >
                 {t.titulo}

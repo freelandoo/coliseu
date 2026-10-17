@@ -168,7 +168,7 @@ function Linha({ rotulo, valor, destaque }: { rotulo: string; valor: string; des
   return (
     <div className="flex items-center justify-between py-1">
       <span className="text-faint">{rotulo}</span>
-      <span className={cn("font-medium tabular-nums", destaque ? "text-lg text-brand" : "text-ink")}>{valor}</span>
+      <span className={cn("font-medium tabular-nums", destaque ? "text-lg text-destaque" : "text-ink")}>{valor}</span>
     </div>
   );
 }

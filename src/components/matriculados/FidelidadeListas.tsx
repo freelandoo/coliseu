@@ -153,7 +153,7 @@ export function FidelidadeListas({ ativos, cancelados }: { ativos: LinhaAtivo[];
                         <span className="ml-2 font-mono text-faint">{a.codigo}</span>
                       </p>
                     </div>
-                    <span className="shrink-0 text-sm font-medium text-red-bright">{formatMeses(a.meses)}</span>
+                    <span className="shrink-0 text-sm font-medium text-destaque">{formatMeses(a.meses)}</span>
                   </li>
                 ))}
               </ul>
@@ -176,7 +176,7 @@ export function FidelidadeListas({ ativos, cancelados }: { ativos: LinhaAtivo[];
                           <NomeFicha id={a.id} nome={a.nome} />
                         </td>
                         <td className="px-4 py-3 text-muted">{a.ultimaPresenca}</td>
-                        <td className="px-4 py-3 font-medium text-red-bright">{formatMeses(a.meses)}</td>
+                        <td className="px-4 py-3 font-medium text-destaque">{formatMeses(a.meses)}</td>
                       </tr>
                     ))}
                   </tbody>
@@ -194,7 +194,7 @@ function NomeFicha({ id, nome, className }: { id: string; nome: string; classNam
   return (
     <Link
       href={hrefFicha(id)}
-      className={cn("font-medium text-ink underline-offset-2 hover:text-brand hover:underline", className)}
+      className={cn("font-medium text-ink underline-offset-2 hover:text-destaque hover:underline", className)}
     >
       {nome}
     </Link>

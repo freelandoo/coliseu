@@ -47,7 +47,9 @@ export function NaoLidasBadge() {
 
   if (naoLidas <= 0) return null;
   return (
-    <span className="flex h-4 min-w-4 items-center justify-center rounded bg-red px-1 text-xs font-semibold text-white">
+    // Mora no menu escuro: chip rosa com texto vinho (8:1), legível também
+    // sobre o item ativo, que é rubi.
+    <span className="flex h-5 min-w-5 items-center justify-center rounded-md bg-destaque px-1 text-xs font-semibold tabular-nums text-bg-deep">
       {naoLidas}
     </span>
   );

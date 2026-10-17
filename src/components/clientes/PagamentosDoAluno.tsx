@@ -174,7 +174,7 @@ export function PagamentosDoAluno({
                 type="button"
                 onClick={cancelarAssinatura}
                 disabled={ocupado}
-                className="ml-auto text-xs font-medium text-red-bright transition-colors hover:underline disabled:opacity-60"
+                className="ml-auto text-xs font-medium text-destaque transition-colors hover:underline disabled:opacity-60"
               >
                 Cancelar assinatura
               </button>
@@ -262,7 +262,7 @@ export function PagamentosDoAluno({
                     type="button"
                     onClick={() => cancelar(p)}
                     disabled={ocupado}
-                    className="text-xs font-medium text-red-bright transition-colors hover:underline disabled:opacity-60"
+                    className="text-xs font-medium text-destaque transition-colors hover:underline disabled:opacity-60"
                   >
                     Cancelar
                   </button>

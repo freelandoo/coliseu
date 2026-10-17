@@ -32,7 +32,7 @@ const BASE =
 const VARIANTE: Record<VarianteBotao, string> = {
   primario: "bg-brand text-white hover:bg-brand-hover active:bg-brand-strong disabled:hover:bg-brand",
   contorno:
-    "border border-brand/60 bg-surface text-brand hover:bg-brand-soft disabled:hover:bg-surface",
+    "border border-brand/60 bg-surface text-destaque hover:bg-brand-soft disabled:hover:bg-surface",
   secundario:
     "border border-border-strong bg-surface text-ink hover:border-control hover:bg-surface-2 disabled:hover:bg-surface",
   discreto: "text-muted hover:bg-surface-2 hover:text-ink disabled:hover:bg-transparent",

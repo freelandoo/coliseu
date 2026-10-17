@@ -163,7 +163,7 @@ export function RetencaoFiltro({
                     <div className="min-w-0">
                       <Link
                         href={hrefFicha(l.id)}
-                        className="block truncate text-sm font-medium text-ink hover:text-brand hover:underline"
+                        className="block truncate text-sm font-medium text-ink hover:text-destaque hover:underline"
                       >
                         {l.nome}
                       </Link>
@@ -200,7 +200,7 @@ export function RetencaoFiltro({
                         <td className="px-4 py-3">
                           <Link
                             href={hrefFicha(l.id)}
-                            className="font-medium text-ink underline-offset-2 hover:text-brand hover:underline"
+                            className="font-medium text-ink underline-offset-2 hover:text-destaque hover:underline"
                           >
                             {l.nome}
                           </Link>
@@ -236,7 +236,7 @@ function ContatoExterno({ telefone }: { telefone: string }) {
       target="_blank"
       rel="noreferrer"
       title="Abre o WhatsApp fora do CRM; a conversa não fica registrada aqui."
-      className="text-xs font-medium text-brand hover:underline"
+      className="text-xs font-medium text-destaque hover:underline"
     >
       WhatsApp externo ↗
     </a>

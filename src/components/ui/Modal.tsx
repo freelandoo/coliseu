@@ -120,7 +120,7 @@ export function Modal({
           aria-describedby={descricaoId}
           tabIndex={-1}
           className={cn(
-            "m-auto w-full max-w-md rounded-xl border border-border bg-surface p-5 sm:p-6",
+            "m-auto w-full max-w-md rounded-2xl border border-border bg-surface p-5 sm:p-6",
             "shadow-[var(--shadow-overlay)] outline-none",
             "motion-safe:animate-[dialogo-entra_160ms_var(--ease-padrao)]",
             className,

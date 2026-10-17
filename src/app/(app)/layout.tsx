@@ -31,6 +31,7 @@ export default async function AppLayout({ children }: { children: ReactNode }) {
         papel={user.role as Papel}
         desenvolvedor={user.desenvolvedor === true}
         mostrarSino={podeModulo(user.role as Papel, "captacao")}
+        nome={user.nome}
       >
         {children}
       </ShellApp>

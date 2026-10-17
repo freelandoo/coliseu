@@ -11,7 +11,7 @@ export function Card({
   return (
     <div
       className={cn(
-        "rounded-xl border border-border bg-surface",
+        "rounded-2xl border border-border bg-surface",
         "shadow-[var(--shadow-card)]",
         className,
       )}
@@ -31,7 +31,7 @@ export type Tone = "neutral" | "brand" | "danger" | "success" | "warning" | "inf
 
 const TONE_BADGE: Record<Tone, string> = {
   neutral: "border-border-strong/70 text-muted bg-surface-2",
-  brand: "border-brand/30 text-brand bg-brand-soft",
+  brand: "border-brand/30 text-destaque bg-brand-soft",
   danger: "border-danger/30 text-danger bg-danger-soft",
   success: "border-success/30 text-success bg-success-soft",
   ok: "border-success/30 text-success bg-success-soft",
@@ -42,7 +42,7 @@ const TONE_BADGE: Record<Tone, string> = {
 
 const TONE_TEXTO: Record<Tone, string> = {
   neutral: "text-ink",
-  brand: "text-brand",
+  brand: "text-destaque",
   danger: "text-danger",
   success: "text-success",
   ok: "text-success",
@@ -107,7 +107,7 @@ export function Stat({
 
   if (href) {
     return (
-      <Link href={href} className="group block rounded-xl">
+      <Link href={href} className="group block rounded-2xl">
         <Card className="h-full p-4 transition-colors duration-150 group-hover:border-border-strong group-hover:bg-surface-2">
           {conteudo}
         </Card>

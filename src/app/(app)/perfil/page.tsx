@@ -36,7 +36,7 @@ export default async function PerfilPage() {
     <>
       <Reveal>
         <header className="mb-4">
-          <p className="text-xs font-medium text-red-bright">
+          <p className="text-xs font-medium text-destaque">
             Conta
           </p>
           <h1 className="mt-0.5 font-display text-2xl font-semibold text-ink">

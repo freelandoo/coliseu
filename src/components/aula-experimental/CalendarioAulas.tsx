@@ -197,9 +197,13 @@ export function CalendarioAulas({
                     "relative flex aspect-square items-center justify-center rounded-lg text-sm transition-colors",
                     !d.doMes && "opacity-40",
                     ehSelecionado
-                      ? "text-white"
+                      ? // com aula, a marca é rubi (texto claro); sem aula, é a
+                        // superfície elevada com anel (texto grafite)
+                        marcadas > 0
+                        ? "font-semibold text-white"
+                        : "font-semibold text-ink"
                       : marcadas > 0
-                        ? "font-semibold text-brand hover:bg-brand-soft"
+                        ? "font-semibold text-destaque hover:bg-brand-soft"
                         : "text-muted hover:bg-surface-2 hover:text-ink",
                   )}
                 >
@@ -307,7 +311,7 @@ function LinhaDoDia({ aula }: { aula: AulaExperimentalItem }) {
           <p className="text-xs text-muted">{aula.telefone}</p>
         </div>
         <div className="flex shrink-0 items-center gap-2">
-          <span className="font-display text-sm font-semibold text-brand">
+          <span className="font-display text-sm font-semibold text-destaque">
             {formatarHora(aula.hora)}
           </span>
           <Badge>{aula.modalidade}</Badge>
@@ -321,7 +325,7 @@ function LinhaDoDia({ aula }: { aula: AulaExperimentalItem }) {
         {aula.conversaId ? (
           <Link
             href={`/atendimento?c=${aula.conversaId}`}
-            className="text-xs font-semibold text-brand hover:underline"
+            className="text-xs font-semibold text-destaque hover:underline"
           >
             Abrir conversa →
           </Link>

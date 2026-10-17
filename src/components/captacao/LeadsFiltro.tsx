@@ -140,7 +140,7 @@ export function LeadsFiltro({ leads, planos }: { leads: Lead[]; planos: Plano[] 
                     <div className="min-w-0">
                       <Link
                         href={`/matriculados/${lead.id}?de=captacao`}
-                        className="block truncate text-sm font-medium text-ink hover:text-brand hover:underline"
+                        className="block truncate text-sm font-medium text-ink hover:text-destaque hover:underline"
                       >
                         {lead.nome || "Sem nome"}
                       </Link>
@@ -180,7 +180,7 @@ export function LeadsFiltro({ leads, planos }: { leads: Lead[]; planos: Plano[] 
                       <td className="px-4 py-3">
                         <Link
                           href={`/matriculados/${lead.id}?de=captacao`}
-                          className="font-medium text-ink underline-offset-2 hover:text-brand hover:underline"
+                          className="font-medium text-ink underline-offset-2 hover:text-destaque hover:underline"
                         >
                           {lead.nome || "Sem nome"}
                         </Link>
@@ -221,7 +221,7 @@ function AcoesLead({ lead, planos, alinhar }: { lead: Lead; planos: Plano[]; ali
           registrado). Sem conversa — lead de balcão ou indicação — só resta
           abrir o WhatsApp por fora. */}
       {lead.conversaId ? (
-        <Link href={`/atendimento?c=${lead.conversaId}`} className="text-xs font-semibold text-brand hover:underline">
+        <Link href={`/atendimento?c=${lead.conversaId}`} className="text-xs font-semibold text-destaque hover:underline">
           Responder →
         </Link>
       ) : fone ? (

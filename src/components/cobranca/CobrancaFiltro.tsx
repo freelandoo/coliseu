@@ -115,7 +115,7 @@ export function CobrancaFiltro({ linhas }: { linhas: LinhaCobranca[] }) {
                       href={`https://wa.me/55${fone}`}
                       target="_blank"
                       rel="noreferrer"
-                      className="text-xs font-medium text-red-bright hover:underline"
+                      className="text-xs font-medium text-destaque hover:underline"
                     >
                       {acao} →
                     </a>
@@ -157,7 +157,7 @@ export function CobrancaFiltro({ linhas }: { linhas: LinhaCobranca[] }) {
                           href={`https://wa.me/55${fone}`}
                           target="_blank"
                           rel="noreferrer"
-                          className="text-xs font-medium text-red-bright hover:underline"
+                          className="text-xs font-medium text-destaque hover:underline"
                         >
                           {acao} →
                         </a>

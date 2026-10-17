@@ -381,7 +381,7 @@ function ModalCadastro({
                         >
                           <span className="flex items-center justify-between gap-3">
                             <span className="text-sm font-semibold text-ink">{p.nome}</span>
-                            <span className={cn("text-sm tabular-nums", selecionado ? "font-semibold text-brand" : "text-muted")}>
+                            <span className={cn("text-sm tabular-nums", selecionado ? "font-semibold text-destaque" : "text-muted")}>
                               {formatBRL(p.valorMensal)}/mês
                             </span>
                           </span>

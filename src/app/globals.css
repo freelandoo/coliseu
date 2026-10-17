@@ -1,46 +1,66 @@
 @import "tailwindcss";
 
 /* ============================================================
-   COLISEU — fundação visual clara (Etapa 1)
-   Base branca + identidade vermelho-rubi. Marca e estados são
-   famílias SEPARADAS: rubi diz "Coliseu / selecionado / ação
-   principal"; vermelho de perigo diz "erro / exclusão / falha".
-   Contrastes medidos estão em docs/design/fundacao-visual.md.
+   COLISEU — virada visual (rubi profundo + cinza pedra quente)
+   Dois contextos de cor, separados por token:
+   - SHELL (padrão, :root): fundo vinho/rubi muito escuro, texto claro.
+     Menu, cabeçalho, títulos de página e o que fica direto sobre o fundo.
+   - SUPERFÍCIE (cards, diálogos, campos — `.bg-surface` e afins): cinza
+     pedra quente #D2CFCA com texto grafite. A troca é automática: toda
+     superfície opaca redefine os tokens neutros para dentro dela
+     (ver "Contexto de superfície" abaixo), então `text-ink` é claro no
+     fundo e grafite no card sem nenhuma classe extra.
+   Marca e estados são FIXOS (calibrados para o cinza pedra): rubi diz
+   "ação / selecionado"; vermelho de perigo diz "erro / exclusão / falha".
+   Texto de seleção usa `destaque`, que é contextual (rosa no fundo
+   escuro, rubi na superfície). Contrastes em docs/design/fundacao-visual.md.
    ============================================================ */
 @theme {
-  /* superfícies */
-  --color-bg: #f7f7f8;
-  --color-surface: #ffffff;
-  --color-surface-2: #f2f3f5;
-  --color-elevated: #ffffff;
-  --color-border: #e3e5e8;
-  --color-border-strong: #c8cbd0;
-  /* borda de controles (campo, seleção): ≥ 3:1 sobre branco */
-  --color-control: #878c96;
+  /* fundo do shell */
+  --color-bg: #21070f;
+  --color-bg-deep: #16070b;
+  --color-menu: #18080e;
+  --color-luz: #68132e;
+
+  /* superfícies (opacas, iguais nos dois contextos) */
+  --color-surface: #d2cfca;
+  --color-elevated: #d2cfca;
+  /* superfície interna: no shell é um véu claro translúcido; dentro de um
+     card vira o cinza interno #c4c0ba (contexto de superfície) */
+  --color-surface-2: rgb(248 232 238 / 0.07);
+  --color-border: rgb(245 200 211 / 0.13);
+  --color-border-strong: rgb(245 200 211 / 0.26);
+  /* borda de controles: ≥ 3:1 sobre o fundo do contexto */
+  --color-control: #8f7480;
   /* véu atrás de diálogos e da gaveta do menu */
-  --color-scrim: rgb(17 19 24 / 0.48);
+  --color-scrim: rgb(14 3 7 / 0.7);
 
-  /* texto (grafite) */
-  --color-ink: #1b1e23;
-  --color-muted: #4a505a;
-  --color-faint: #5f6570;
+  /* texto do shell */
+  --color-ink: #f7eff2;
+  --color-muted: #c4aeb7;
+  --color-faint: #ae929e;
+  /* seleção/ênfase em texto: rosa no escuro, rubi na superfície */
+  --color-destaque: #f08ca6;
+  /* contorno de foco do contexto */
+  --color-foco: #f08ca6;
 
-  /* marca — rubi */
-  --color-brand: #880d32;
-  --color-brand-hover: #6d0a28;
-  --color-brand-strong: #540d23;
-  --color-brand-soft: #fff4f6;
+  /* marca — rubi (fixa) */
+  --color-brand: #8d173b;
+  --color-brand-hover: #6c1531;
+  --color-brand-strong: #5a0f27;
+  --color-brand-soft: #cdbec1;
+  --color-acao: #84213f;
 
-  /* estados operacionais */
-  --color-danger: #b42318;
-  --color-danger-strong: #912018;
-  --color-danger-soft: #fef3f2;
-  --color-success: #067647;
-  --color-success-soft: #ecfdf3;
-  --color-warning: #b54708;
-  --color-warning-soft: #fffaeb;
-  --color-info: #175cd3;
-  --color-info-soft: #eff8ff;
+  /* estados operacionais (fixos, ≥ 4,5:1 no cinza pedra e na superfície interna) */
+  --color-danger: #8f1f16;
+  --color-danger-strong: #6f170f;
+  --color-danger-soft: #d8c2bd;
+  --color-success: #0e5733;
+  --color-success-soft: #c2ccc2;
+  --color-warning: #773905;
+  --color-warning-soft: #d9cbb5;
+  --color-info: #1a458f;
+  --color-info-soft: #c3c8d2;
 
   /* aliases legados — mantêm as classes antigas funcionando.
      `red-*` era usado como MARCA/SELEÇÃO na maior parte do código; os usos
@@ -58,13 +78,41 @@
 
   /* movimento: curto, sem rebote em controles */
   --ease-padrao: cubic-bezier(0.2, 0, 0, 1);
+  --ease-entrada: cubic-bezier(0.16, 1, 0.3, 1);
 
-  /* sombras: poucas variantes, profundidade discreta */
-  --shadow-card: 0 1px 2px rgb(16 24 40 / 0.05), 0 1px 3px rgb(16 24 40 / 0.04);
-  --shadow-overlay: 0 12px 32px -8px rgb(16 24 40 / 0.18), 0 4px 8px -4px rgb(16 24 40 / 0.08);
+  /* sombras: curtas e tingidas pelo fundo (nada de brilho branco) */
+  --shadow-card: 0 1px 0 rgb(255 255 255 / 0.18) inset, 0 10px 24px -14px rgb(16 4 10 / 0.7);
+  --shadow-overlay: 0 24px 48px -16px rgb(10 2 6 / 0.65), 0 6px 14px -6px rgb(10 2 6 / 0.45);
   /* legados (nomes antigos usados em `shadow-[var(--shadow-…)]`) */
   --shadow-plate: var(--shadow-card);
-  --shadow-red: 0 0 0 3px rgb(136 13 50 / 0.16);
+  --shadow-red: 0 0 0 3px rgb(141 23 59 / 0.22);
+}
+
+/* ---------- Contexto de superfície ----------
+   Toda superfície opaca clara devolve os tokens neutros ao grafite. Fica em
+   `@layer components` (abaixo das utilities): a cor de texto que o próprio
+   elemento declarar (`text-brand`, `text-danger`…) continua valendo. */
+@layer components {
+  :where(.bg-surface, .bg-elevated, .bg-white),
+  :where(.bg-brand-soft, .bg-red-ghost, .bg-danger-soft, .bg-success-soft, .bg-warning-soft, .bg-info-soft) {
+    --color-bg: #c4c0ba;
+    --color-surface-2: #c4c0ba;
+    --color-border: #aca7a0;
+    --color-border-strong: #958f88;
+    --color-control: #6e6963;
+    --color-ink: #22232b;
+    --color-muted: #50525d;
+    --color-faint: #50525d;
+    --color-destaque: #8d173b;
+    --color-foco: #8d173b;
+    color: var(--color-ink);
+  }
+  /* superfície interna, seleção e hover dentro do card: secundário mais escuro */
+  :where(.bg-surface, .bg-elevated) :where(.bg-surface-2, [class~="hover:bg-surface-2"]:hover, [class~="group-hover:bg-surface-2"]),
+  :where(.bg-brand-soft, .bg-red-ghost, .bg-danger-soft, .bg-success-soft, .bg-warning-soft, .bg-info-soft) {
+    --color-muted: #464852;
+    --color-faint: #464852;
+  }
 }
 
 :root {
@@ -120,6 +168,36 @@ body {
   line-height: 1.5;
 }
 
+/* Fundo do shell: luz rubi localizada, trama diagonal fina e malha
+   geométrica discreta. Camada fixa ATRÁS de tudo (z -1, sem eventos):
+   superfícies são opacas, então a textura nunca fica atrás de texto de
+   tabela, campo ou mensagem. Só gradientes — nada de imagem remota,
+   vídeo ou ruído recalculado por quadro. */
+body::before {
+  content: "";
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+  background:
+    radial-gradient(ellipse 70% 55% at 82% 0%, rgb(104 19 46 / 0.95) 0, transparent 70%),
+    radial-gradient(ellipse 60% 50% at 18% 100%, rgb(63 11 26 / 0.9) 0, transparent 70%),
+    repeating-linear-gradient(117deg, transparent 0 2px, rgb(255 255 255 / 0.014) 3px, transparent 4px),
+    linear-gradient(180deg, var(--color-bg) 0%, var(--color-bg-deep) 100%);
+}
+body::after {
+  content: "";
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+  background-image:
+    linear-gradient(rgb(241 199 210 / 0.045) 1px, transparent 1px),
+    linear-gradient(90deg, rgb(241 199 210 / 0.045) 1px, transparent 1px);
+  background-size: 48px 48px;
+  mask-image: linear-gradient(110deg, transparent 10%, #000 85%);
+}
+
 .font-display {
   letter-spacing: 0.01em;
 }
@@ -145,7 +223,8 @@ th {
 }
 ::-webkit-scrollbar-thumb {
   background: var(--color-border-strong);
-  border: 2px solid var(--color-bg);
+  border: 2px solid transparent;
+  background-clip: padding-box;
   border-radius: 999px;
 }
 ::-webkit-scrollbar-thumb:hover {
@@ -157,13 +236,51 @@ th {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  background: var(--color-brand);
-  color: #fff;
+  background: linear-gradient(135deg, #9a2048, var(--color-brand-strong));
+  box-shadow: inset 0 1px 0 rgb(234 166 183 / 0.25);
+  color: #f7eff2;
   font-family: var(--font-display);
   font-weight: 600;
 }
 
 /* entrada do diálogo: só opacidade + leve subida, 160ms (Modal.tsx) */
+/* entrada coordenada da central (/painel): opacidade + 14px, 560ms.
+   CSS, não JS: o conteúdo nunca espera script para aparecer. */
+@keyframes entra-subindo {
+  from {
+    opacity: 0;
+    transform: translateY(14px);
+  }
+}
+.entrada {
+  animation: entra-subindo 560ms var(--ease-entrada) both;
+  animation-delay: var(--atraso, 0ms);
+}
+
+/* troca de seleção (conversa, dia): 200ms, marcador estável */
+@keyframes troca-suave {
+  from {
+    opacity: 0.4;
+    transform: translateX(6px);
+  }
+}
+.troca {
+  animation: troca-suave 200ms var(--ease-padrao);
+}
+
+/* órbita decorativa da central: lenta, pausável, parada quando a aba some */
+@keyframes orbita-gira {
+  to {
+    transform: rotate(360deg);
+  }
+}
+.orbita-giro {
+  animation: orbita-gira 28s linear infinite;
+}
+[data-orbita="parada"] .orbita-giro {
+  animation-play-state: paused;
+}
+
 @keyframes dialogo-entra {
   from {
     opacity: 0;
@@ -171,9 +288,10 @@ th {
   }
 }
 
-/* foco acessível consistente: rubi sólido (9,8:1 sobre branco) com folga */
+/* foco acessível consistente, no tom do contexto: rosa sobre o fundo escuro
+   (8,2:1), rubi dentro das superfícies (5,8:1) */
 :focus-visible {
-  outline: 2px solid var(--color-brand);
+  outline: 2px solid var(--color-foco);
   outline-offset: 2px;
 }
 

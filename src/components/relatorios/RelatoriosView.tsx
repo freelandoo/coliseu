@@ -49,7 +49,7 @@ const BAR_TONE: Record<Tone, string> = {
 };
 
 const KPI_TONE: Record<Tone, string> = {
-  brand: "text-brand",
+  brand: "text-destaque",
   danger: "text-danger",
   ok: "text-success",
   warn: "text-warning",
@@ -454,7 +454,7 @@ export function RelatoriosView({ data }: { data: RelatoriosData }) {
               <p className="mt-0.5 text-xs text-faint">MRR nos últimos meses</p>
             </div>
             {data.serie.length > 0 && (
-              <span className="font-display text-2xl font-semibold text-brand tabular-nums">
+              <span className="font-display text-2xl font-semibold text-destaque tabular-nums">
                 {fmtMoeda(data.serie[data.serie.length - 1].receita)}
               </span>
             )}

@@ -52,7 +52,7 @@ export default async function CaptacaoPage() {
               aula{aulasHoje > 1 ? "s" : ""} experimental{aulasHoje > 1 ? "is" : ""} marcada
               {aulasHoje > 1 ? "s" : ""} para hoje
             </span>
-            <span className="ml-auto text-xs font-semibold text-brand">Ver agenda →</span>
+            <span className="ml-auto text-xs font-semibold text-destaque">Ver agenda →</span>
           </Link>
         </Reveal>
       )}

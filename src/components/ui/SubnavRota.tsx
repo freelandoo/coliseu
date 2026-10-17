@@ -47,12 +47,12 @@ export function SubnavRota({
                     ? cn(
                         "-mb-px min-h-10 border-b-2 px-3 py-2",
                         atual
-                          ? "border-brand text-brand"
+                          ? "border-destaque text-destaque"
                           : "border-transparent text-muted hover:border-border-strong hover:text-ink",
                       )
                     : cn(
                         "min-h-8 rounded-md px-3 py-1",
-                        atual ? "bg-brand-soft text-brand" : "text-muted hover:bg-surface-2 hover:text-ink",
+                        atual ? "bg-brand-soft text-destaque" : "text-muted hover:bg-surface-2 hover:text-ink",
                       ),
                 )}
               >

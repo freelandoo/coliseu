@@ -99,7 +99,7 @@ export function ListaAbas<T extends string>({
             className={cn(
               "-mb-px flex min-h-10 shrink-0 items-center gap-2 whitespace-nowrap border-b-2 px-4 py-2 text-sm font-medium transition-colors",
               selecionada
-                ? "border-brand text-brand"
+                ? "border-destaque text-destaque"
                 : "border-transparent text-muted hover:border-border-strong hover:text-ink",
             )}
           >

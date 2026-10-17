@@ -158,7 +158,7 @@ export function RespostasProntas({
               </p>
               <button type="button"
                 onClick={() => setCadastrando((a) => !a)}
-                className="text-xs font-semibold text-red-bright transition-colors hover:underline"
+                className="text-xs font-semibold text-destaque transition-colors hover:underline"
               >
                 {cadastrando ? "Cancelar" : "+ Cadastrar"}
               </button>

@@ -26,11 +26,14 @@ export function ShellApp({
   papel,
   desenvolvedor,
   mostrarSino,
+  nome,
   children,
 }: {
   papel: Papel;
   desenvolvedor: boolean;
   mostrarSino: boolean;
+  /** Nome de quem está logado, para o atalho de conta no cabeçalho. */
+  nome: string;
   children: ReactNode;
 }) {
   const pathname = usePathname();
@@ -81,13 +84,14 @@ export function ShellApp({
           menuAberto={aberta}
           onAbrirMenu={abrir}
           mostrarSino={mostrarSino}
+          nome={nome}
         />
         <main
           id="conteudo"
           tabIndex={-1}
           className="area-principal min-w-0 flex-1 px-4 outline-none sm:px-6 lg:px-10"
         >
-          <div className="mx-auto max-w-6xl">{children}</div>
+          <div className="mx-auto max-w-[76rem]">{children}</div>
         </main>
       </div>
     </div>

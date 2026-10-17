@@ -110,7 +110,7 @@ export function CatracaDoAluno({ personId }: { personId: string }) {
       </ul>
 
       {semFace && (
-        <Link href="/acesso" className="mt-3 inline-block text-xs font-medium text-red-bright hover:underline">
+        <Link href="/acesso" className="mt-3 inline-block text-xs font-medium text-destaque hover:underline">
           Cadastrar a face na tela Acesso →
         </Link>
       )}

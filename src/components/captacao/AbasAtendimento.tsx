@@ -48,7 +48,7 @@ export function AbasAtendimento({
                 className={cn(
                   "rounded-md px-2.5 py-1 text-xs font-semibold transition-colors",
                   a.chave === ativa
-                    ? "bg-surface text-brand shadow-[var(--shadow-card)]"
+                    ? "bg-surface text-destaque shadow-[var(--shadow-card)]"
                     : "text-muted hover:text-ink",
                 )}
               >

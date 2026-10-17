@@ -770,7 +770,7 @@ export function ConversaPainel({
             {citando && (
               <div className="mb-2 flex items-start gap-2 rounded-lg border border-border border-l-2 border-l-brand bg-surface-2 px-3 py-1.5">
                 <div className="min-w-0 flex-1">
-                  <p className="text-xs font-semibold text-brand">Respondendo a {autorDe(citando) ?? "mensagem"}</p>
+                  <p className="text-xs font-semibold text-destaque">Respondendo a {autorDe(citando) ?? "mensagem"}</p>
                   <p className="truncate text-xs text-muted">{citando.texto}</p>
                 </div>
                 <button
@@ -972,7 +972,7 @@ function Midia({ mensagem }: { mensagem: MensagemItem }) {
   }
 
   return (
-    <a href={url} target="_blank" rel="noreferrer" className="text-sm font-medium text-brand hover:underline">
+    <a href={url} target="_blank" rel="noreferrer" className="text-sm font-medium text-destaque hover:underline">
       📎 Abrir documento
     </a>
   );
@@ -987,7 +987,7 @@ function TrechoCitado({ citacao, onIrPara }: { citacao: CitacaoItem; onIrPara?: 
   const cls = "mb-1.5 block w-full rounded-md border-l-2 border-brand bg-bg/60 px-2 py-1 text-left";
   const conteudo = (
     <>
-      {citacao.autor && <span className="block text-xs font-semibold text-brand">{citacao.autor}</span>}
+      {citacao.autor && <span className="block text-xs font-semibold text-destaque">{citacao.autor}</span>}
       <span className="line-clamp-2 break-words text-xs text-muted">{citacao.texto || "Mensagem"}</span>
     </>
   );
@@ -1085,7 +1085,7 @@ function Bolha({
       {arrasto > 0 && (
         <span
           aria-hidden
-          className="absolute left-1 top-1/2 -translate-y-1/2 text-brand"
+          className="absolute left-1 top-1/2 -translate-y-1/2 text-destaque"
           style={{ opacity: Math.min(1, arrasto / ARRASTO.gatilho) }}
         >
           <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -1133,7 +1133,7 @@ function Bolha({
         {mensagem.citada && <TrechoCitado citacao={mensagem.citada} onIrPara={onIrPara} />}
         {/* Em grupo, quem falou importa tanto quanto o que foi dito. */}
         {!saida && mensagem.remetente && (
-          <p className="mb-0.5 text-xs font-semibold text-brand">{mensagem.remetente}</p>
+          <p className="mb-0.5 text-xs font-semibold text-destaque">{mensagem.remetente}</p>
         )}
         {temMidia && (
           <div className={cn(legenda && "mb-1.5")}>
@@ -1162,7 +1162,7 @@ function Bolha({
         )}
         {podeRecolocar && (
           <div className="mt-1 text-right">
-            <button type="button" onClick={onRecolocar} className="text-xs font-semibold text-brand hover:underline">
+            <button type="button" onClick={onRecolocar} className="text-xs font-semibold text-destaque hover:underline">
               Recolocar texto na caixa
             </button>
           </div>

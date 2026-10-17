@@ -120,7 +120,7 @@ function Celula({
       <p
         className={cn(
           "mt-0.5 font-display text-lg font-semibold leading-none tabular-nums",
-          destaque ? "text-red-bright" : "text-ink",
+          destaque ? "text-destaque" : "text-ink",
         )}
       >
         {valor}
@@ -278,7 +278,9 @@ export function UsoPainel({ dados }: { dados: UsoAtendimento }) {
         <p className="text-xs text-faint">
           {dia(dados.inicio)} → {dia(dados.fim)} ·{" "}
           {online.length > 0 ? (
-            <span className="text-ok">
+            // Fica direto sobre o fundo escuro: o verde de estado (calibrado
+            // para o cinza pedra) não teria contraste aqui — o texto diz.
+            <span className="font-medium text-ink">
               {online.length} online agora ({online.map((u) => u.nome).join(", ")})
             </span>
           ) : (

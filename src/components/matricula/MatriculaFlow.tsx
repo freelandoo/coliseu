@@ -338,7 +338,7 @@ export function MatriculaFlow({
                               {p.nome}
                               {p.id === sel.planoAtualId && <span className="ml-1.5 text-xs font-normal text-muted">(plano atual)</span>}
                             </span>
-                            <span className={cn("text-sm tabular-nums", escolhido ? "font-semibold text-brand" : "text-muted")}>
+                            <span className={cn("text-sm tabular-nums", escolhido ? "font-semibold text-destaque" : "text-muted")}>
                               {formatBRL(p.valorMensal)}/mês
                             </span>
                           </span>

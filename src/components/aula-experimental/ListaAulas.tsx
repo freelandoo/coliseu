@@ -178,7 +178,7 @@ function QuandoEtiqueta({ aula, hoje }: { aula: AulaExperimentalItem; hoje: stri
     <span
       className={cn(
         "inline-flex shrink-0 items-center gap-1.5 text-xs font-medium",
-        ehHoje ? "font-semibold text-brand" : passou ? "text-faint" : "text-ink",
+        ehHoje ? "font-semibold text-destaque" : passou ? "text-faint" : "text-ink",
       )}
     >
       {ehHoje ? "Hoje" : formatarDataCompleta(aula.data)} · {formatarHora(aula.hora)}
@@ -209,7 +209,7 @@ function Acoes({ aula, hoje }: { aula: AulaExperimentalItem; hoje: string }) {
       )}
       <Link
         href={`/atendimento?c=${aula.conversaId}`}
-        className="text-xs font-semibold text-brand hover:underline"
+        className="text-xs font-semibold text-destaque hover:underline"
       >
         Abrir conversa →
       </Link>

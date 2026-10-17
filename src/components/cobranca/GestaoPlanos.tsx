@@ -243,7 +243,7 @@ export function GestaoPlanos({ planos }: { planos: PlanoComContagem[] }) {
                   <div className="flex justify-end gap-3">
                     <button type="button"
                       onClick={() => setEditando(p)}
-                      className="text-xs font-medium text-faint transition-colors hover:text-red-bright"
+                      className="text-xs font-medium text-faint transition-colors hover:text-destaque"
                     >
                       Editar
                     </button>
@@ -343,7 +343,7 @@ export function GestaoPlanos({ planos }: { planos: PlanoComContagem[] }) {
                         <div className="flex justify-end gap-3">
                           <button type="button"
                             onClick={() => setEditando(p)}
-                            className="text-xs font-medium text-faint transition-colors hover:text-red-bright"
+                            className="text-xs font-medium text-faint transition-colors hover:text-destaque"
                           >
                             Editar
                           </button>

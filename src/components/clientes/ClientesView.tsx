@@ -255,7 +255,7 @@ export function ClientesView({
                       href={`/matriculados/${p.id}`}
                       data-ficha-id={p.id}
                       onClick={() => aoAbrirFicha(p.id)}
-                      className="block truncate rounded text-sm font-medium text-ink underline-offset-2 hover:text-brand hover:underline"
+                      className="block truncate rounded text-sm font-medium text-ink underline-offset-2 hover:text-destaque hover:underline"
                     >
                       {p.nome}
                     </Link>
@@ -305,7 +305,7 @@ export function ClientesView({
                           href={`/matriculados/${p.id}`}
                           data-ficha-id={p.id}
                           onClick={() => aoAbrirFicha(p.id)}
-                          className="rounded underline-offset-2 hover:text-brand hover:underline"
+                          className="rounded underline-offset-2 hover:text-destaque hover:underline"
                         >
                           {p.nome}
                         </Link>

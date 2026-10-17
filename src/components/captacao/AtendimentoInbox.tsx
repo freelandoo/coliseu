@@ -678,7 +678,7 @@ export function AtendimentoInbox({
                       <span className="mt-0.5 flex items-center justify-between gap-2">
                         <span className="truncate text-xs text-muted">
                           {rascunho ? (
-                            <span className="font-semibold text-brand">Rascunho · </span>
+                            <span className="font-semibold text-destaque">Rascunho · </span>
                           ) : null}
                           {c.trecho ? trechoAoRedor(c.trecho, termo) : c.preview || c.telefone}
                         </span>
