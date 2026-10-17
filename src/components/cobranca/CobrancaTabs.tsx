@@ -1,7 +1,5 @@
 "use client";
 
-import { useState } from "react";
-import { cn } from "@/lib/cn";
 import {
   CobrancaFiltro,
   type LinhaCobranca,
@@ -11,9 +9,20 @@ import {
   type PlanoComContagem,
 } from "@/components/cobranca/GestaoPlanos";
 import { VencimentoMatriculas } from "@/components/cobranca/VencimentoMatriculas";
+import { ListaAbas, PainelAba, useIdAbas, useParametroUrl } from "@/components/ui/Abas";
+import { ABAS_COBRANCA, type AbaCobranca } from "@/lib/navegacao";
 
-type Aba = "cobrancas" | "vencimentos" | "planos";
+const ABAS: { chave: AbaCobranca; rotulo: string }[] = [
+  { chave: "cobrancas", rotulo: "Cobranças" },
+  { chave: "vencimentos", rotulo: "Vencimentos" },
+  { chave: "planos", rotulo: "Planos" },
+];
 
+/**
+ * A seção vai na URL (`?aba=vencimentos`): dá para voltar, recarregar e mandar
+ * o link. Só o painel ativo monta — Vencimentos busca a prévia ao montar, e
+ * passar o foco pela aba não deve disparar essa consulta.
+ */
 export function CobrancaTabs({
   linhas,
   planos,
@@ -21,49 +30,17 @@ export function CobrancaTabs({
   linhas: LinhaCobranca[];
   planos: PlanoComContagem[];
 }) {
-  const [aba, setAba] = useState<Aba>("cobrancas");
+  const [aba, setAba] = useParametroUrl("aba", ABAS_COBRANCA, "cobrancas");
+  const idBase = useIdAbas();
 
   return (
     <div className="flex flex-col gap-4">
-      <div className="flex gap-2">
-        <TabBtn ativo={aba === "cobrancas"} onClick={() => setAba("cobrancas")}>
-          Cobranças
-        </TabBtn>
-        <TabBtn ativo={aba === "vencimentos"} onClick={() => setAba("vencimentos")}>
-          Vencimentos
-        </TabBtn>
-        <TabBtn ativo={aba === "planos"} onClick={() => setAba("planos")}>
-          Planos
-        </TabBtn>
-      </div>
-
-      {aba === "cobrancas" && <CobrancaFiltro linhas={linhas} />}
-      {aba === "vencimentos" && <VencimentoMatriculas />}
-      {aba === "planos" && <GestaoPlanos planos={planos} />}
+      <ListaAbas rotulo="Seções da cobrança" abas={ABAS} ativa={aba} onAtivar={setAba} idBase={idBase} />
+      <PainelAba idBase={idBase} chave={aba}>
+        {aba === "cobrancas" && <CobrancaFiltro linhas={linhas} />}
+        {aba === "vencimentos" && <VencimentoMatriculas />}
+        {aba === "planos" && <GestaoPlanos planos={planos} />}
+      </PainelAba>
     </div>
-  );
-}
-
-function TabBtn({
-  ativo,
-  onClick,
-  children,
-}: {
-  ativo: boolean;
-  onClick: () => void;
-  children: React.ReactNode;
-}) {
-  return (
-    <button type="button"
-      onClick={onClick}
-      className={cn(
-        "rounded-lg border px-3 py-1.5 text-xs font-semibold transition-colors",
-        ativo
-          ? "border-red/60 bg-red-ghost text-ink"
-          : "border-border bg-surface text-muted hover:border-border-strong hover:text-ink",
-      )}
-    >
-      {children}
-    </button>
   );
 }

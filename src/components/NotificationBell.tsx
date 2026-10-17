@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useId, useRef, useState } from "react";
 import { formatarTelefone } from "@/lib/whatsapp/telefone";
 import { assinarMensagens } from "@/lib/whatsapp/stream-cliente";
 import { AtivarNotificacoes } from "@/components/pwa/AtivarNotificacoes";
@@ -42,6 +42,10 @@ export function NotificationBell() {
   const [avisosNaoLidos, setAvisosNaoLidos] = useState(0);
   const [aberto, setAberto] = useState(false);
   const ultimaBuscaRef = useRef(0);
+  const areaRef = useRef<HTMLDivElement>(null);
+  const botaoRef = useRef<HTMLButtonElement>(null);
+  const painelRef = useRef<HTMLDivElement>(null);
+  const painelId = useId();
 
   const carregar = useCallback(async (forcar = false) => {
     if (!forcar && Date.now() - ultimaBuscaRef.current < INTERVALO_MINIMO_MS) return;
@@ -101,18 +105,52 @@ export function NotificationBell() {
     await carregar(true);
   }
 
+  // Painel não modal: fecha no Esc (foco volta ao sino), no clique fora e
+  // quando o foco sai dele — sem prender Tab nem travar a página.
+  useEffect(() => {
+    if (!aberto) return;
+    painelRef.current?.focus({ preventScroll: true });
+    const aoPressionar = (e: PointerEvent) => {
+      if (!areaRef.current?.contains(e.target as Node)) setAberto(false);
+    };
+    document.addEventListener("pointerdown", aoPressionar);
+    return () => document.removeEventListener("pointerdown", aoPressionar);
+  }, [aberto]);
+
+  function fechar(devolverFoco: boolean) {
+    setAberto(false);
+    if (devolverFoco) botaoRef.current?.focus();
+  }
+
   return (
-    <>
+    <div
+      ref={areaRef}
+      className="relative shrink-0"
+      onKeyDown={(e) => {
+        if (e.key === "Escape" && aberto) {
+          e.stopPropagation();
+          fechar(true);
+        }
+      }}
+      onBlur={(e) => {
+        if (aberto && e.relatedTarget && !areaRef.current?.contains(e.relatedTarget as Node)) {
+          setAberto(false);
+        }
+      }}
+    >
       <button
+        ref={botaoRef}
         type="button"
         onClick={() => {
+          // a marcação de lidos acontece só aqui, no clique que abre o sino
           setAberto((v) => !v);
           if (aberto) void carregar(true);
           else void abrirSino();
         }}
         aria-label={total > 0 ? `Notificações (${total})` : "Notificações"}
         aria-expanded={aberto}
-        className="fixed right-4 top-[calc(1rem_+_var(--safe-t))] z-30 flex h-10 w-10 items-center justify-center rounded-lg border border-border bg-surface/90 text-ink backdrop-blur transition-colors hover:bg-surface-2"
+        aria-controls={painelId}
+        className="relative flex h-10 w-10 items-center justify-center rounded-lg text-ink transition-colors hover:bg-surface-2"
       >
         <svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden>
           <path
@@ -124,16 +162,30 @@ export function NotificationBell() {
           <path d="M6.5 13.7a1.6 1.6 0 0 0 3 0" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" />
         </svg>
         {total > 0 && (
-          <span className="absolute -right-1 -top-1 flex h-4 min-w-4 items-center justify-center rounded-full bg-red-bright px-1 text-xs font-bold text-white">
+          <span
+            aria-hidden
+            className="absolute right-0.5 top-0.5 flex h-4 min-w-4 items-center justify-center rounded-full bg-brand px-1 text-xs font-bold leading-none text-white"
+          >
             {total > 9 ? "9+" : total}
           </span>
         )}
       </button>
 
       {aberto && (
-        <>
-          <div onClick={() => setAberto(false)} aria-hidden className="fixed inset-0 z-30" />
-          <div className="fixed right-4 top-[calc(4rem_+_var(--safe-t))] z-40 w-80 max-w-[calc(100vw-2rem)] rounded-xl border border-border bg-surface shadow-xl">
+        // Celular: largura da tela, logo abaixo do cabeçalho. Desktop: ancorado
+        // no sino. Nos dois, cabe na altura útil e rola por dentro.
+        <div
+          ref={painelRef}
+          id={painelId}
+          role="region"
+          aria-label="Notificações"
+          tabIndex={-1}
+          className={cn(
+            "fixed inset-x-2 top-[calc(var(--safe-t)_+_var(--altura-topo)_+_0.25rem)] z-40 overflow-y-auto overscroll-contain rounded-xl border border-border bg-surface shadow-[var(--shadow-overlay)] outline-none",
+            "max-h-[calc(var(--altura-util)_-_0.5rem)]",
+            "sm:absolute sm:inset-x-auto sm:right-0 sm:top-full sm:mt-2 sm:w-96",
+          )}
+        >
             <div className="border-b border-border px-4 py-3">
               <p className="font-display text-sm font-semibold text-ink">
                 {leads.length === 0
@@ -146,7 +198,7 @@ export function NotificationBell() {
             </div>
 
             {avisos.length > 0 && (
-              <ul className="max-h-60 divide-y divide-border overflow-y-auto border-b border-border">
+              <ul className="divide-y divide-border border-b border-border">
                 {avisos.slice(0, 10).map((a) => (
                   <li key={a.id}>
                     <Link
@@ -156,7 +208,7 @@ export function NotificationBell() {
                     >
                       <span
                         aria-hidden
-                        className={`mt-1.5 h-2 w-2 shrink-0 rounded-full ${a.lidaEm ? "bg-border" : "bg-red-bright"}`}
+                        className={`mt-1.5 h-2 w-2 shrink-0 rounded-full ${a.lidaEm ? "bg-border" : "bg-brand"}`}
                       />
                       <span className="min-w-0">
                         <span className="block truncate text-sm font-medium text-ink">{a.titulo}</span>
@@ -176,7 +228,7 @@ export function NotificationBell() {
                 <p className="px-4 py-6 text-center text-sm text-muted">Nada novo por aqui.</p>
               )
             ) : (
-              <ul className="max-h-80 divide-y divide-border overflow-y-auto">
+              <ul className="divide-y divide-border">
                 {leads.map((l) => (
                   <li key={l.id} className="flex items-center justify-between gap-3 px-4 py-3">
                     <span className="min-w-0">
@@ -215,9 +267,8 @@ export function NotificationBell() {
                 Ver a Captação →
               </Link>
             </div>
-          </div>
-        </>
+        </div>
       )}
-    </>
+    </div>
   );
 }

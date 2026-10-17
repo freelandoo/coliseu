@@ -1,7 +1,8 @@
 "use client";
 
-import { useRouter } from "next/navigation";
-import { useMemo, useState } from "react";
+import Link from "next/link";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { Badge, Card } from "@/components/ui/primitives";
 import { NovoCadastro } from "@/components/clientes/NovoCadastro";
 import { RemoverPessoa } from "@/components/clientes/RemoverPessoa";
@@ -16,8 +17,11 @@ import {
   type Plano,
 } from "@/lib/types";
 import { classeBotao } from "@/components/ui/Botao";
+import { classeCampoEmLinha } from "@/components/ui/Campo";
+import { comParametro, lerEnum, SITUACOES_ALUNO, type SituacaoAluno } from "@/lib/navegacao";
+import { consultaAlunosLembrada, lembrarConsultaAlunos } from "@/lib/memoria-navegacao";
 
-type Filtro = "todos" | "ativo" | "pendente" | "inadimplente" | "cancelado";
+type Filtro = SituacaoAluno;
 
 const CHIPS: { key: Filtro; label: string }[] = [
   { key: "todos", label: "Todos" },
@@ -62,8 +66,47 @@ export function ClientesView({
   planos?: Plano[];
 }) {
   const router = useRouter();
-  const [filtro, setFiltro] = useState<Filtro>("todos");
-  const [busca, setBusca] = useState("");
+  const pathname = usePathname();
+  // Situação é enumerada e não identifica ninguém: vai na URL (?situacao=).
+  // A busca pode ter CPF/telefone: fica só na memória da aba (memoria-navegacao).
+  const situacaoUrl = useSearchParams().get("situacao");
+  const filtro: Filtro = lerEnum(situacaoUrl, SITUACOES_ALUNO, "todos");
+  const [busca, setBusca] = useState(() => consultaAlunosLembrada()?.busca ?? "");
+  const buscaRef = useRef<HTMLInputElement>(null);
+  const listaRef = useRef<HTMLDivElement>(null);
+
+  function setFiltro(f: Filtro) {
+    // replace: filtro não é navegação, não vale uma entrada de histórico
+    window.history.replaceState(
+      null,
+      "",
+      `${pathname}${comParametro(window.location.search.slice(1), "situacao", f, "todos")}`,
+    );
+    lembrarConsultaAlunos({ busca, situacao: f });
+  }
+
+  function mudarBusca(b: string) {
+    setBusca(b);
+    lembrarConsultaAlunos({ busca: b, situacao: filtro });
+  }
+
+  function aoAbrirFicha(id: string) {
+    lembrarConsultaAlunos({ busca, situacao: filtro, abriu: { id, rolagem: window.scrollY } });
+  }
+
+  // Voltando da ficha: mesma rolagem e foco na pessoa que foi aberta. Se ela
+  // saiu da consulta, o foco vai para a busca — nunca para outra pessoa.
+  useEffect(() => {
+    const lembrada = consultaAlunosLembrada();
+    if (!lembrada?.abriu) return;
+    const { id, rolagem } = lembrada.abriu;
+    lembrarConsultaAlunos({ busca: lembrada.busca, situacao: lembrada.situacao });
+    window.scrollTo({ top: rolagem });
+    const link = Array.from(
+      listaRef.current?.querySelectorAll<HTMLElement>(`[data-ficha-id="${CSS.escape(id)}"]`) ?? [],
+    ).find((el) => el.getClientRects().length > 0);
+    (link ?? buscaRef.current)?.focus({ preventScroll: true });
+  }, []);
   const [renovando, setRenovando] = useState<Pessoa | null>(null);
   const [pagando, setPagando] = useState<Pessoa | null>(null);
 
@@ -101,40 +144,43 @@ export function ClientesView({
     );
   }
 
-  const visiveis = useMemo(() => {
-    const q = busca.trim().toLowerCase();
-    const qd = soDigitos(busca);
-    return pessoas.filter((p) => {
-      if (!combina(p, filtro)) return false;
-      if (!q) return true;
-      return (
-        p.nome.toLowerCase().includes(q) ||
-        p.codigo.toLowerCase().includes(q) ||
-        (!!p.cpf && soDigitos(p.cpf).includes(qd) && qd.length > 0) ||
-        (!!p.telefone && soDigitos(p.telefone).includes(qd) && qd.length > 0)
-      );
-    });
-  }, [pessoas, filtro, busca]);
+  // sem useMemo: o React Compiler memoiza (o manual não podia ser preservado)
+  const q = busca.trim().toLowerCase();
+  const qd = soDigitos(busca);
+  const visiveis = pessoas.filter((p) => {
+    if (!combina(p, filtro)) return false;
+    if (!q) return true;
+    return (
+      p.nome.toLowerCase().includes(q) ||
+      p.codigo.toLowerCase().includes(q) ||
+      (!!p.cpf && soDigitos(p.cpf).includes(qd) && qd.length > 0) ||
+      (!!p.telefone && soDigitos(p.telefone).includes(qd) && qd.length > 0)
+    );
+  });
 
   return (
     <div className="flex flex-col gap-5">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <input
+          ref={buscaRef}
+          type="search"
           value={busca}
-          onChange={(e) => setBusca(e.target.value)}
+          onChange={(e) => mudarBusca(e.target.value)}
+          aria-label="Buscar alunos"
           placeholder="Buscar por nome, código, CPF ou telefone…"
-          className="w-full max-w-sm rounded-lg border border-control bg-surface px-3 py-2 text-sm text-ink placeholder:text-faint outline-none transition-colors focus:border-brand"
+          className={`${classeCampoEmLinha} w-full max-w-sm`}
         />
         <NovoCadastro planos={planos} />
       </div>
 
-      <div className="flex flex-wrap gap-1.5 sm:gap-2">
+      <div role="group" aria-label="Situação" className="flex flex-wrap gap-1.5 sm:gap-2">
         {CHIPS.map((chip) => {
           const ativo = filtro === chip.key;
           return (
             <button type="button"
               key={chip.key}
               onClick={() => setFiltro(chip.key)}
+              aria-pressed={ativo}
               className={cn(
                 "flex items-center gap-1.5 rounded-lg border px-2.5 py-1.5 text-xs font-medium transition-colors sm:gap-2 sm:px-3.5 sm:py-2 sm:text-sm",
                 ativo
@@ -157,6 +203,7 @@ export function ClientesView({
       </div>
 
       <Card className="overflow-hidden">
+        <div ref={listaRef}>
         {visiveis.length === 0 ? (
           <p className="px-5 py-10 text-center text-sm text-faint">
             Nenhuma pessoa nesta categoria.
@@ -168,13 +215,16 @@ export function ClientesView({
             {visiveis.map((p) => {
               const s = situacaoDe(p);
               return (
-                <div
-                  key={p.id}
-                  onClick={() => router.push(`/matriculados/${p.id}`)}
-                  className="flex cursor-pointer flex-col gap-2 px-4 py-3 transition-colors hover:bg-surface-2"
-                >
+                <div key={p.id} className="flex flex-col gap-2 px-4 py-3">
                   <div className="min-w-0">
-                    <p className="truncate text-sm font-medium text-ink">{p.nome}</p>
+                    <Link
+                      href={`/matriculados/${p.id}`}
+                      data-ficha-id={p.id}
+                      onClick={() => aoAbrirFicha(p.id)}
+                      className="block truncate rounded text-sm font-medium text-ink underline-offset-2 hover:text-brand hover:underline"
+                    >
+                      {p.nome}
+                    </Link>
                     <p className="text-xs text-muted">
                       {p.telefone || p.email || "—"}
                       <span className="ml-2 font-mono text-faint">{p.codigo}</span>
@@ -215,11 +265,19 @@ export function ClientesView({
                   return (
                     <tr
                       key={p.id}
-                      onClick={() => router.push(`/matriculados/${p.id}`)}
-                      className="cursor-pointer border-b border-border last:border-0 transition-colors hover:bg-surface-2"
+                      className="border-b border-border last:border-0 transition-colors hover:bg-surface-2"
                     >
                       <td className="px-4 py-3 font-mono text-xs text-faint">{p.codigo}</td>
-                      <td className="px-4 py-3 font-medium text-ink">{p.nome}</td>
+                      <td className="px-4 py-3 font-medium text-ink">
+                        <Link
+                          href={`/matriculados/${p.id}`}
+                          data-ficha-id={p.id}
+                          onClick={() => aoAbrirFicha(p.id)}
+                          className="rounded underline-offset-2 hover:text-brand hover:underline"
+                        >
+                          {p.nome}
+                        </Link>
+                      </td>
                       <td className="px-4 py-3 text-muted">
                         {p.telefone || p.email || "—"}
                       </td>
@@ -241,6 +299,7 @@ export function ClientesView({
           </div>
           </>
         )}
+        </div>
       </Card>
 
       {renovando && renovando.planoId && planoById.get(renovando.planoId) && (

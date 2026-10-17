@@ -3,6 +3,7 @@ import { PageHeader } from "@/components/ui/primitives";
 import { MatriculadosTabs } from "@/components/matriculados/MatriculadosTabs";
 import { MatriculaFlow } from "@/components/matricula/MatriculaFlow";
 import { linkPagamentoWhatsApp } from "@/lib/asaas";
+import { idSeguro } from "@/lib/navegacao";
 import {
   candidatosMatricula,
   listarAlunos,
@@ -13,7 +14,14 @@ import {
 
 export const dynamic = "force-dynamic";
 
-export default async function RenovarPage() {
+export default async function RenovarPage({
+  searchParams,
+}: {
+  /** `pessoa`: id opaco vindo da ficha — só pré-seleciona quem já é candidato. */
+  searchParams: Promise<{ pessoa?: string | string[] }>;
+}) {
+  const { pessoa } = await searchParams;
+  const preSelecionadoId = idSeguro(Array.isArray(pessoa) ? pessoa[0] : pessoa);
   const [candidatos, alunos, cobrancas, planos, proximoCodigo] = await Promise.all([
     candidatosMatricula(),
     listarAlunos(),
@@ -53,7 +61,7 @@ export default async function RenovarPage() {
       </Reveal>
 
       <Reveal>
-        <PageHeader title="Renovar e Matricular" />
+        <PageHeader title="Matrículas e renovações" />
       </Reveal>
 
       <Reveal delay={0.05}>
@@ -62,6 +70,7 @@ export default async function RenovarPage() {
           candidatosIniciais={candidatos}
           matriculadosIniciais={matriculadosIniciais}
           proximoCodigoInicial={proximoCodigo}
+          preSelecionadoId={preSelecionadoId}
         />
       </Reveal>
     </>

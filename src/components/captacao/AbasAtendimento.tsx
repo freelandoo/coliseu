@@ -48,8 +48,8 @@ export function AbasAtendimento({
                 className={cn(
                   "rounded-md px-2.5 py-1 text-xs font-semibold transition-colors",
                   a.chave === ativa
-                    ? "bg-red-ghost text-ink"
-                    : "text-faint hover:text-muted",
+                    ? "bg-surface text-brand shadow-[var(--shadow-card)]"
+                    : "text-muted hover:text-ink",
                 )}
               >
                 {a.label}

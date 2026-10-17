@@ -77,6 +77,36 @@
      comum valem 0 e nada muda. */
   --safe-t: env(safe-area-inset-top, 0px);
   --safe-b: env(safe-area-inset-bottom, 0px);
+
+  /* Altura disponível — fonte única para o shell e telas de altura fixa
+     (Atendimento). Cabeçalho global fixo em 3.5rem; o convite de instalação
+     mede a própria altura (com a área de gestos) e publica em
+     --altura-convite-total (InstallPrompt); aqui sai a parte além do safe-b. */
+  --altura-topo: 3.5rem;
+  --altura-convite-total: 0px;
+  --altura-convite: max(0px, calc(var(--altura-convite-total) - var(--safe-b)));
+  --altura-util: calc(
+    100dvh - var(--safe-t) - var(--altura-topo) - var(--safe-b) - var(--altura-convite)
+  );
+}
+
+/* Respiro do <main> do app. `.altura-area-util` desconta exatamente esse
+   respiro: quem a usa ocupa a área visível sem rolar a página. */
+.area-principal {
+  padding-top: 1rem;
+  padding-bottom: calc(1rem + var(--safe-b) + var(--altura-convite));
+}
+.altura-area-util {
+  height: calc(var(--altura-util) - 2rem);
+}
+@media (min-width: 1024px) {
+  .area-principal {
+    padding-top: 1.5rem;
+    padding-bottom: calc(1.5rem + var(--safe-b) + var(--altura-convite));
+  }
+  .altura-area-util {
+    height: calc(var(--altura-util) - 3rem);
+  }
 }
 
 html {

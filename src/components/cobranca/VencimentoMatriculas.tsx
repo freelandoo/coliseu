@@ -123,7 +123,7 @@ export function VencimentoMatriculas() {
         <ul className="mt-4 max-h-[28rem] divide-y divide-border overflow-y-auto">
           {previa.candidatos.map((c) => (
             <li key={c.membershipId} className="flex flex-wrap items-center justify-between gap-2 py-2.5 text-sm">
-              <Link href={`/matriculados/${c.personId}`} className="min-w-0 font-medium text-ink hover:underline">
+              <Link href={`/matriculados/${c.personId}?de=vencimentos`} className="min-w-0 font-medium text-ink hover:underline">
                 {c.nome}
                 <span className="ml-2 text-xs font-normal text-faint">{c.codigo} · {c.plano}</span>
               </Link>

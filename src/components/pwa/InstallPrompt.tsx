@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { classeBotao } from "@/components/ui/Botao";
 import { cn } from "@/lib/cn";
 
@@ -61,6 +61,25 @@ const IconMais = (
 export function InstallPrompt() {
   const [pendente, setPendente] = useState<BeforeInstallPromptEvent | null>(null);
   const [modo, setModo] = useState<"nenhum" | "android" | "ios">("nenhum");
+  const barraRef = useRef<HTMLDivElement>(null);
+
+  // A barra fica fixa no rodapé; em vez de cobrir o fim da página (ou a caixa
+  // de resposta do Atendimento), publica a altura real e o layout a reserva.
+  const visivel = modo !== "nenhum";
+  useEffect(() => {
+    const barra = barraRef.current;
+    if (!visivel || !barra) return;
+    const raiz = document.documentElement;
+    const publicar = () =>
+      raiz.style.setProperty("--altura-convite-total", `${barra.getBoundingClientRect().height}px`);
+    publicar();
+    const obs = new ResizeObserver(publicar);
+    obs.observe(barra);
+    return () => {
+      obs.disconnect();
+      raiz.style.removeProperty("--altura-convite-total");
+    };
+  }, [visivel]);
 
   // Registro do service worker.
   useEffect(() => {
@@ -125,8 +144,14 @@ export function InstallPrompt() {
   if (modo === "nenhum") return null;
 
   return (
-    <div className="fixed inset-x-0 bottom-0 z-[60] border-t border-border bg-surface/95 pb-[env(safe-area-inset-bottom)] backdrop-blur">
-      <div className="mx-auto flex max-w-2xl items-center gap-3 px-4 py-3">
+    // Abaixo do menu e dos diálogos (z-20): o que a pessoa abriu fica por cima.
+    <div
+      ref={barraRef}
+      role="region"
+      aria-label="Instalar o aplicativo"
+      className="fixed inset-x-0 bottom-0 z-20 border-t border-border bg-surface"
+    >
+      <div className="mx-auto flex max-w-2xl items-center gap-3 px-4 pt-3 pb-[calc(0.75rem_+_var(--safe-b))]">
         {/* eslint-disable-next-line @next/next/no-img-element */}
         <img src="/icons/icon-192.png" alt="Coliseu" className="h-10 w-10 shrink-0 rounded-xl border border-border" />
         <div className="min-w-0 flex-1">
@@ -154,8 +179,8 @@ export function InstallPrompt() {
         ) : null}
         <button type="button"
           onClick={dispensar}
-          aria-label="Fechar"
-          className="shrink-0 rounded-full p-1 text-muted transition-colors hover:text-ink"
+          aria-label="Dispensar o convite de instalação"
+          className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg text-muted transition-colors hover:bg-surface-2 hover:text-ink"
         >
           <svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden>
             <path d="M4 4l8 8M12 4l-8 8" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" />

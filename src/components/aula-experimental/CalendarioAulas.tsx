@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useRef, useState } from "react";
+import { useMemo, useRef, useState, type Dispatch, type SetStateAction } from "react";
 import Link from "next/link";
 import { gsap } from "gsap";
 import { useGSAP } from "@gsap/react";
@@ -33,15 +33,27 @@ import { classeBotao } from "@/components/ui/Botao";
  * academia — calcular aqui faria servidor e navegador discordarem sobre que dia
  * é hoje (e o círculo do "hoje" cairia no dia errado à noite).
  */
+export type MesAncora = ReturnType<typeof mesDaData>;
+
+/**
+ * Mês e dia vêm de fora (AulaExperimentalAbas): ao ir para a Lista e voltar,
+ * o calendário reabre onde a pessoa estava.
+ */
 export function CalendarioAulas({
   aulas,
   hoje,
+  ancora,
+  setAncora,
+  selecionado,
+  setSelecionado,
 }: {
   aulas: AulaExperimentalItem[];
   hoje: string;
+  ancora: MesAncora;
+  setAncora: Dispatch<SetStateAction<MesAncora>>;
+  selecionado: string;
+  setSelecionado: Dispatch<SetStateAction<string>>;
 }) {
-  const [ancora, setAncora] = useState(() => mesDaData(hoje));
-  const [selecionado, setSelecionado] = useState(hoje);
 
   const gradeRef = useRef<HTMLDivElement>(null);
   const listaRef = useRef<HTMLDivElement>(null);

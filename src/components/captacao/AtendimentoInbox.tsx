@@ -215,6 +215,46 @@ export function AtendimentoInbox({
   // Se abrimos uma entrada no histórico, o "voltar" precisa desfazê-la; sem a
   // flag, um voltar em conversa aberta por deep link sairia da página.
   const empurrouHistorico = useRef(false);
+
+  // Já no Atendimento, um link para `?c=<outra>` (o "Responder" do sino) não
+  // remonta a página — os inicializadores acima não rodam de novo. Ajuste no
+  // render, quando o `c` da URL muda: abre a conversa pedida se ela existe na
+  // lista (ou chegou agora no `inicial` atualizado pelo servidor).
+  const [alvoVisto, setAlvoVisto] = useState(alvo);
+  if (alvo !== alvoVisto) {
+    setAlvoVisto(alvo);
+    const pedida =
+      alvo !== null
+        ? (conversas.find((c) => c.id === alvo) ?? inicial.find((c) => c.id === alvo) ?? null)
+        : null;
+    if (pedida) {
+      setConversas((a) => {
+        const lista = a.some((x) => x.id === pedida.id) ? a : [pedida, ...a];
+        return lista.map((x) => (x.id === pedida.id ? { ...x, naoLidas: 0 } : x));
+      });
+      setAba(pedida.ehGrupo ? "grupos" : "pessoas");
+      setSelecionada(pedida.id);
+      setAberta(true);
+    }
+  }
+
+  // Celular: ao abrir uma conversa o foco vai para ela (o título, não a caixa
+  // de texto — não abre o teclado sozinho); ao voltar, para o item da lista.
+  const tituloConversaRef = useRef<HTMLHeadingElement>(null);
+  const listaRef = useRef<HTMLUListElement>(null);
+  const abertaAntes = useRef(aberta);
+  useEffect(() => {
+    if (abertaAntes.current === aberta) return;
+    abertaAntes.current = aberta;
+    if (window.matchMedia("(min-width: 1024px)").matches) return;
+    if (aberta) {
+      tituloConversaRef.current?.focus({ preventScroll: true });
+    } else if (selecionada) {
+      listaRef.current
+        ?.querySelector<HTMLElement>(`[data-conversa-id="${CSS.escape(selecionada)}"]`)
+        ?.focus({ preventScroll: true });
+    }
+  }, [aberta, selecionada]);
   // Busca: o campo filtra a lista na hora (nome, telefone, última mensagem) e,
   // em paralelo, o servidor procura a palavra no histórico inteiro.
   const [busca, setBusca] = useState("");
@@ -385,7 +425,8 @@ export function AtendimentoInbox({
     // tela; no desktop viraria um botão voltar que "não navega".
     const mobile = !window.matchMedia("(min-width: 1024px)").matches;
     if (mobile && !empurrouHistorico.current) {
-      window.history.pushState({ conversaAberta: true }, "");
+      // espalha o estado atual: os metadados que o Next guarda na entrada ficam
+      window.history.pushState({ ...window.history.state, conversaAberta: true }, "");
       empurrouHistorico.current = true;
     }
   }
@@ -433,10 +474,13 @@ export function AtendimentoInbox({
   }
 
   return (
-    <>
+    // Ocupa exatamente a área útil do shell (globals.css): cabeçalho e chave
+    // ficam no topo, lista e conversa dividem o resto e rolam por dentro —
+    // a caixa de resposta nunca fica abaixo da dobra nem sob o convite PWA.
+    <div className="altura-area-util flex min-h-0 flex-col">
       {/* Conversa aberta no mobile toma a tela toda: até o cabeçalho da página
           sai — e a chave do Enter vai junto, que ali o espaço é da conversa. */}
-      <div className={cn(aberta && "hidden lg:block")}>
+      <div className={cn("shrink-0", aberta && "hidden lg:block")}>
         {cabecalho}
         {podeResponder && (
           <div className="-mt-1 mb-3">
@@ -449,12 +493,10 @@ export function AtendimentoInbox({
         )}
       </div>
 
-      <div className="grid gap-4 lg:grid-cols-[300px_1fr]">
+      <div className="grid min-h-0 flex-1 grid-rows-[minmax(0,1fr)] gap-4 lg:grid-cols-[300px_1fr]">
         <Card
           className={cn(
-            // 100dvh conta a área embaixo da barra de status e da de gestos;
-            // sem descontar os recuos, a lista passaria da tela no app instalado.
-            "h-[calc(100dvh_-_8rem_-_var(--safe-t)_-_var(--safe-b))] flex-col overflow-hidden",
+            "h-full min-h-0 flex-col overflow-hidden",
             aberta ? "hidden lg:flex" : "flex",
           )}
         >
@@ -509,7 +551,7 @@ export function AtendimentoInbox({
             </div>
           </div>
 
-          <ul className="flex-1 overflow-y-auto">
+          <ul ref={listaRef} aria-label="Conversas" className="flex-1 overflow-y-auto">
             {visiveis.length === 0 && (
               <li className="px-4 py-10 text-center text-sm text-faint">
                 {termo
@@ -526,38 +568,26 @@ export function AtendimentoInbox({
             {visiveis.map((c) => {
               const ativo = c.id === selecionada;
               return (
-                <li key={c.id}>
-                  <div
-                    role="button"
-                    tabIndex={0}
+                // O item é um botão de verdade; o "ver" (cadastro do contato) é
+                // irmão dele, não filho — nada interativo dentro de interativo.
+                <li
+                  key={c.id}
+                  className={cn(
+                    "flex items-stretch border-b border-border transition-colors last:border-0",
+                    ativo ? "bg-brand-soft" : "hover:bg-surface-2",
+                  )}
+                >
+                  <button
+                    type="button"
+                    data-conversa-id={c.id}
                     onClick={() => abrir(c.id)}
-                    onKeyDown={(e) => {
-                      if (e.key === "Enter" || e.key === " ") {
-                        e.preventDefault();
-                        abrir(c.id);
-                      }
-                    }}
-                    className={cn(
-                      "flex w-full cursor-pointer items-start gap-2.5 border-b border-border px-3 py-2.5 text-left transition-colors last:border-0",
-                      ativo ? "bg-red-ghost" : "hover:bg-surface-2",
-                    )}
+                    aria-current={ativo ? "true" : undefined}
+                    className="flex min-w-0 flex-1 items-start gap-2.5 py-2.5 pl-3 text-left"
                   >
                     <span className={cn("mt-1.5 h-2 w-2 shrink-0 rounded-full", PONTO[c.interesse])} />
                     <span className="min-w-0 flex-1">
                       <span className="flex items-baseline justify-between gap-2">
-                        <span className="flex min-w-0 items-baseline gap-1.5">
-                          {c.personId && (
-                            // "ver" abre o cadastro do contato sem trocar a conversa aberta.
-                            <Link
-                              href={`/matriculados/${c.personId}`}
-                              onClick={(e) => e.stopPropagation()}
-                              className="shrink-0 text-xs font-bold text-red-bright hover:underline"
-                            >
-                              ver
-                            </Link>
-                          )}
-                          <span className="truncate text-[13px] font-medium text-ink">{c.nome}</span>
-                        </span>
+                        <span className="truncate text-[13px] font-medium text-ink">{c.nome}</span>
                         <span className="shrink-0 text-xs text-faint">{quando(c.ultimaMensagemEm)}</span>
                       </span>
                       <span className="mt-0.5 flex items-center justify-between gap-2">
@@ -581,7 +611,19 @@ export function AtendimentoInbox({
                         </span>
                       )}
                     </span>
-                  </div>
+                  </button>
+                  {c.personId ? (
+                    // abre o cadastro do contato sem trocar a conversa aberta
+                    <Link
+                      href={`/matriculados/${c.personId}?de=atendimento&c=${c.id}`}
+                      aria-label={`Ver cadastro de ${c.nome}`}
+                      className="flex shrink-0 items-start px-3 pt-2.5 text-xs font-semibold text-brand hover:underline"
+                    >
+                      ver
+                    </Link>
+                  ) : (
+                    <span className="w-3 shrink-0" />
+                  )}
                 </li>
               );
             })}
@@ -589,10 +631,10 @@ export function AtendimentoInbox({
         </Card>
 
         {/* No mobile este cartão só existe com uma conversa aberta; sem o
-            cabeçalho da página, ganha um pouco mais de altura que no desktop. */}
+            cabeçalho da página, ocupa a altura inteira da área. */}
         <Card
           className={cn(
-            "h-[calc(100dvh_-_7rem_-_var(--safe-t)_-_var(--safe-b))] overflow-hidden lg:h-[calc(100dvh_-_8rem_-_var(--safe-t)_-_var(--safe-b))]",
+            "h-full min-h-0 overflow-hidden",
             aberta ? "block" : "hidden lg:block",
           )}
         >
@@ -625,7 +667,13 @@ export function AtendimentoInbox({
                 {/* Nome com a classificação embaixo: tocar numa bandeira dá o
                     retorno na hora, sem precisar voltar para a lista. */}
                 <span className="min-w-0 flex-1">
-                  <span className="block truncate text-sm font-medium text-ink">{atual.nome}</span>
+                  <h2
+                    ref={tituloConversaRef}
+                    tabIndex={-1}
+                    className="block truncate rounded text-sm font-medium text-ink outline-none"
+                  >
+                    {atual.nome}
+                  </h2>
                   {!atual.ehGrupo && (
                     <span className="block truncate text-xs text-faint">
                       {INTERESSE_LABEL[atual.interesse]}
@@ -634,8 +682,9 @@ export function AtendimentoInbox({
                 </span>
                 {atual.personId && (
                   <Link
-                    href={`/matriculados/${atual.personId}`}
-                    className="shrink-0 text-xs font-bold text-red-bright hover:underline"
+                    href={`/matriculados/${atual.personId}?de=atendimento&c=${atual.id}`}
+                    aria-label={`Ver cadastro de ${atual.nome}`}
+                    className="shrink-0 text-xs font-semibold text-brand hover:underline"
                   >
                     ver
                   </Link>
@@ -664,6 +713,6 @@ export function AtendimentoInbox({
           )}
         </Card>
       </div>
-    </>
+    </div>
   );
 }

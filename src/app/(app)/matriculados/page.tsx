@@ -17,7 +17,7 @@ export default async function MatriculadosPage() {
       </Reveal>
 
       <Reveal>
-        <PageHeader title="Matriculados" />
+        <PageHeader title="Alunos" />
       </Reveal>
 
       <Reveal delay={0.05}>

@@ -1,13 +1,14 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useMemo } from "react";
 import Link from "next/link";
 import { Badge, Card } from "@/components/ui/primitives";
 import { cn } from "@/lib/cn";
 import { formatarDataCompleta, formatarHora } from "@/lib/aula-experimental";
 import type { AulaExperimentalItem } from "@/lib/types";
 
-type Filtro = "hoje" | "proximas" | "todas";
+export type FiltroAulas = "hoje" | "proximas" | "todas";
+type Filtro = FiltroAulas;
 
 const CHIPS: { key: Filtro; label: string }[] = [
   { key: "hoje", label: "Hoje" },
@@ -31,11 +32,15 @@ const CHIPS: { key: Filtro; label: string }[] = [
 export function ListaAulas({
   aulas,
   hoje,
+  filtro,
+  setFiltro,
 }: {
   aulas: AulaExperimentalItem[];
   hoje: string;
+  /** Vem de fora: sobrevive à ida ao Calendário e volta. */
+  filtro: Filtro;
+  setFiltro: (f: Filtro) => void;
 }) {
-  const [filtro, setFiltro] = useState<Filtro>("todas");
 
   const contagem = useMemo(
     () => ({

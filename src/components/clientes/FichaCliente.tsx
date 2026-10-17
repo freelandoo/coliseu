@@ -19,6 +19,8 @@ import {
 } from "@/lib/types";
 import { classeBotao } from "@/components/ui/Botao";
 import { classeCampo, classeRotulo } from "@/components/ui/Campo";
+import { LinkRetornoFicha } from "@/components/clientes/LinkRetornoFicha";
+import type { OrigemFicha } from "@/lib/navegacao";
 
 const ESTAGIOS: LeadEstagio[] = ["novo", "qualificado", "interesse", "perdido"];
 
@@ -27,6 +29,7 @@ export function FichaCliente({
   plano,
   podeGerirAcesso = false,
   acesso,
+  retorno = { href: "/matriculados", rotulo: "Alunos", origem: "alunos" },
 }: {
   pessoa: Pessoa;
   plano?: Plano;
@@ -34,6 +37,8 @@ export function FichaCliente({
   podeGerirAcesso?: boolean;
   /** Acesso já existente desta pessoa, quando ela é colaboradora. */
   acesso?: AcessoDaPessoa;
+  /** Para onde o "voltar" leva — validado no servidor (`retornoDaFicha`). */
+  retorno?: { href: string; rotulo: string; origem: OrigemFicha };
 }) {
   const router = useRouter();
   const [editando, setEditando] = useState(false);
@@ -98,12 +103,7 @@ export function FichaCliente({
 
   return (
     <div className="flex flex-col gap-6">
-      <Link
-        href="/matriculados"
-        className="text-xs font-medium text-faint transition-colors hover:text-ink"
-      >
-        ← Matriculados
-      </Link>
+      <LinkRetornoFicha {...retorno} />
 
       <div className="grid gap-4 lg:grid-cols-[1.4fr_1fr]">
         {/* dados pessoais */}
@@ -204,8 +204,10 @@ export function FichaCliente({
                     </option>
                   ))}
                 </select>
+                {/* Leva só o id: a tela de matrícula abre a revisão desta pessoa
+                    se ela estiver entre os candidatos — nada é gerado no caminho. */}
                 <Link
-                  href="/matriculados/renovar"
+                  href={`/matriculados/renovar?pessoa=${encodeURIComponent(pessoa.id)}`}
                   className={cn(classeBotao({ variante: "primario" }), "mt-3")}
                 >
                   Matricular →

@@ -77,6 +77,17 @@ interface FormState {
   numero: string;
 }
 
+/** O formulário de revisão como o clique num candidato o preenche. */
+function formDoCandidato(c: Candidato): FormState {
+  return {
+    ...FORM_VAZIO,
+    nome: c.nome,
+    telefone: c.telefone,
+    email: c.email ?? "",
+    cpf: c.cpf ?? "",
+  };
+}
+
 const FORM_VAZIO: FormState = {
   nome: "",
   telefone: "",
@@ -95,19 +106,35 @@ export function MatriculaFlow({
   candidatosIniciais,
   matriculadosIniciais,
   proximoCodigoInicial,
+  preSelecionadoId = null,
 }: {
   planos: Plano[];
   candidatosIniciais: Candidato[];
   matriculadosIniciais: Matriculado[];
   proximoCodigoInicial: string;
+  /**
+   * Atalho da ficha (`?pessoa=`). Só abre a revisão de quem JÁ está entre os
+   * candidatos — mesmo estado que o clique na lista produz, sem rede: não
+   * grava nada, não gera cobrança e não começa a esteira (o botão Matricular
+   * continua sendo a ação que inicia a operação).
+   */
+  preSelecionadoId?: string | null;
 }) {
   const router = useRouter();
   const [candidatos, setCandidatos] = useState(candidatosIniciais);
   const [busca, setBusca] = useState("");
-  const [sel, setSel] = useState<Candidato | null>(null);
-  const [form, setForm] = useState<FormState>(FORM_VAZIO);
+  const [preSelecionado] = useState(() =>
+    preSelecionadoId ? (candidatosIniciais.find((c) => c.refId === preSelecionadoId) ?? null) : null,
+  );
+  const preNaoEncontrado = preSelecionadoId !== null && preSelecionado === null;
+  const [sel, setSel] = useState<Candidato | null>(preSelecionado);
+  const [form, setForm] = useState<FormState>(() =>
+    preSelecionado ? formDoCandidato(preSelecionado) : FORM_VAZIO,
+  );
   const [erros, setErros] = useState<Partial<Record<keyof FormState, string>>>({});
-  const [planoId, setPlanoId] = useState(planos[0]?.id ?? "");
+  const [planoId, setPlanoId] = useState(
+    preSelecionado?.planoAtualId ?? planos[0]?.id ?? "",
+  );
 
   const [ativo, setAtivo] = useState(-1);
   const [rodando, setRodando] = useState(false);
@@ -149,13 +176,7 @@ export function MatriculaFlow({
     setErros({});
     setAtivo(-1);
     setPlanoId(c.planoAtualId ?? planos[0]?.id ?? "");
-    setForm({
-      ...FORM_VAZIO,
-      nome: c.nome,
-      telefone: c.telefone,
-      email: c.email ?? "",
-      cpf: c.cpf ?? "",
-    });
+    setForm(formDoCandidato(c));
   }
 
   function cancelar() {
@@ -344,6 +365,12 @@ export function MatriculaFlow({
               <p className="text-xs text-faint">
                 Leads em aberto e alunos que precisam renovar.
               </p>
+              {preNaoEncontrado && (
+                <p role="status" className="rounded-lg border border-info/30 bg-info-soft px-3 py-2 text-sm text-ink">
+                  A pessoa da ficha não está entre os candidatos agora (já matriculada ou fora da
+                  renovação). Busque pelo nome se precisar.
+                </p>
+              )}
 
               <div className="flex flex-col gap-2">
                 {resultados.length === 0 ? (
