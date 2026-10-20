@@ -134,19 +134,30 @@ export function Sidebar({
           onClick={onFechar}
           aria-current={atual ? "page" : undefined}
           className={cn(
-            "relative isolate flex min-h-10 items-center gap-3 overflow-hidden px-3 py-2 text-sm font-medium",
+            "group relative isolate flex min-h-10 items-center gap-3 overflow-hidden px-3 py-2 text-sm font-medium",
             "transition-[background-color,color] duration-150 ease-padrao",
-            atual ? "bg-brand text-white" : "text-muted hover:bg-surface-2 hover:text-ink",
+            atual ? "text-white" : "text-muted hover:bg-surface-2 hover:text-ink",
           )}
         >
-          {/* item atual: listras diagonais no fim da faixa (decoração) */}
+          {/* item atual: o vermelho varre da esquerda e as listras diagonais
+              chegam no fim da faixa (decoração; montam a cada navegação) */}
           {atual && (
-            <span
-              aria-hidden
-              className="listras pointer-events-none absolute inset-y-0 right-0 -z-10 w-14 text-white/20 [mask-image:linear-gradient(90deg,transparent,#000_60%)]"
-            />
+            <>
+              <span aria-hidden className="faixa-varre pointer-events-none absolute inset-0 -z-20 bg-brand" />
+              <span
+                aria-hidden
+                className="listras listras-entram pointer-events-none absolute inset-y-0 right-0 -z-10 w-14 text-white/20 [mask-image:linear-gradient(90deg,transparent,#000_60%)]"
+              />
+            </>
           )}
-          <span className={cn("shrink-0", atual ? "text-white" : "text-faint")}>{ICONES[d.icone]}</span>
+          <span
+            className={cn(
+              "shrink-0 transition-transform duration-200 ease-entrada",
+              atual ? "text-white" : "text-faint group-hover:translate-x-0.5",
+            )}
+          >
+            {ICONES[d.icone]}
+          </span>
           <span className="min-w-0 flex-1 truncate">{d.rotulo}</span>
           {/* Não lidas do WhatsApp — só no Atendimento, some quando zera. */}
           {d.modulo === "atendimento" && <NaoLidasBadge />}

@@ -54,8 +54,14 @@ export const IconeMatricula = ({ className }: { className?: string }) => (
     <path d="M6.5 12.5L5.5 16l3.5-1.6 3.5 1.6-1-3.5" />
   </Svg>
 );
+/** Seta de "abrir": dentro de um link `group`, avança na diagonal no hover. */
 export const IconeSeta = ({ className }: { className?: string }) => (
-  <Svg className={cn("h-4 w-4", className)}>
+  <Svg
+    className={cn(
+      "h-4 w-4 transition-transform duration-200 ease-entrada group-hover:-translate-y-0.5 group-hover:translate-x-0.5",
+      className,
+    )}
+  >
     <path d="M5.5 12.5l7-7M7 5.5h5.5V11" />
   </Svg>
 );

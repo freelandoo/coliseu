@@ -21,6 +21,7 @@ import { FreelandooTokenCard } from "@/components/painel/FreelandooTokenCard";
 import { CentralAgenda } from "@/components/painel/CentralAgenda";
 import { CentralAtendimento } from "@/components/painel/CentralAtendimento";
 import { CarimboData } from "@/components/painel/CarimboData";
+import { Contador } from "@/components/ui/Contador";
 import {
   IconeCalendario,
   IconeCobranca,
@@ -52,15 +53,15 @@ const emAberto = cache(() => tentar("cobranças em aberto", cobrancasEmAbertoRep
 
 const atraso = (ms: number) => ({ "--atraso": `${ms}ms` }) as CSSProperties;
 
-/** "R$ 3.240,00" → número grande com "R$" e centavos menores. */
-function ValorBRL({ valor }: { valor: number }) {
+/** "R$ 3.240,00" → número grande (contando) com "R$" e centavos menores. */
+function ValorBRL({ valor, atraso }: { valor: number; atraso?: number }) {
   const texto = formatBRL(valor); // "R$ 3.240,00"
   const m = texto.match(/^(\D*?)\s*([\d.]+)(,\d+)$/);
   if (!m) return <>{texto}</>;
   return (
     <>
       <span className="mr-1 text-lg font-normal">{m[1]}</span>
-      {m[2]}
+      <Contador valor={Number(m[2].replace(/\./g, ""))} atraso={atraso} />
       <span className="text-lg font-normal">{m[3]}</span>
     </>
   );
@@ -88,7 +89,7 @@ function Indicador({
     <div className={cn("min-w-0 py-1.5", className)}>
       <Link
         href={href}
-        className="group mx-1.5 flex min-w-0 flex-col justify-center gap-1 rounded-xl px-3 py-3 transition-colors duration-200 hover:bg-surface-2 sm:px-4"
+        className="levanta group mx-1.5 flex min-w-0 flex-col justify-center gap-1 rounded-xl px-3 py-3 hover:bg-surface-2 sm:px-4"
       >
         <span className="flex items-center gap-2 text-sm text-muted">
           <span className="text-brand">{icone}</span>
@@ -117,13 +118,13 @@ async function FaixaIndicadores({ agora }: { agora: string }) {
     <section
       aria-label="Números de agora"
       style={atraso(80)}
-      className="entrada grid grid-cols-2 rounded-md border border-border bg-surface p-1 text-ink shadow-[var(--shadow-card)] md:grid-cols-[1fr_1fr_1.2fr] md:p-2"
+      className="entrada relative z-[1] grid grid-cols-2 rounded-md border border-border bg-surface p-1 text-ink shadow-[var(--shadow-card)] md:grid-cols-[1fr_1fr_1.2fr] md:p-2"
     >
       <Indicador
         icone={<IconePessoas className="h-4 w-4" />}
         rotulo="Alunos ativos"
         href="/matriculados?situacao=ativo"
-        valor={ativos}
+        valor={ativos === null ? null : <Contador valor={ativos} atraso={120} />}
         nota="Última matrícula de cada um está ativa"
         className="border-r border-border"
       />
@@ -131,7 +132,7 @@ async function FaixaIndicadores({ agora }: { agora: string }) {
         icone={<IconeConversa className="h-4 w-4" />}
         rotulo="Mensagens não lidas"
         href="/atendimento"
-        valor={naoLidas?.mensagens ?? null}
+        valor={naoLidas === null ? null : <Contador valor={naoLidas.mensagens} atraso={180} />}
         nota={
           naoLidas === null
             ? "WhatsApp"
@@ -145,7 +146,7 @@ async function FaixaIndicadores({ agora }: { agora: string }) {
         icone={<IconeCobranca className="h-4 w-4" />}
         rotulo="Cobranças em aberto"
         href="/cobranca"
-        valor={abertas === null ? null : <ValorBRL valor={abertas.valor} />}
+        valor={abertas === null ? null : <ValorBRL valor={abertas.valor} atraso={240} />}
         nota={
           abertas === null
             ? "Cobrança"
@@ -162,7 +163,7 @@ function FaixaCarregando() {
     <section
       aria-label="Números de agora"
       aria-busy="true"
-      className="grid h-[132px] grid-cols-3 gap-6 rounded-md border border-border bg-surface p-6 shadow-[var(--shadow-card)]"
+      className="relative z-[1] grid h-[132px] grid-cols-3 gap-6 rounded-md border border-border bg-surface p-6 shadow-[var(--shadow-card)]"
     >
       <p className="sr-only">Carregando os números…</p>
       {[0, 1, 2].map((i) => (
@@ -218,13 +219,13 @@ async function Fechamento() {
   }
 
   const atalho =
-    "flex min-h-14 items-center justify-center gap-2 rounded-md border border-border-strong bg-surface-2 px-3 py-3 text-center text-sm font-medium text-ink transition-[background-color,border-color] duration-200 hover:border-destaque/50 hover:bg-white/10";
+    "levanta flex min-h-14 items-center justify-center gap-2 rounded-md border border-border-strong bg-surface-2 px-3 py-3 text-center text-sm font-medium text-ink hover:border-destaque/50 hover:bg-white/10";
 
   return (
     <div style={atraso(300)} className="entrada mt-4 grid gap-4 md:grid-cols-2">
       <Link
         href="/cobranca"
-        className="flex items-center justify-between gap-4 rounded-md border border-border-strong bg-painel px-5 py-4 transition-colors duration-200 hover:border-destaque/50"
+        className="levanta flex items-center justify-between gap-4 rounded-md border border-border-strong bg-painel px-5 py-4 hover:border-destaque/50"
       >
         <span className="min-w-0">
           <span className="block text-sm font-semibold text-ink">{titulo}</span>
@@ -284,7 +285,7 @@ export default async function PainelPage() {
         aria-labelledby="central-titulo"
         className="entrada grid grid-cols-[minmax(0,1fr)_auto] items-center gap-2 overflow-x-clip pb-6 pt-1 sm:gap-6 sm:pb-8 sm:pt-3"
       >
-        <div className="min-w-0">
+        <div className="paralaxe min-w-0 [--paralaxe:60px]">
           <p className="meta-mono mb-3 flex items-center gap-2.5 text-muted">
             <span aria-hidden className="h-4 w-1 bg-brand" />
             {extenso}
@@ -293,15 +294,21 @@ export default async function PainelPage() {
             id="central-titulo"
             className="text-[clamp(1.75rem,4.6vw,3rem)] font-medium leading-[1.08] tracking-[-0.035em] text-ink"
           >
-            {saudacao(agoraData)}
-            {nome ? `, ${nome}` : ""}.
-            <span className="block text-destaque">Este é o dia do Coliseu.</span>
+            <span className="linha-revela" style={atraso(60)}>
+              {saudacao(agoraData)}
+              {nome ? `, ${nome}` : ""}.
+            </span>
+            <span className="linha-revela text-destaque" style={atraso(160)}>
+              Este é o dia do Coliseu.
+            </span>
           </h1>
           <p className="mt-3 max-w-[34em] text-sm text-muted">
             Conversas esperando resposta, aulas marcadas e cobranças em aberto.
           </p>
         </div>
-        <CarimboData dia={String(Number(hoje.slice(8)))} mesAno={mesEAno(hoje)} />
+        <div className="paralaxe [--paralaxe:150px]">
+          <CarimboData dia={String(Number(hoje.slice(8)))} mesAno={mesEAno(hoje)} />
+        </div>
       </section>
 
       <Suspense fallback={<FaixaCarregando />}>

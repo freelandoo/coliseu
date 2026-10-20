@@ -134,7 +134,7 @@ export function ListaAulas({
                     <Th className="text-right">Ação</Th>
                   </tr>
                 </thead>
-                <tbody>
+                <tbody className="cascata">
                   {visiveis.map((a) => (
                     <tr
                       key={a.id}

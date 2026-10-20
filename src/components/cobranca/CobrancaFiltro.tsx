@@ -136,7 +136,7 @@ export function CobrancaFiltro({ linhas }: { linhas: LinhaCobranca[] }) {
                   <Th className="text-right">Ação</Th>
                 </tr>
               </thead>
-              <tbody>
+              <tbody className="cascata">
                 {visiveis.map((l) => {
                   const s = situacao(l);
                   const fone = l.telefone.replace(/\D/g, "");

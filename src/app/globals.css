@@ -215,9 +215,10 @@ body {
 }
 
 /* Fundo do shell: preto liso com a malha do tabloide (48px). Camada fixa
-   ATRÁS de tudo (z -1, sem eventos) e parada — nada anima no fundo durante
-   o trabalho. Superfícies são opacas, então a malha nunca fica atrás de
-   texto de tabela, campo ou mensagem. */
+   ATRÁS de tudo (z -1, sem eventos). Só se move com a rolagem, mais devagar
+   que o conteúdo (paralaxe, ver "Camada de movimento"). Superfícies são
+   opacas, então a malha nunca fica atrás de texto de tabela, campo ou
+   mensagem. */
 body::after {
   content: "";
   position: fixed;
@@ -355,6 +356,179 @@ th {
   from {
     opacity: 0;
     transform: translateY(6px) scale(0.99);
+  }
+}
+
+/* ---------- Camada de movimento ----------
+   Tudo em CSS (fora da thread principal), só transform/opacity/clip-path.
+   O que depende da rolagem fica sob `no-preference` + `@supports`: sem
+   suporte ou com movimento reduzido, a tela nasce no estado final. */
+
+/* Cartão clicável: sobe 2px e ganha a sombra dura vermelha do tabloide.
+   Pressionar devolve ao lugar (retorno do clique). */
+.levanta {
+  transition:
+    transform 200ms var(--ease-entrada),
+    box-shadow 200ms var(--ease-entrada),
+    background-color 200ms ease,
+    border-color 200ms ease,
+    color 200ms ease;
+}
+@media (hover: hover) and (pointer: fine) {
+  .levanta:hover {
+    transform: translate(-2px, -2px);
+    box-shadow: 4px 4px 0 0 var(--color-brand);
+  }
+}
+.levanta:active {
+  transform: translate(0, 0);
+  box-shadow: 0 0 0 0 var(--color-brand);
+  transition-duration: 100ms;
+}
+
+/* Lista em cascata: os primeiros itens entram em escada de 35ms; do 9º em
+   diante entram juntos (lista longa não fica esperando). */
+.cascata > * {
+  animation: entra-subindo 240ms var(--ease-entrada) both;
+  animation-delay: 280ms;
+}
+.cascata > :nth-child(1) { animation-delay: 0ms; }
+.cascata > :nth-child(2) { animation-delay: 35ms; }
+.cascata > :nth-child(3) { animation-delay: 70ms; }
+.cascata > :nth-child(4) { animation-delay: 105ms; }
+.cascata > :nth-child(5) { animation-delay: 140ms; }
+.cascata > :nth-child(6) { animation-delay: 175ms; }
+.cascata > :nth-child(7) { animation-delay: 210ms; }
+.cascata > :nth-child(8) { animation-delay: 245ms; }
+
+/* Manchete: cada linha sobe de dentro de uma máscara, em escada. A máscara
+   só existe durante a entrada (`backwards`): no fim o título fica sem
+   clip-path, como todo conteúdo. */
+@keyframes linha-sobe {
+  from {
+    opacity: 0;
+    clip-path: inset(-10% -10% 100% -10%);
+    transform: translateY(0.4em);
+  }
+  to {
+    opacity: 1;
+    clip-path: inset(-10%);
+    transform: none;
+  }
+}
+.linha-revela {
+  display: block;
+  animation: linha-sobe 560ms var(--ease-entrada) backwards;
+  animation-delay: var(--atraso, 0ms);
+}
+
+/* Carimbo da data: bate na página uma vez, ao abrir a central. */
+@keyframes carimba {
+  0% {
+    opacity: 0;
+    transform: scale(1.35) rotate(-10deg);
+  }
+  60% {
+    opacity: 1;
+    transform: scale(0.97) rotate(-2deg);
+  }
+  100% {
+    opacity: 1;
+    transform: scale(1) rotate(-3deg);
+  }
+}
+.carimbo {
+  transform: rotate(-3deg);
+  animation: carimba 520ms var(--ease-entrada) 180ms both;
+}
+
+/* Faixa do menu: o vermelho do item atual entra varrendo da esquerda. */
+@keyframes faixa-varre {
+  from {
+    clip-path: inset(0 100% 0 0);
+  }
+}
+.faixa-varre {
+  animation: faixa-varre 220ms var(--ease-entrada);
+}
+@keyframes listras-entram {
+  from {
+    opacity: 0;
+    transform: translateX(100%);
+  }
+}
+.listras-entram {
+  animation: listras-entram 320ms var(--ease-entrada) 80ms both;
+}
+
+/* Contador: o número sobe de 0 até o valor, sem JS (@property). O texto
+   real fica no leitor de tela; a pintura vem do ::after. Sem suporte a
+   round()/mod() (ou com movimento reduzido), mostra o número pronto. */
+@property --n {
+  syntax: "<integer>";
+  inherits: true;
+  initial-value: 0;
+}
+@counter-style tres-digitos {
+  system: extends decimal;
+  pad: 3 "0";
+}
+/* `--de`: de onde a contagem parte. Números com milhar partem de 1.000 —
+   o milhar nunca passa por "0.347" no meio da contagem. */
+@keyframes conta {
+  from {
+    --n: var(--de, 0);
+  }
+}
+.contador > [data-texto]::after {
+  content: attr(data-texto);
+}
+@media (prefers-reduced-motion: no-preference) {
+  @supports (width: round(down, 1px, 1px)) and (width: mod(3px, 2px)) {
+    .contador {
+      animation: conta 900ms var(--ease-entrada) both;
+      animation-delay: var(--atraso, 0ms);
+    }
+    .contador > [data-texto]::after {
+      counter-reset: n var(--n);
+      content: counter(n);
+    }
+    .contador[data-zeros] > [data-texto]::after {
+      content: counter(n, decimal-leading-zero);
+    }
+    .contador[data-mil] > [data-texto]::after {
+      counter-reset: mil round(down, var(--n) / 1000, 1) resto mod(var(--n), 1000);
+      content: counter(mil) "." counter(resto, tres-digitos);
+    }
+  }
+
+  /* Paralaxe ligada à rolagem do documento. */
+  @supports (animation-timeline: scroll()) {
+    /* a malha do fundo anda a uma fração da rolagem: profundidade */
+    body::after {
+      bottom: -40vh;
+      animation: malha-paralaxe linear both;
+      animation-timeline: scroll(root);
+    }
+
+    /* abertura da tela: desce mais devagar que a página e apaga.
+       --paralaxe = quanto fica para trás nos primeiros 420px. */
+    .paralaxe {
+      animation: abertura-paralaxe linear both;
+      animation-timeline: scroll(root);
+      animation-range: 0 420px;
+    }
+  }
+}
+@keyframes malha-paralaxe {
+  to {
+    transform: translateY(-40vh);
+  }
+}
+@keyframes abertura-paralaxe {
+  to {
+    opacity: 0;
+    transform: translateY(var(--paralaxe, 80px));
   }
 }
 

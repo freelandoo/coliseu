@@ -291,7 +291,7 @@ export function ClientesView({
                   <Th>Contato</Th>
                 </tr>
               </thead>
-              <tbody>
+              <tbody className="cascata">
                 {visiveis.map((p) => {
                   const s = situacaoDe(p);
                   return (

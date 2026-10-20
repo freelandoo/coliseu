@@ -83,7 +83,7 @@ export function CentralAgenda({
           {dia === hoje ? "Hoje está livre na agenda." : `Nada marcado para ${escolhido.porExtenso}.`}
         </EstadoBloco>
       ) : (
-        <ol key={dia} className="troca flex flex-1 flex-col gap-4 px-5 pb-2 pt-4" aria-label={`Aulas de ${escolhido.porExtenso}`}>
+        <ol key={dia} className="cascata flex flex-1 flex-col gap-4 px-5 pb-2 pt-4" aria-label={`Aulas de ${escolhido.porExtenso}`}>
           {doDia.map((a, i) => (
             <li key={a.id} className="grid grid-cols-[2.75rem_minmax(0,1fr)] gap-3">
               <span className="pt-px text-sm font-medium tabular-nums text-muted">{formatarHora(a.hora)}</span>
@@ -95,7 +95,7 @@ export function CentralAgenda({
                 {a.conversaId && (
                   <Link
                     href={linkConversa(a.conversaId)}
-                    className="mt-1 inline-flex min-h-8 items-center gap-1 text-[13px] font-medium text-destaque underline-offset-2 hover:underline"
+                    className="group mt-1 inline-flex min-h-8 items-center gap-1 text-[13px] font-medium text-destaque underline-offset-2 hover:underline"
                   >
                     Conversa
                     <IconeSeta className="h-3.5 w-3.5" />
@@ -110,7 +110,7 @@ export function CentralAgenda({
       <div className="mx-5 mt-auto border-t border-border py-3">
         <Link
           href={linkAgendaDoDia(dia)}
-          className="inline-flex min-h-10 items-center gap-1.5 text-sm font-medium text-destaque underline-offset-2 hover:underline"
+          className="group inline-flex min-h-10 items-center gap-1.5 text-sm font-medium text-destaque underline-offset-2 hover:underline"
         >
           Abrir este dia na agenda
           <IconeSeta />

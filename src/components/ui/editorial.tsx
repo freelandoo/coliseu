@@ -1,4 +1,5 @@
 import type { ComponentPropsWithoutRef, CSSProperties, ElementType, ReactNode } from "react";
+import { Contador } from "@/components/ui/Contador";
 import { cn } from "@/lib/cn";
 
 /**
@@ -140,7 +141,7 @@ export function CabecalhoEditorial({
   /** Linha operacional (o achado do dia, o período). */
   descricao?: ReactNode;
   acoes?: ReactNode;
-  /** Ilustração estática e secundária (só a partir de `lg`). */
+  /** Ilustração secundária (só a partir de `lg`); fica para trás na rolagem. */
   decoracao?: ReactNode;
   className?: string;
 }) {
@@ -148,13 +149,15 @@ export function CabecalhoEditorial({
     <header className={cn("relative grid gap-x-8 lg:grid-cols-[minmax(0,1fr)_auto]", className)}>
       <div className="min-w-0">
         {categoria && <p className="meta-mono text-muted">{categoria}</p>}
-        <h1 className="font-manchete mt-2 text-balance text-[2.5rem] text-ink sm:text-[3.25rem] xl:text-[4.25rem]">
+        <h1
+          className="font-manchete linha-revela mt-2 text-balance text-[2.5rem] text-ink [--atraso:60ms] sm:text-[3.25rem] xl:text-[4.25rem]"
+        >
           {titulo}
         </h1>
         {faixa && (
           <div className="mt-3 flex max-w-full items-stretch">
-            <p className="meta-mono bg-brand px-3 py-1.5 text-[0.6875rem] text-white sm:text-xs">{faixa}</p>
-            <Listras className="-ml-px w-10 shrink-0 text-brand sm:w-16" />
+            <p className="meta-mono faixa-varre bg-brand px-3 py-1.5 text-[0.6875rem] text-white sm:text-xs">{faixa}</p>
+            <Listras className="listras-entram -ml-px w-10 shrink-0 text-brand sm:w-16" />
           </div>
         )}
         {(descricao || acoes) && (
@@ -165,7 +168,7 @@ export function CabecalhoEditorial({
         )}
       </div>
       {decoracao && (
-        <div aria-hidden className="pointer-events-none hidden self-end lg:block">
+        <div aria-hidden className="paralaxe pointer-events-none hidden self-end [--paralaxe:120px] lg:block">
           {decoracao}
         </div>
       )}
@@ -325,7 +328,7 @@ export function CartaoIndicador({
         <div className="min-w-0">
           {estado.tipo === "ok" && (
             <p className="font-display text-[2rem] font-bold leading-none tabular-nums text-ink sm:text-[2.5rem]">
-              {String(estado.valor).padStart(2, "0")}
+              <Contador valor={estado.valor} zeros />
             </p>
           )}
           {estado.tipo === "carregando" && (

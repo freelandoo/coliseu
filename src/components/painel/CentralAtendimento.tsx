@@ -56,7 +56,7 @@ export function CentralAtendimento({
           <Link
             href="/atendimento"
             aria-label="Ver todas as conversas no Atendimento"
-            className="inline-flex min-h-10 min-w-10 shrink-0 items-center justify-center gap-1 rounded-lg px-2 text-sm font-medium text-destaque transition-colors hover:bg-surface-2"
+            className="group inline-flex min-h-10 min-w-10 shrink-0 items-center justify-center gap-1 rounded-lg px-2 text-sm font-medium text-destaque transition-colors hover:bg-surface-2"
           >
             <span className="hidden sm:inline">Ver todas</span>
             <IconeSeta />
@@ -97,7 +97,7 @@ export function CentralAtendimento({
         </EstadoBloco>
       ) : (
         <>
-          <ul key={filtro} className="troca flex flex-col gap-0.5 px-2.5 pt-2" aria-label="Conversas">
+          <ul key={filtro} className="cascata flex flex-col gap-0.5 px-2.5 pt-2" aria-label="Conversas">
             {lista.map((c) => {
               const ativa = c.id === escolhida?.id;
               return (
@@ -160,7 +160,7 @@ export function CentralAtendimento({
               </p>
               <Link
                 href={linkConversa(escolhida.id)}
-                className="mt-3.5 inline-flex min-h-10 items-center gap-2 rounded-lg bg-acao px-4 text-sm font-semibold text-white transition-[background-color,transform] duration-150 hover:bg-brand-hover active:scale-[0.98]"
+                className="group mt-3.5 inline-flex min-h-10 items-center gap-2 rounded-lg bg-acao px-4 text-sm font-semibold text-white transition-[background-color,transform] duration-150 hover:bg-brand-hover active:scale-[0.98]"
               >
                 Abrir conversa
                 <IconeSeta />

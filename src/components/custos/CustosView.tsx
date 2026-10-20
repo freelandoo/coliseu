@@ -152,7 +152,7 @@ export function CustosView({
                     <Th className="text-right">Ação</Th>
                   </tr>
                 </thead>
-                <tbody>
+                <tbody className="cascata">
                   {despesas.map((d) => (
                     <tr
                       key={d.id}

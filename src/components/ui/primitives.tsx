@@ -107,7 +107,7 @@ export function Stat({
 
   if (href) {
     return (
-      <Link href={href} className="group block rounded-2xl">
+      <Link href={href} className="levanta group block rounded-2xl">
         <Card className="h-full p-4 transition-colors duration-150 group-hover:border-border-strong group-hover:bg-surface-2">
           {conteudo}
         </Card>
@@ -144,8 +144,10 @@ export function PageHeader({
         <span aria-hidden className="mt-1 h-6 w-1.5 shrink-0 bg-brand sm:h-7" />
       )}
       <div className="min-w-0">
-        <h1 className="font-manchete text-[1.75rem] text-ink sm:text-[2rem]">{title}</h1>
-        {subtitle && <p className="mt-1.5 max-w-2xl text-sm text-muted">{subtitle}</p>}
+        <h1 className="font-manchete linha-revela text-[1.75rem] text-ink sm:text-[2rem]">{title}</h1>
+        {subtitle && (
+          <p className="entrada mt-1.5 max-w-2xl text-sm text-muted [--atraso:120ms]">{subtitle}</p>
+        )}
       </div>
     </header>
   );

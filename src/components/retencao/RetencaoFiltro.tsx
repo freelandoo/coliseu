@@ -192,7 +192,7 @@ export function RetencaoFiltro({
                     <Th className="text-right">Contato</Th>
                   </tr>
                 </thead>
-                <tbody>
+                <tbody className="cascata">
                   {visiveis.map((l) => {
                     const info = infoDe(l.faixa);
                     return (

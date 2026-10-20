@@ -174,7 +174,7 @@ export function LeadsFiltro({ leads, planos }: { leads: Lead[]; planos: Plano[] 
                     <Th className="text-right">Próxima ação</Th>
                   </tr>
                 </thead>
-                <tbody>
+                <tbody className="cascata">
                   {visiveis.map((lead) => (
                     <tr key={lead.id} className="border-b border-border transition-colors last:border-0 hover:bg-surface-2">
                       <td className="px-4 py-3">
