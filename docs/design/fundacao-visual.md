@@ -1,87 +1,147 @@
 # Fundação visual
 
-**Virada visual (out/2026): rubi profundo + cinza pedra quente.** Substitui a base
-clara da Etapa 1. Fonte da verdade dos valores: `src/app/globals.css` (`@theme` e
-"Contexto de superfície"). Este documento explica as decisões, as variantes e o que
-ficou de fora.
+**Tabloide futurista (out/2026): preto, papel e vermelho.** Substitui a virada "rubi
+profundo + cinza pedra" (o rosa saiu; os tons agora são vermelhos). Referência de
+composição: a página Aula experimental. Fonte da verdade dos valores:
+`src/app/globals.css` (`@theme` e "Contexto de superfície"). Direção registrada com a
+skill de design `design-taste-frontend` (estilo de app `true-black-flat`, semente
+1304960682): chão preto único, elevação por degrau de luminosidade, cor só em dado,
+seleção e ação.
 
 ## Dois contextos de cor
 
 | Contexto | Onde | Fundo | Texto |
 | --- | --- | --- | --- |
-| **Shell** (padrão, `:root`) | menu, cabeçalho, títulos de página, tudo que fica direto sobre o fundo | vinho/rubi `#21070f` texturizado | claro `#f7eff2` / `#c4aeb7` |
-| **Superfície** | cards, diálogos, campos, popovers, fundos "soft" | cinza pedra quente `#d2cfca` | grafite `#22232b` / `#50525d` |
+| **Shell** (padrão, `:root`) | menu, cabeçalho, títulos, painéis escuros (`bg-painel`), tudo direto sobre o fundo | preto `#09090b` com malha de 48px | `#f7f7f5` / `#b9b9c0` / `#9696a0` |
+| **Papel** | cards, diálogos, campos, popovers, fundos `*-soft`, `.contexto-papel` | papel `#f3f0e8` | tinta `#151518` / `#4a4a52` |
 
-A troca é automática: toda superfície opaca (`.bg-surface`, `.bg-elevated`,
-`.bg-white` e os fundos `*-soft`) redefine os tokens neutros para dentro dela
-(`@layer components`, abaixo das utilities — a cor que o elemento declarar continua
-valendo). Por isso `text-ink`, `text-muted`, `border-border` e `bg-surface-2` não
-precisam de variante: são claros/translúcidos no fundo escuro e grafite/cinza dentro
-do card. Dentro de uma superfície, `bg-surface-2`, hover e seleção trocam o texto
-secundário para `#464852` (mais escuro, para o cinza interno).
+A troca continua automática (`@layer components`): toda superfície opaca clara — e
+`.contexto-papel`, que dá os tokens do papel sem pintar fundo, para painéis cujo papel
+é desenhado numa camada recortada — redefine os tokens neutros para dentro dela.
+Dentro do papel, `color-scheme` volta a `light` (select e data nativos claros); a raiz
+é `dark`.
 
-**Marca e estados são fixos** (calibrados para o cinza pedra). Texto de seleção ou
-ênfase usa **`destaque`** — o único token de cor contextual: rosa `#f08ca6` no fundo
-escuro, rubi `#8d173b` na superfície. Todo `text-brand` antigo virou `text-destaque`
-(idêntico dentro dos cards). O contorno de foco segue o mesmo contexto (`--color-foco`).
+**Marca e estados são fixos** (calibrados para o papel). O vermelho de marca
+`#b0121c` dá 2,8:1 sobre o preto: **nunca vira texto no escuro**. Texto de ênfase usa
+`destaque` (contextual: `#ff4b3e` no preto, `#b0121c` no papel); texto de erro usa
+`alerta` (contextual: `#ff7a6e` no preto, `#a3200f` no papel). Marca e erro são os dois
+vermelhos — por isso erro e estado andam sempre com ícone e texto (`BadgeStatus`,
+`EstadoVazio`, `MensagemErro`).
 
 ## Paleta
 
-| Token | Shell | Superfície | Uso |
+| Token | Shell | Papel | Uso |
 | --- | --- | --- | --- |
-| `bg` / `bg-deep` / `menu` / `luz` | `#21070f` / `#16070b` / `#18080e` / `#68132e` | — | fundo, profundidade, menu, luz rubi |
-| `surface` / `elevated` | `#d2cfca` | `#d2cfca` | cards, diálogos, campos (sempre opacos) |
-| `surface-2` | véu claro 7% | `#c4c0ba` | hover/seleção neutra; superfície interna |
-| `border` / `border-strong` | rosa 13% / 26% | `#aca7a0` / `#958f88` | divisórias (decorativas) |
-| `control` | `#8f7480` | `#6e6963` | borda de campo/seleção (≥ 3:1) |
-| `ink` / `muted` / `faint` | `#f7eff2` / `#c4aeb7` / `#ae929e` | `#22232b` / `#50525d` / `#50525d` | texto |
-| `destaque` / `foco` | `#f08ca6` | `#8d173b` | texto de seleção; contorno de foco |
-| `brand` / `-hover` / `-strong` / `-soft` | `#8d173b` / `#6c1531` / `#5a0f27` / `#cdbec1` | idem | ação principal e seleção |
-| `acao` | `#84213f` | idem | botão/dia/avatar selecionado da central |
-| `danger` / `-strong` / `-soft` | `#8f1f16` / `#6f170f` / `#d8c2bd` | idem | erro, exclusão, falha, atraso |
-| `success` / `-soft` | `#0e5733` / `#c2ccc2` | idem | pago, ativo, liberado |
-| `warning` / `-soft` | `#773905` / `#d9cbb5` | idem | a vencer, atenção |
-| `info` / `-soft` | `#1a458f` / `#c3c8d2` | idem | informativo |
+| `bg` / `bg-deep` / `menu` | `#09090b` / `#050506` / `#09090b` | `#e6e1d5` (interno) | fundo |
+| `painel` / `painel-2` | `#141417` / `#1c1c21` | — | painéis escuros (degraus, sem borda nem sombra) |
+| `surface` / `elevated` | `#f3f0e8` | `#f3f0e8` | papel (sempre opaco) |
+| `surface-2` | branco 6% | `#e6e1d5` | hover/seleção neutra; superfície interna |
+| `border` / `border-strong` | branco 10% / 20% | `#d6d0c3` / `#bdb6a7` | divisórias |
+| `control` | `#6e6e78` | `#857f73` | borda de campo/controle (≥ 3:1) |
+| `ink` / `muted` / `faint` | `#f7f7f5` / `#b9b9c0` / `#9696a0` | `#151518` / `#4a4a52` / `#4a4a52` | texto |
+| `destaque` / `foco` | `#ff4b3e` | `#b0121c` | texto de seleção; contorno de foco |
+| `alerta` | `#ff7a6e` | `#a3200f` | texto de erro |
+| `brand` / `-hover` / `-strong` / `-soft` | `#b0121c` / `#940f17` / `#770b12` / `#f3d9d5` | idem | ação principal, seleção, faixa, item ativo |
+| `danger` / `-strong` / `-soft` | `#a3200f` / `#7f190b` / `#f6d8d1` | idem | erro, exclusão, falha, atraso |
+| `success` / `-soft` | `#146c3a` / `#d6e8d9` | idem | pago, ativo, liberado |
+| `warning` / `-soft` | `#8a4b00` / `#f4e2c2` | idem | a vencer, pendência |
+| `info` / `-soft` | `#1d4f91` / `#d8e2f0` | idem | informativo |
 
-Os `*-soft` foram puxados para a família do cinza quente — nada de bloco quase
-branco dentro do card. O cinza pedra `#d2cfca` foi escolhido pelo usuário: não
-substituir por branco, off-white ou o cinza frio antigo.
+O papel `#f3f0e8` veio do briefing do tabloide e substitui a decisão anterior pelo
+cinza pedra `#d2cfca`.
+
+Raios: os tokens do Tailwind foram encolhidos (`rounded-lg` 4px, `rounded-2xl` 6px) —
+geometria quase reta no app inteiro sem caçar classe por classe; `rounded-full` não
+muda. Sombras: o papel se separa do preto pelo tom (`--shadow-card` vazio); sombra só
+no que flutua (`--shadow-overlay`).
 
 ### Contraste medido (WCAG)
 
 | Par | Razão |
 | --- | --- |
-| ink sobre surface / surface-2 | 10,06 / 8,63 |
-| muted `#50525d` sobre surface | 5,00 |
-| muted interno `#464852` sobre surface-2 / brand-soft | 5,02 / 5,08 |
-| brand sobre surface / surface-2 / brand-soft | 5,83 / 5,00 / 5,06 |
-| branco sobre brand; `#f7eff2` sobre acao | 9,06 / 8,19 |
-| danger sobre surface / surface-2 / danger-soft | 5,69 / 4,88 / 5,21 |
-| success sobre surface / surface-2 / success-soft | 5,56 / 4,77 / 5,23 |
-| warning sobre surface / surface-2 / warning-soft | 5,70 / 4,89 / 5,55 |
-| info sobre surface / surface-2 / info-soft | 5,90 / 5,06 / 5,46 |
-| borda `control` sobre surface / sobre o fundo | 3,50 / 4,52 |
-| shell: ink / muted / faint sobre `#21070f` | 16,86 / 9,15 / 6,72 |
-| shell: muted sobre a luz rubi `#68132e` (pior caso) | 5,86 |
-| destaque/foco rosa sobre o fundo; texto vinho sobre o chip rosa | 8,17 / 8,17 |
-| abertura da central: `#d6a1b2` / `#dfaabd` sobre o fundo | 8,71 / 9,64 |
+| ink / muted / faint sobre o preto | 18,55 / 10,20 / 6,79 |
+| muted / faint sobre `painel-2` | 8,70 / 5,79 |
+| destaque `#ff4b3e` sobre o preto / `painel-2` | 6,00 / 5,11 |
+| branco sobre brand / brand-hover | 7,12 / 8,97 |
+| tinta / muted sobre o papel | 16,00 / 7,71 |
+| brand sobre papel / papel interno / brand-soft | 6,25 / 5,46 / 5,32 |
+| danger sobre papel / interno / soft | 6,66 / 5,81 / 5,65 |
+| success sobre papel / interno / soft | 5,70 / 4,97 / 5,07 |
+| warning sobre papel / interno / soft | 5,97 / 5,21 / 5,35 |
+| info sobre papel / interno / soft | 7,15 / 6,24 / 6,22 |
+| control sobre o preto / sobre o papel | 3,95 / 3,49 |
+| alerta `#ff7a6e` sobre `painel` | 7,23 |
 
-Verificação em tela: um varredor (Playwright) mede todo texto visível contra o fundo
-efetivo (compondo translúcidos; o fundo do shell conta como o pior entre `#21070f` e a
-luz `#68132e`) em 19 rotas do admin, nas telas da recepção e no login, a 1280 e 390px.
-Ficou zero ocorrência real (a única marcação restante é o número branco sobre a marca
-rubi do calendário, um irmão absoluto que o varredor não enxerga — 9,06:1).
+Verificação em tela: o varredor (Playwright) mede todo texto visível contra o fundo
+efetivo — o fundo do shell conta como o pior entre `#09090b` e `#141417`, e
+`.contexto-papel` conta como papel — em 19 rotas do admin a 1280px: zero ocorrência.
+
+## Tipografia
+
+- **Sora**: texto, controles, formulários.
+- **Oswald**: marca, rótulos de indicador, números de destaque (`tabular-nums`).
+- **Anton** (`font-manchete`): só manchetes — "Aula experimental" (40–68px), "Agenda
+  do dia", o `PageHeader` compacto (28–32px), o nome no menu. Nunca em dado ou campo.
+- **IBM Plex Mono** (`meta-mono`): metadados — categoria, trilha, data da agenda, dias
+  da semana, numeração editorial. Uso moderado.
+- `.font-manchete`, `.meta-mono`, `.listras` e `.corte-canto` moram em
+  `@layer components`: utilities (`text-[…]`, `tracking-[…]`) continuam ajustando.
+- Campos com 16px no celular (o iOS não dá zoom ao focar) e 14px a partir de `sm`;
+  `td`, `th` e `.tabular-nums` usam números tabulares.
 
 ## Fundo, menu e cabeçalho
 
-- Fundo: `body::before`/`::after` fixos atrás de tudo — luz rubi localizada,
-  trama diagonal fina e malha de 48px com máscara. Só gradientes: sem imagem remota,
-  vídeo ou ruído por quadro. As superfícies são opacas, então a textura nunca fica
-  atrás de texto de tabela, campo ou mensagem.
-- Menu: `bg-menu`, grupos em caixa alta pequena, item atual com gradiente rubi e
-  marcador rosa colado na borda; contador de não lidas em chip rosa (8,17:1).
-- Cabeçalho: quase opaco (`bg-bg/92`, sem `backdrop-filter`), trilha, sino e atalho
-  de conta (iniciais + nome a partir de `md`) para Minha conta.
+- Fundo: preto liso com malha de 48px em `body::after`, parada, com máscara vertical.
+  Sem brilho, sem animação.
+- Menu: preto, grupos em mono, item atual com fundo vermelho, texto branco e listras
+  diagonais no fim (decoração); contador de não lidas em chip vermelho com anel claro.
+  Assinatura (código de barras + "Disciplina / Pessoas / Resultados") só em desktop
+  alto (≥ 860px), `aria-hidden`.
+- Cabeçalho: opaco, trilha em mono, avatar quadrado. Comportamentos inalterados.
+
+## Componentes editoriais — `src/components/ui/editorial.tsx`
+
+| Peça | Uso |
+| --- | --- |
+| `CabecalhoEditorial` | categoria mono, manchete, faixa vermelha com listras, linha operacional, ações, decoração estática (só `lg`). Só em tela de referência. |
+| `CartaoIndicador` | papel, fio vermelho, numeração "01", valor Oswald. Estados `ok` / `carregando` (barra do tamanho real, sem shimmer) / `erro` ("Indisponível" com ícone — nunca zero falso). Celular: linha (rótulo à esquerda, valor à direita). |
+| `PainelAngular` | painel `escuro` ou `papel` com canto cortado; o corte mora em duas camadas `aria-hidden` atrás do conteúdo — foco, sombras e menus nunca são recortados. |
+| `FaixaSecao` | título de seção com marcador vermelho e fio. |
+| `BadgeStatus` | sucesso / atenção / erro / info / neutro, sempre com ícone e texto. |
+| `EstadoVazio` | vazio ou erro dentro do bloco (frame mantido), com ação opcional. |
+| `BarraFerramentas` | abas e filtros à esquerda, utilidades à direita. |
+| `Listras` | listras diagonais decorativas (cor por `text-*`). |
+
+`PageHeader` (primitives) virou a versão compacta: manchete 28–32px com marcador
+vermelho (ou o número em bloco vermelho cortado, quando há `step`).
+
+## Aula experimental (tela de referência)
+
+| Bloco | Fonte / critério |
+| --- | --- |
+| Linha sob o título | `resumoDoDia`: visitas de hoje e a próxima pela hora da academia; sem nada hoje, a próxima data. |
+| 01 Agendadas em {mês} | visitas no **mês exibido no calendário** (acompanha a navegação). |
+| 02 Visitas hoje | `data === hoje` no fuso da academia. |
+| 03 Próximos 7 dias | de hoje a hoje+6, inclusive. |
+| Calendário (~65%) | mês/ano, ‹ ›, Hoje; até duas horas por dia e "+N"; hoje = fio vermelho + rótulo "hoje"; selecionado = fundo vermelho. Teclado: setas, Home/End, PageUp/PageDown; só o dia selecionado entra no Tab. |
+| Agenda do dia (~35%) | papel; régua do expediente (6h–22h, `HORA_MIN`/`HORA_MAX`) com as visitas e o "agora"; horário, nome, modalidade, quem marcou, status, "Ver conversa" (`/atendimento?c=`), observação interna recolhida. |
+| Filtro | **modalidade** (dado real); indicadores, grade, agenda e lista mudam juntos. |
+
+**Não há "confirmadas" nem "aguardando confirmação":** o modelo `AulaExperimental`
+não guarda confirmação nem presença (a mensagem é revisada e enviada pela conversa,
+sem retorno de status). O status mostrado é o do relógio (`momentoDaVisita`):
+"Agendada", "Agora", "Horário passou" — conferido a cada minuto no fuso da academia.
+
+Estados: carregando (`loading.tsx`, layout final com barras), vazio (zeros reais +
+"Nenhuma aula agendada para este dia" + Abrir Atendimento), erro (a leitura falhou →
+indicadores "Indisponível" + aviso com Tentar de novo), sem permissão (redireciona,
+`requireModulo`). Celular: agenda antes do calendário; tocar num dia rola até a agenda
+(as setas do teclado não rolam).
+
+## Espaçamento e toque
+
+Escala do Tailwind (múltiplos de 4px). Alvos de toque: botões `md` ≥ 40px, `lg` ≥
+44px; `touch-action: manipulation` em links, botões, abas e selects.
 
 ## Central do admin (`/painel`)
 
@@ -103,21 +163,6 @@ zero; uma consulta fora do ar não apaga os outros blocos. O token Freelandoo sa
 corpo da página para um `<details>` recolhido no fim. Saíram o pipeline com a
 "conversão" antiga e o "risco de evasão" (calculado sobre a data fixa do mock).
 
-## Tipografia
-
-- Sora no texto e nos controles; Oswald no lettering da marca, títulos de página e
-  números de destaque. A abertura da central usa Sora grande (clamp 28–48px).
-- Conteúdo comum 13–14px; 11–12px só em anotações (subtítulo da marca, rótulos de grupo).
-- Campos com 16px no celular (o iOS não dá zoom ao focar) e 14px a partir de `sm`.
-- `td`, `th` e `.tabular-nums` usam números tabulares.
-
-## Espaçamento, raios e sombras
-
-Escala do Tailwind (múltiplos de 4px). Raios: `rounded-lg` (controles), `rounded-2xl`
-(16px — `Card` e diálogos) e 18px nos painéis da central. Sombras curtas tingidas pelo
-fundo (`shadow-card`, `shadow-overlay`); reflexo só no fundo, conteúdo limpo.
-Alvos de toque: botões `md` ≥ 40px, `lg` ≥ 44px.
-
 ## Aliases legados
 
 Mantidos em `@theme` para não quebrar classes existentes. **Não usar em código novo.**
@@ -128,8 +173,8 @@ Mantidos em `@theme` para não quebrar classes existentes. **Não usar em códig
 | `red-deep` | `brand-strong` | |
 | `red-ghost` | `brand-soft` | |
 | `ok` / `warn` | `success` / `warning` | mesmo significado |
-| `shadow-plate` / `shadow-red` | `shadow-card` / anel rubi | |
-| `.steel-plate` | marcador rubi do `PageHeader` | nome mantido |
+| `shadow-plate` / `shadow-red` | `shadow-card` / anel vermelho | |
+| `.steel-plate` | bloco vermelho do `PageHeader` e do carimbo | nome mantido |
 
 Todo vermelho que significava **estado** foi migrado para `danger` (classificado
 linha a linha): mensagens de erro, "Falhou"/"Não liberou", acesso negado no
@@ -207,19 +252,23 @@ popover de notificações (`NotificationBell`) — só receberam o véu/tokens n
     cada `onStart` e o `onComplete` **uma única vez**, na mesma ordem — coberto por
     `src/lib/movimento.test.ts`. O disparador original da operação não mudou.
 - Mudar a preferência depois não reexecuta nada.
-- Central (`/painel`), em CSS para o conteúdo nunca esperar script: entrada
-  coordenada `.entrada` (opacidade + 14px, 560ms, atrasos 0/80/130/160/230/300ms);
-  troca de conversa/dia `.troca` (200ms); órbita decorativa `.orbita-giro` (28s por
-  volta) com botão de pausa, parada com a aba oculta (`visibilitychange`) e ausente
-  em movimento reduzido (`OrbitaData`, via `CONSULTA_MOVIMENTO_REDUZIDO`). Os arcos
-  não representam nenhum indicador.
+- Tabloide (CSS, o conteúdo nunca espera script; regras da skill
+  `emil-design-eng`): entrada breve de painéis `.entrada` (opacidade + 8px, 220ms,
+  `--atraso` em passos de 50ms); troca de mês `.troca-mes` (180ms, entra pelo lado
+  navegado via `--dir`); seleção de dia só com transição de cor (150ms — sem "pop": é
+  ação repetida e feita por teclado); botões encolhem 3% ao pressionar; transições com
+  propriedades explícitas. Curva `--ease-entrada: cubic-bezier(0.23, 1, 0.32, 1)`.
+- A órbita girando da central saiu: virou o `CarimboData`, estático (nada se move de
+  forma contínua no CRM).
 
 ## PWA
 
-`themeColor`/`theme_color`/`background_color` = `#21070f` (fundo do shell).
+`themeColor`/`theme_color`/`background_color` = `#09090b` (fundo do shell). Convite
+de instalação: barra escura baixa com fio vermelho, mesma dispensa de 14 dias e a
+mesma reserva de altura (`--altura-convite-total`).
 iOS: `statusBarStyle` = `black` — barra opaca escura com relógio e bateria claros;
 continua opaca (o recuo `--safe-t` segue 0 no iOS), ao contrário de
-`black-translucent`. `public/offline.html` no tema escuro. Ícones e logo não mudaram.
+`black-translucent`. `public/offline.html` no tema preto e vermelho. Ícones e logo não mudaram.
 
 ## Exceções e pendências conhecidas
 
@@ -229,7 +278,14 @@ continua opaca (o recuo `--safe-t` segue 0 no iOS), ao contrário de
   para `Botao` ao redesenhar essas telas (etapas 4–7).
 - Campos de telas grandes (atendimento, filtros) usam `classeCampo*` ou tokens, mas
   nem todos os rótulos estão ligados por `Campo` — só os padrões mecânicos foram migrados.
+- Tabloide: só a Aula experimental foi recomposta. Atendimento, Captação, Alunos,
+  Cobrança, Despesas, Relatórios e Controle de acesso receberam a identidade pelos
+  tokens (preto, papel, vermelho, raios retos, fontes, cabeçalho compacto), sem
+  mudança de composição — cada uma mantém a densidade da própria função.
+- O menu não recolhe no desktop: abaixo de 1024px vira gaveta (como antes).
+- `loading.tsx` da Aula experimental foi conferido por tipo e leitura, não em tela: no
+  `next dev` não há prefetch, e o Next mantém a página anterior até o segmento chegar.
 - Relatórios e telas financeiras herdaram shell e superfícies, mas não foram
-  redesenhados (fora do escopo da virada); a composição deles segue a da Etapa 1.
+  redesenhados; a composição deles segue a da Etapa 1.
 - Verificação feita em base Postgres isolada e descartável com fixtures fictícias
   identificadas ("Fixture …"); nada foi gravado na base de desenvolvimento nem em produção.

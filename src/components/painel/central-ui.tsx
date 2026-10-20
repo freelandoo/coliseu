@@ -60,7 +60,7 @@ export const IconeSeta = ({ className }: { className?: string }) => (
   </Svg>
 );
 
-/** Superfície cinza pedra da central: cantos de 18px, sombra curta tingida. */
+/** Superfície de papel da central: cantos quase retos, sem sombra. */
 export function PainelCentral({
   children,
   className,
@@ -77,7 +77,7 @@ export function PainelCentral({
       {...rest}
       style={atraso !== undefined ? ({ "--atraso": `${atraso}ms` } as CSSProperties) : undefined}
       className={cn(
-        "flex min-w-0 flex-col rounded-[18px] border border-border bg-surface text-ink shadow-[var(--shadow-card)]",
+        "flex min-w-0 flex-col rounded-md border border-border bg-surface text-ink shadow-[var(--shadow-card)]",
         atraso !== undefined && "entrada",
         className,
       )}
@@ -148,7 +148,7 @@ export function LinhasCarregando({ linhas = 3, className }: { linhas?: number; c
     <div className={cn("flex flex-col gap-3 px-5 py-4", className)} aria-hidden>
       {Array.from({ length: linhas }, (_, i) => (
         <div key={i} className="flex items-center gap-3">
-          <span className="h-9 w-9 shrink-0 rounded-[11px] bg-surface-2" />
+          <span className="h-9 w-9 shrink-0 rounded-sm bg-surface-2" />
           <span className="flex flex-1 flex-col gap-2">
             <span className="h-3 w-2/5 rounded bg-surface-2" />
             <span className="h-3 w-4/5 rounded bg-surface-2" />

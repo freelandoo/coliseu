@@ -52,10 +52,10 @@ export function CentralAgenda({
               aria-label={`${d.porExtenso}${d.data === hoje ? " (hoje)" : ""}${tem ? ", com aulas marcadas" : ""}`}
               onClick={() => setDia(d.data)}
               className={cn(
-                "relative flex min-h-12 flex-col items-center justify-center gap-0.5 rounded-[10px] px-0.5 py-1.5",
+                "relative flex min-h-12 flex-col items-center justify-center gap-0.5 rounded-sm px-0.5 py-1.5",
                 "transition-[background-color,color,box-shadow] duration-200",
                 ativo
-                  ? "bg-acao text-[#f8eaf0] shadow-[0_4px_10px_-2px_rgb(98_20_44/0.35)]"
+                  ? "bg-acao text-white"
                   : "text-muted hover:bg-surface-2 hover:text-ink",
               )}
             >
@@ -66,7 +66,7 @@ export function CentralAgenda({
                 aria-hidden
                 className={cn(
                   "h-1 w-1 rounded-full",
-                  tem ? (ativo ? "bg-[#f8eaf0]" : "bg-brand") : "bg-transparent",
+                  tem ? (ativo ? "bg-white" : "bg-brand") : "bg-transparent",
                 )}
               />
             </button>

@@ -107,7 +107,7 @@ export function CentralAtendimento({
                     aria-pressed={ativa}
                     onClick={() => setEscolhidaId(c.id)}
                     className={cn(
-                      "grid w-full grid-cols-[2.25rem_minmax(0,1fr)_auto] items-center gap-3 rounded-[11px] px-2.5 py-2.5 text-left",
+                      "grid w-full grid-cols-[2.25rem_minmax(0,1fr)_auto] items-center gap-3 rounded-sm px-2.5 py-2.5 text-left",
                       "transition-colors duration-200",
                       ativa ? "bg-surface-2" : "hover:bg-surface-2",
                     )}
@@ -115,8 +115,8 @@ export function CentralAtendimento({
                     <span
                       aria-hidden
                       className={cn(
-                        "flex h-9 w-9 items-center justify-center rounded-[11px] text-xs font-semibold transition-colors duration-200",
-                        ativa ? "bg-acao text-[#f9e9ef]" : "bg-[#c4b9b6] text-[#6a2a40]",
+                        "flex h-9 w-9 items-center justify-center rounded-sm text-xs font-semibold transition-colors duration-200",
+                        ativa ? "bg-acao text-white" : "bg-surface-2 text-ink",
                       )}
                     >
                       {iniciais(c.nome)}
@@ -160,7 +160,7 @@ export function CentralAtendimento({
               </p>
               <Link
                 href={linkConversa(escolhida.id)}
-                className="mt-3.5 inline-flex min-h-10 items-center gap-2 rounded-lg bg-acao px-4 text-sm font-semibold text-[#faf0f3] transition-[background-color,transform] duration-150 hover:bg-brand-hover active:scale-[0.98]"
+                className="mt-3.5 inline-flex min-h-10 items-center gap-2 rounded-lg bg-acao px-4 text-sm font-semibold text-white transition-[background-color,transform] duration-150 hover:bg-brand-hover active:scale-[0.98]"
               >
                 Abrir conversa
                 <IconeSeta />
