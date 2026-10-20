@@ -21,6 +21,7 @@ import { FreelandooTokenCard } from "@/components/painel/FreelandooTokenCard";
 import { CentralAgenda } from "@/components/painel/CentralAgenda";
 import { CentralAtendimento } from "@/components/painel/CentralAtendimento";
 import { CarimboData } from "@/components/painel/CarimboData";
+import { Coliseu3D } from "@/components/coliseu3d/Coliseu3D";
 import { Contador } from "@/components/ui/Contador";
 import {
   IconeCalendario,
@@ -283,7 +284,7 @@ export default async function PainelPage() {
     <div className="pb-2">
       <section
         aria-labelledby="central-titulo"
-        className="entrada grid grid-cols-[minmax(0,1fr)_auto] items-center gap-2 overflow-x-clip pb-6 pt-1 sm:gap-6 sm:pb-8 sm:pt-3"
+        className="entrada grid grid-cols-[minmax(0,1fr)_auto] items-center gap-2 overflow-x-clip [overflow-clip-margin:24px] pb-6 pt-1 sm:gap-6 sm:pb-8 sm:pt-3"
       >
         <div className="paralaxe min-w-0 [--paralaxe:60px]">
           <p className="meta-mono mb-3 flex items-center gap-2.5 text-muted">
@@ -306,8 +307,14 @@ export default async function PainelPage() {
             Conversas esperando resposta, aulas marcadas e cobranças em aberto.
           </p>
         </div>
-        <div className="paralaxe [--paralaxe:150px]">
-          <CarimboData dia={String(Number(hoje.slice(8)))} mesAno={mesEAno(hoje)} />
+        <div className="flex items-end gap-2 sm:gap-4">
+          {/* a arena em holograma fica mais para trás que o carimbo na rolagem */}
+          <div className="paralaxe relative hidden h-44 w-64 [--paralaxe:200px] md:block lg:h-52 lg:w-80">
+            <Coliseu3D className="absolute inset-0" intensidade="destaque" />
+          </div>
+          <div className="paralaxe [--paralaxe:150px]">
+            <CarimboData dia={String(Number(hoje.slice(8)))} mesAno={mesEAno(hoje)} />
+          </div>
         </div>
       </section>
 

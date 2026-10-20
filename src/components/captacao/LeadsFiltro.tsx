@@ -10,6 +10,7 @@ import { classeCampoEmLinha } from "@/components/ui/Campo";
 import { cn } from "@/lib/cn";
 import { formatData } from "@/lib/mock-data";
 import { normalizar } from "@/lib/whatsapp/busca";
+import { useCascata } from "@/lib/useCascata";
 import {
   LEAD_ESTAGIO_LABEL,
   ORIGEM_LABEL,
@@ -39,6 +40,7 @@ function casaLead(l: Lead, termo: string): boolean {
  * ficha, responder na conversa e iniciar a matrícula.
  */
 export function LeadsFiltro({ leads, planos }: { leads: Lead[]; planos: Plano[] }) {
+  const cascata = useCascata();
   const [filtro, setFiltro] = useState<Filtro>("todos");
   const [busca, setBusca] = useState("");
   const termo = busca.trim();
@@ -174,7 +176,7 @@ export function LeadsFiltro({ leads, planos }: { leads: Lead[]; planos: Plano[] 
                     <Th className="text-right">Próxima ação</Th>
                   </tr>
                 </thead>
-                <tbody className="cascata">
+                <tbody className={cascata}>
                   {visiveis.map((lead) => (
                     <tr key={lead.id} className="border-b border-border transition-colors last:border-0 hover:bg-surface-2">
                       <td className="px-4 py-3">

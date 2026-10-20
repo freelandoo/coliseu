@@ -8,6 +8,7 @@ import { classeCampoEmLinha } from "@/components/ui/Campo";
 import { cn } from "@/lib/cn";
 import type { FaixaRetencao } from "@/lib/navegacao";
 import { normalizar } from "@/lib/whatsapp/busca";
+import { useCascata } from "@/lib/useCascata";
 
 export interface LinhaRetencao {
   id: string;
@@ -61,6 +62,7 @@ export function RetencaoFiltro({
   linhas: LinhaRetencao[];
   filtroInicial?: Filtro;
 }) {
+  const cascata = useCascata();
   const [filtro, setFiltroEstado] = useState<Filtro>(filtroInicial);
   const setFiltro = (f: Filtro) => {
     setFiltroEstado(f);
@@ -192,7 +194,7 @@ export function RetencaoFiltro({
                     <Th className="text-right">Contato</Th>
                   </tr>
                 </thead>
-                <tbody className="cascata">
+                <tbody className={cascata}>
                   {visiveis.map((l) => {
                     const info = infoDe(l.faixa);
                     return (

@@ -9,6 +9,7 @@ import type { Despesa } from "@/lib/types";
 import { Botao, classeBotao } from "@/components/ui/Botao";
 import { Modal, TituloModal } from "@/components/ui/Modal";
 import { MensagemErro, classeCampo, classeRotulo } from "@/components/ui/Campo";
+import { useCascata } from "@/lib/useCascata";
 
 const CATEGORIAS = [
   "Luz",
@@ -28,6 +29,7 @@ export function CustosView({
   despesas: Despesa[];
   receita: number;
 }) {
+  const cascata = useCascata();
   const router = useRouter();
   const [modalCategoria, setModalCategoria] = useState<string | null>(null);
 
@@ -152,7 +154,7 @@ export function CustosView({
                     <Th className="text-right">Ação</Th>
                   </tr>
                 </thead>
-                <tbody className="cascata">
+                <tbody className={cascata}>
                   {despesas.map((d) => (
                     <tr
                       key={d.id}

@@ -23,6 +23,8 @@ export function Contador({
 }) {
   const inteiro = Math.max(0, Math.trunc(valor));
   const texto = zeros ? String(inteiro).padStart(2, "0") : inteiro.toLocaleString("pt-BR");
+  // fora da faixa do contador em CSS: mostra pronto
+  if (inteiro >= 1_000_000) return <span className={cn("tabular-nums", className)}>{texto}</span>;
   const mil = inteiro >= 1000;
   const estilo = { "--n": inteiro, ...(mil && { "--de": 1000 }), ...(atraso !== undefined && { "--atraso": `${atraso}ms` }) } as CSSProperties;
   return (

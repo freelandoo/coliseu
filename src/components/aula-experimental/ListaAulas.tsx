@@ -7,6 +7,7 @@ import { EstadoVazio } from "@/components/ui/editorial";
 import { cn } from "@/lib/cn";
 import { formatarDataCompleta, formatarHora } from "@/lib/aula-experimental";
 import type { AulaExperimentalItem } from "@/lib/types";
+import { useCascata } from "@/lib/useCascata";
 
 export type FiltroAulas = "hoje" | "proximas" | "todas";
 type Filtro = FiltroAulas;
@@ -42,6 +43,7 @@ export function ListaAulas({
   filtro: Filtro;
   setFiltro: (f: Filtro) => void;
 }) {
+  const cascata = useCascata();
 
   const contagem = useMemo(
     () => ({
@@ -134,7 +136,7 @@ export function ListaAulas({
                     <Th className="text-right">Ação</Th>
                   </tr>
                 </thead>
-                <tbody className="cascata">
+                <tbody className={cascata}>
                   {visiveis.map((a) => (
                     <tr
                       key={a.id}

@@ -416,9 +416,11 @@ th {
     transform: none;
   }
 }
+/* 560ms na abertura (login, central); telas de trabalho usam --dur-linha
+   curto — a troca de página não pode esperar o título. */
 .linha-revela {
   display: block;
-  animation: linha-sobe 560ms var(--ease-entrada) backwards;
+  animation: linha-sobe var(--dur-linha, 560ms) var(--ease-entrada) backwards;
   animation-delay: var(--atraso, 0ms);
 }
 
@@ -426,7 +428,7 @@ th {
 @keyframes carimba {
   0% {
     opacity: 0;
-    transform: scale(1.35) rotate(-10deg);
+    transform: scale(1.18) rotate(-8deg);
   }
   60% {
     opacity: 1;
@@ -449,7 +451,7 @@ th {
   }
 }
 .faixa-varre {
-  animation: faixa-varre 220ms var(--ease-entrada);
+  animation: faixa-varre 220ms var(--ease-entrada) var(--atraso, 0ms) backwards;
 }
 @keyframes listras-entram {
   from {
@@ -458,7 +460,7 @@ th {
   }
 }
 .listras-entram {
-  animation: listras-entram 320ms var(--ease-entrada) 80ms both;
+  animation: listras-entram 320ms var(--ease-entrada) var(--atraso, 80ms) both;
 }
 
 /* Contador: o número sobe de 0 até o valor, sem JS (@property). O texto
@@ -520,6 +522,12 @@ th {
     }
   }
 }
+/* Malha viva (canvas WebGPU/WebGL2, ver components/fundo) desenhando: a
+   malha estática sai. As linhas coincidem, a troca não aparece. */
+html[data-malha-viva] body::after {
+  content: none;
+}
+
 @keyframes malha-paralaxe {
   to {
     transform: translateY(-40vh);
@@ -546,6 +554,8 @@ th {
   *::before,
   *::after {
     animation-duration: 0.001ms !important;
+    /* sem isto, o que tem atraso + preenchimento ficaria invisível no atraso */
+    animation-delay: 0s !important;
     animation-iteration-count: 1 !important;
     transition-duration: 0.001ms !important;
     scroll-behavior: auto !important;

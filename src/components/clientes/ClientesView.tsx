@@ -19,6 +19,7 @@ import { classeCampoEmLinha } from "@/components/ui/Campo";
 import { formatData } from "@/lib/mock-data";
 import { comParametro, lerEnum, SITUACOES_ALUNO, type SituacaoAluno } from "@/lib/navegacao";
 import { consultaAlunosLembrada, lembrarConsultaAlunos } from "@/lib/memoria-navegacao";
+import { useCascata } from "@/lib/useCascata";
 
 type Filtro = SituacaoAluno;
 
@@ -64,6 +65,7 @@ export function ClientesView({
   pessoas: Pessoa[];
   planos?: Plano[];
 }) {
+  const cascata = useCascata();
   const router = useRouter();
   const pathname = usePathname();
   // Situação é enumerada e não identifica ninguém: vai na URL (?situacao=).
@@ -291,7 +293,7 @@ export function ClientesView({
                   <Th>Contato</Th>
                 </tr>
               </thead>
-              <tbody className="cascata">
+              <tbody className={cascata}>
                 {visiveis.map((p) => {
                   const s = situacaoDe(p);
                   return (

@@ -3,6 +3,7 @@
 import { useMemo, useState } from "react";
 import { Badge, Card } from "@/components/ui/primitives";
 import { cn } from "@/lib/cn";
+import { useCascata } from "@/lib/useCascata";
 
 export type CategoriaCobranca = "atrasada" | "avencer" | "arenovar";
 
@@ -38,6 +39,7 @@ function situacao(l: LinhaCobranca): {
 }
 
 export function CobrancaFiltro({ linhas }: { linhas: LinhaCobranca[] }) {
+  const cascata = useCascata();
   const [filtro, setFiltro] = useState<Filtro>("todos");
 
   const contagem = useMemo(() => {
@@ -136,7 +138,7 @@ export function CobrancaFiltro({ linhas }: { linhas: LinhaCobranca[] }) {
                   <Th className="text-right">Ação</Th>
                 </tr>
               </thead>
-              <tbody className="cascata">
+              <tbody className={cascata}>
                 {visiveis.map((l) => {
                   const s = situacao(l);
                   const fone = l.telefone.replace(/\D/g, "");

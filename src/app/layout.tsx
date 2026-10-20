@@ -1,5 +1,6 @@
 import type { Metadata, Viewport } from "next";
 import { Anton, IBM_Plex_Mono, Oswald, Sora } from "next/font/google";
+import { MalhaDoShell } from "@/components/fundo/MalhaDoShell";
 import "./globals.css";
 
 // Manchete do tabloide: só nos títulos editoriais grandes (nunca em dado).
@@ -62,7 +63,10 @@ export default function RootLayout({
       lang="pt-BR"
       className={`${anton.variable} ${plexMono.variable} ${oswald.variable} ${sora.variable} h-full antialiased`}
     >
-      <body className="min-h-full">{children}</body>
+      <body className="min-h-full">
+        <MalhaDoShell />
+        {children}
+      </body>
     </html>
   );
 }

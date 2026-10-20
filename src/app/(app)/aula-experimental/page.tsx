@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { AgendaAulaExperimental } from "@/components/aula-experimental/AgendaAulaExperimental";
-import { ArenaWireframe } from "@/components/aula-experimental/ArenaWireframe";
+import { Coliseu3D } from "@/components/coliseu3d/Coliseu3D";
 import { classeBotao } from "@/components/ui/Botao";
 import { CabecalhoEditorial, CartaoIndicador, EstadoVazio, IconeSetaDireita } from "@/components/ui/editorial";
 import { listarAulasExperimentais } from "@/lib/store";
@@ -69,7 +69,11 @@ export default async function AulaExperimentalPage({
           )
         }
         acoes={abrirAtendimento}
-        decoracao={<ArenaWireframe className="h-[8.5rem] w-auto text-ink" />}
+        decoracao={
+          <div className="relative h-[8.5rem] w-[17rem]">
+            <Coliseu3D className="absolute inset-0" intensidade="discreto" />
+          </div>
+        }
       />
 
       {aulas ? (

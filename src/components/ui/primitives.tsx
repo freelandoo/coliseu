@@ -144,7 +144,7 @@ export function PageHeader({
         <span aria-hidden className="mt-1 h-6 w-1.5 shrink-0 bg-brand sm:h-7" />
       )}
       <div className="min-w-0">
-        <h1 className="font-manchete linha-revela text-[1.75rem] text-ink sm:text-[2rem]">{title}</h1>
+        <h1 className="font-manchete linha-revela text-[1.75rem] [--dur-linha:300ms] text-ink sm:text-[2rem]">{title}</h1>
         {subtitle && (
           <p className="entrada mt-1.5 max-w-2xl text-sm text-muted [--atraso:120ms]">{subtitle}</p>
         )}

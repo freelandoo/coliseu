@@ -150,14 +150,14 @@ export function CabecalhoEditorial({
       <div className="min-w-0">
         {categoria && <p className="meta-mono text-muted">{categoria}</p>}
         <h1
-          className="font-manchete linha-revela mt-2 text-balance text-[2.5rem] text-ink [--atraso:60ms] sm:text-[3.25rem] xl:text-[4.25rem]"
+          className="font-manchete linha-revela mt-2 text-balance text-[2.5rem] text-ink [--atraso:40ms] [--dur-linha:300ms] sm:text-[3.25rem] xl:text-[4.25rem]"
         >
           {titulo}
         </h1>
         {faixa && (
           <div className="mt-3 flex max-w-full items-stretch">
-            <p className="meta-mono faixa-varre bg-brand px-3 py-1.5 text-[0.6875rem] text-white sm:text-xs">{faixa}</p>
-            <Listras className="listras-entram -ml-px w-10 shrink-0 text-brand sm:w-16" />
+            <p className="meta-mono faixa-varre bg-brand [--atraso:200ms] px-3 py-1.5 text-[0.6875rem] text-white sm:text-xs">{faixa}</p>
+            <Listras className="listras-entram -ml-px w-10 [--atraso:280ms] shrink-0 text-brand sm:w-16" />
           </div>
         )}
         {(descricao || acoes) && (
