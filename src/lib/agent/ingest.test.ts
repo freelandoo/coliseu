@@ -22,6 +22,18 @@ test("registrarHeartbeat marca device ONLINE + grava heartbeat", async () => {
   expect(hb?.firmware).toBe("sim-1.0");
 });
 
+test("registrarHeartbeat apaga o histórico do aparelho com mais de 7 dias", async () => {
+  const DIA = 86_400_000;
+  const velho = await prisma.deviceHeartbeat.create({ data: { deviceId, at: new Date(Date.now() - 8 * DIA) } });
+  const recente = await prisma.deviceHeartbeat.create({ data: { deviceId, at: new Date(Date.now() - 6 * DIA) } });
+
+  await registrarHeartbeat({ deviceId });
+
+  expect(await prisma.deviceHeartbeat.findUnique({ where: { id: velho.id } })).toBeNull();
+  expect(await prisma.deviceHeartbeat.findUnique({ where: { id: recente.id } })).not.toBeNull();
+  await prisma.deviceHeartbeat.delete({ where: { id: recente.id } });
+});
+
 test("entregarComandos marca PENDING como DISPATCHED", async () => {
   const cmd = await prisma.deviceCommand.create({ data: { deviceId, personId, type: "ENABLE", dedupeKey: `ing-${Date.now()}` } });
   const entregues = await entregarComandos(deviceId);

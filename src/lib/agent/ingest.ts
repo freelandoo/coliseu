@@ -2,6 +2,14 @@ import { prisma } from "@/lib/db";
 import type { DeviceCommand } from "@prisma/client";
 import { ABRIR_VALIDADE_MS } from "@/lib/repositories/access";
 
+/**
+ * Quanto do histórico de heartbeats fica guardado. Nada lê esse histórico (o
+ * estado do aparelho vem de `lastHeartbeatAt`); ele só serve para investigar
+ * queda recente do agente. Sem limite a tabela crescia ~8.600 linhas por dia
+ * (um a cada 10s) e virou a maior do banco.
+ */
+export const RETENCAO_HEARTBEAT_MS = 7 * 86_400_000;
+
 export async function registrarHeartbeat(input: {
   deviceId: string; firmware?: string; connectivity?: string; clockDriftMs?: number;
 }): Promise<{ ok: boolean; erro?: string }> {
@@ -16,6 +24,11 @@ export async function registrarHeartbeat(input: {
     prisma.accessDevice.update({
       where: { id: input.deviceId },
       data: { status: "ONLINE", lastHeartbeatAt: new Date(), firmware: input.firmware ?? undefined },
+    }),
+    // Retenção rolante: cada heartbeat leva embora o que passou da janela —
+    // em regime, uma ou duas linhas, pelo índice (deviceId, at). Sem cron.
+    prisma.deviceHeartbeat.deleteMany({
+      where: { deviceId: input.deviceId, at: { lt: new Date(Date.now() - RETENCAO_HEARTBEAT_MS) } },
     }),
   ]);
   return { ok: true };
