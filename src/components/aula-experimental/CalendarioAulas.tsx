@@ -1,285 +1,267 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState, type Dispatch, type SetStateAction } from "react";
-import Link from "next/link";
-import { gsap } from "gsap";
-import { useGSAP } from "@gsap/react";
-import { prefereMovimentoReduzido } from "@/lib/movimento";
-import { Badge, Card } from "@/components/ui/primitives";
+import { useEffect, useMemo, useRef, type CSSProperties, type KeyboardEvent } from "react";
 import { cn } from "@/lib/cn";
-import { formatarDataCompleta, formatarHora, OBSERVACAO_MAX } from "@/lib/aula-experimental";
-import {
-  agruparPorData,
-  gradeDoMes,
-  INICIAIS_SEMANA,
-  mesDaData,
-  mesDeslocado,
-  rotuloMes,
-  semanasDoMes,
-} from "@/lib/calendario";
+import { formatarDataCompleta, formatarHora, somarDias } from "@/lib/aula-experimental";
+import { agruparPorData, gradeDoMes, mesDaData, rotuloMes } from "@/lib/calendario";
 import type { AulaExperimentalItem } from "@/lib/types";
-import { Botao, classeBotao } from "@/components/ui/Botao";
-import { MensagemErro, classeCampo } from "@/components/ui/Campo";
-import { lerResultado } from "@/lib/operacao";
 
 /**
  * A agenda de aulas experimentais vista como mês.
  *
- * A lista responde "quem vem hoje?"; o calendário mostra em que dias já há
- * visita marcada — o dia com aula fica em rubi na grade. Não é controle de
- * vagas: a academia não tem capacidade por horário cadastrada, então a grade
- * só conta o que foi marcado.
+ * O dia com visita mostra as horas marcadas (até duas, depois "+N") — não é
+ * controle de vagas: a academia não tem capacidade por horário cadastrada, a
+ * grade só conta o que foi marcado. Escolher um dia atualiza a "Agenda do dia"
+ * ao lado; o mês, o dia e a direção da navegação moram em quem usa o
+ * calendário, para sobreviver à ida à Lista e volta.
  *
- * Clicar num dia abre embaixo tudo que está marcado nele, com o campo de
- * observação de cada visita. `hoje` vem pronto do servidor, no relógio da
- * academia — calcular aqui faria servidor e navegador discordarem sobre que dia
- * é hoje (e o círculo do "hoje" cairia no dia errado à noite).
+ * `hoje` vem pronto do servidor, no relógio da academia — calcular aqui faria
+ * servidor e navegador discordarem sobre que dia é hoje à noite.
+ *
+ * Teclado: só o dia selecionado entra no Tab; setas andam um dia ou uma
+ * semana, Home/End vão ao começo/fim da semana, PageUp/PageDown trocam o mês.
  */
 export type MesAncora = ReturnType<typeof mesDaData>;
 
-/**
- * Mês e dia vêm de fora (AulaExperimentalAbas): ao ir para a Lista e voltar,
- * o calendário reabre onde a pessoa estava.
- */
+const SEMANA = ["Dom", "Seg", "Ter", "Qua", "Qui", "Sex", "Sáb"] as const;
+const SEMANA_EXTENSO = ["Domingo", "Segunda", "Terça", "Quarta", "Quinta", "Sexta", "Sábado"] as const;
+
 export function CalendarioAulas({
   aulas,
   hoje,
   ancora,
-  setAncora,
+  direcao,
   selecionado,
-  setSelecionado,
+  onEscolherDia,
+  onAndarMes,
+  onHoje,
 }: {
   aulas: AulaExperimentalItem[];
   hoje: string;
   ancora: MesAncora;
-  setAncora: Dispatch<SetStateAction<MesAncora>>;
+  /** Para onde o mês andou por último (-1, 0, 1): a grade entra desse lado. */
+  direcao: number;
   selecionado: string;
-  setSelecionado: Dispatch<SetStateAction<string>>;
+  /** `teclado`: navegação por setas — quem usa não deve rolar a tela por causa dela. */
+  onEscolherDia: (data: string, origem?: "clique" | "teclado") => void;
+  onAndarMes: (passo: number) => void;
+  onHoje: () => void;
 }) {
-
   const gradeRef = useRef<HTMLDivElement>(null);
-  const listaRef = useRef<HTMLDivElement>(null);
-  /** Para onde o mês andou: o título entra pelo lado de onde veio. */
-  const direcao = useRef(0);
+  /** Pedido de foco depois de navegar por teclado (o dia novo só existe após o render). */
+  const focarAposRender = useRef(false);
 
   const porData = useMemo(() => agruparPorData(aulas), [aulas]);
   const dias = useMemo(() => gradeDoMes(ancora.ano, ancora.mes), [ancora]);
-  const semanas = semanasDoMes(ancora.ano, ancora.mes);
-  const doDia = porData.get(selecionado) ?? [];
-
   const noMes = useMemo(
     () => aulas.filter((a) => mesmoMes(a.data, ancora.ano, ancora.mes)).length,
     [aulas, ancora],
   );
+  // O dia que entra no Tab: o selecionado, se estiver nesta grade; senão o 1º do mês.
+  const diaFocavel = dias.some((d) => d.data === selecionado)
+    ? selecionado
+    : (dias.find((d) => d.doMes)?.data ?? dias[0]?.data);
 
-  // A grade se refaz a cada mês: as células entram em cascata na diagonal, o
-  // que dá ao usuário o sentido de "página nova" sem piscar a tela.
-  useGSAP(
-    () => {
-      if (prefereMovimentoReduzido()) return;
-      gsap.from("[data-dia]", {
-        opacity: 0,
-        y: 8,
-        duration: 0.3,
-        ease: "power2.out",
-        stagger: { each: 0.012, grid: [semanas, 7], from: "start" },
-      });
-      gsap.from("[data-mes-rotulo]", {
-        opacity: 0,
-        x: direcao.current * 14,
-        duration: 0.35,
-        ease: "power3.out",
-      });
-    },
-    { scope: gradeRef, dependencies: [ancora.ano, ancora.mes], revertOnUpdate: true },
-  );
+  useEffect(() => {
+    if (!focarAposRender.current) return;
+    focarAposRender.current = false;
+    gradeRef.current?.querySelector<HTMLButtonElement>(`[data-dia="${selecionado}"]`)?.focus();
+  }, [selecionado, ancora]);
 
-  // A marca do dia escolhido cresce no lugar — é o retorno visual do clique,
-  // separado da entrada do mês para não reanimar a grade inteira a cada dia.
-  useGSAP(
-    () => {
-      if (prefereMovimentoReduzido()) return;
-      gsap.fromTo(
-        "[data-marca-selecao]",
-        { scale: 0.7, opacity: 0.4 },
-        { scale: 1, opacity: 1, duration: 0.35, ease: "back.out(2.2)" },
-      );
-    },
-    { scope: gradeRef, dependencies: [selecionado], revertOnUpdate: true },
-  );
-
-  useGSAP(
-    () => {
-      if (prefereMovimentoReduzido()) return;
-      gsap.from("[data-agendamento]", {
-        opacity: 0,
-        y: 12,
-        duration: 0.4,
-        ease: "power3.out",
-        stagger: 0.06,
-      });
-    },
-    { scope: listaRef, dependencies: [selecionado], revertOnUpdate: true },
-  );
-
-  function andarMes(passo: number) {
-    direcao.current = passo;
-    setAncora((a) => mesDeslocado(a.ano, a.mes, passo));
-  }
-
-  function escolherDia(data: string) {
-    const alvo = mesDaData(data);
-    if (alvo.ano !== ancora.ano || alvo.mes !== ancora.mes) {
-      // Clicou numa sobra do mês vizinho: a grade acompanha o dia escolhido.
-      direcao.current = data > selecionado ? 1 : -1;
-      setAncora(alvo);
+  function aoTeclar(e: KeyboardEvent<HTMLDivElement>) {
+    const passo =
+      e.key === "ArrowLeft" ? -1
+      : e.key === "ArrowRight" ? 1
+      : e.key === "ArrowUp" ? -7
+      : e.key === "ArrowDown" ? 7
+      : null;
+    if (passo !== null) {
+      e.preventDefault();
+      focarAposRender.current = true;
+      onEscolherDia(somarDias(selecionado, passo), "teclado");
+      return;
     }
-    setSelecionado(data);
+    if (e.key === "Home" || e.key === "End") {
+      e.preventDefault();
+      const [a, m, d] = selecionado.split("-").map(Number);
+      const semana = new Date(Date.UTC(a, m - 1, d)).getUTCDay();
+      focarAposRender.current = true;
+      onEscolherDia(somarDias(selecionado, e.key === "Home" ? -semana : 6 - semana), "teclado");
+      return;
+    }
+    if (e.key === "PageUp" || e.key === "PageDown") {
+      e.preventDefault();
+      onAndarMes(e.key === "PageUp" ? -1 : 1);
+    }
   }
 
-  function voltarParaHoje() {
-    const alvo = mesDaData(hoje);
-    direcao.current = alvo.ano * 12 + alvo.mes >= ancora.ano * 12 + ancora.mes ? 1 : -1;
-    setAncora(alvo);
-    setSelecionado(hoje);
-  }
-
-  const foraDeHoje = selecionado !== hoje || !mesmoMes(hoje, ancora.ano, ancora.mes);
+  const naGradeDeHoje = mesmoMes(hoje, ancora.ano, ancora.mes);
 
   return (
-    <div className="flex flex-col gap-5">
-      <Card className="mx-auto w-full max-w-md p-4 sm:p-5">
-        <div ref={gradeRef}>
-          <div className="flex items-center justify-between gap-2">
-            <SetaMes direcao={-1} onClick={() => andarMes(-1)} />
-            <div className="min-w-0 text-center">
-              <p
-                data-mes-rotulo
-                className="truncate font-display text-base font-semibold text-ink sm:text-lg"
-              >
-                {rotuloMes(ancora.ano, ancora.mes)}
-              </p>
-              <p className="mt-0.5 text-xs text-faint">
-                {noMes === 0
-                  ? "nenhuma aula marcada"
-                  : `${noMes} aula${noMes > 1 ? "s" : ""} marcada${noMes > 1 ? "s" : ""}`}
-              </p>
-            </div>
-            <SetaMes direcao={1} onClick={() => andarMes(1)} />
-          </div>
+    <div className="flex flex-col gap-3">
+      {/* mês: ‹ OUTUBRO 2026 › … Hoje */}
+      <div className="flex items-center gap-2 sm:gap-3">
+        <SetaMes direcao={-1} onClick={() => onAndarMes(-1)} />
+        <div className="min-w-0 flex-1 text-center sm:flex-none sm:text-left">
+          <h2
+            aria-live="polite"
+            className="font-display text-lg font-semibold uppercase tracking-[0.08em] text-ink sm:min-w-[11.5rem] sm:text-xl"
+          >
+            {rotuloMes(ancora.ano, ancora.mes)}
+          </h2>
+        </div>
+        <SetaMes direcao={1} onClick={() => onAndarMes(1)} />
+        <p className="ml-auto hidden text-xs text-muted tabular-nums sm:block">
+          {noMes === 0 ? "nenhuma visita no mês" : `${noMes} visita${noMes > 1 ? "s" : ""} no mês`}
+        </p>
+        <button
+          type="button"
+          onClick={onHoje}
+          disabled={naGradeDeHoje && selecionado === hoje}
+          className={cn(
+            "min-h-9 border border-control px-3 text-xs font-semibold uppercase tracking-[0.06em] text-ink",
+            "transition-[background-color,border-color,color,transform] duration-150 ease-padrao active:scale-[0.97]",
+            "hover:border-ink disabled:cursor-default disabled:border-border disabled:text-faint disabled:active:scale-100",
+          )}
+        >
+          Hoje
+        </button>
+      </div>
 
-          <div className="mt-4 grid grid-cols-7 gap-1">
-            {INICIAIS_SEMANA.map((inicial, i) => (
-              <span
-                key={i}
-                aria-hidden
-                className="pb-1 text-center text-xs font-semibold text-faint"
-              >
-                {inicial}
-              </span>
-            ))}
+      {/* grade: o fundo da grade aparece nos vãos de 1px como linhas dos dias */}
+      <div
+        ref={gradeRef}
+        role="group"
+        aria-label={`Dias de ${rotuloMes(ancora.ano, ancora.mes)}. Setas mudam o dia; Page Up e Page Down mudam o mês.`}
+        onKeyDown={aoTeclar}
+        className="overflow-hidden border border-border"
+      >
+        <div aria-hidden className="grid grid-cols-7 border-b border-border bg-painel-2">
+          {SEMANA.map((d, i) => (
+            <span
+              key={d}
+              className={cn(
+                "py-2 text-center font-mono text-[0.6875rem] font-medium uppercase tracking-[0.12em]",
+                i === 0 || i === 6 ? "text-faint" : "text-muted",
+              )}
+            >
+              {d}
+            </span>
+          ))}
+        </div>
 
-            {dias.map((d) => {
-              const marcadas = porData.get(d.data)?.length ?? 0;
-              const ehSelecionado = d.data === selecionado;
-              const ehHoje = d.data === hoje;
-              return (
-                <button
-                  key={d.data}
-                  data-dia
-                  type="button"
-                  onClick={() => escolherDia(d.data)}
-                  aria-pressed={ehSelecionado}
-                  aria-label={`${formatarDataCompleta(d.data)}${
-                    marcadas > 0 ? ` · ${marcadas} aula${marcadas > 1 ? "s" : ""}` : ""
-                  }`}
+        <div
+          key={`${ancora.ano}-${ancora.mes}`}
+          style={{ "--dir": direcao } as CSSProperties}
+          className="troca-mes grid grid-cols-7 gap-px bg-border"
+        >
+          {dias.map((d, i) => {
+            const doDia = porData.get(d.data) ?? [];
+            const horas = [...doDia].sort((a, b) => a.hora - b.hora).map((a) => a.hora);
+            const ehSelecionado = d.data === selecionado;
+            const ehHoje = d.data === hoje;
+            const fimDeSemana = i % 7 === 0 || i % 7 === 6;
+            const n = doDia.length;
+            return (
+              <button
+                key={d.data}
+                data-dia={d.data}
+                type="button"
+                tabIndex={d.data === diaFocavel ? 0 : -1}
+                onClick={() => onEscolherDia(d.data, "clique")}
+                aria-pressed={ehSelecionado}
+                aria-current={ehHoje ? "date" : undefined}
+                aria-label={`${SEMANA_EXTENSO[i % 7]}, ${formatarDataCompleta(d.data)}${ehHoje ? ", hoje" : ""}${
+                  n > 0 ? ` · ${n} visita${n > 1 ? "s" : ""}: ${horas.map(formatarHora).join(", ")}` : " · sem visitas"
+                }`}
+                className={cn(
+                  "group relative flex min-h-12 flex-col items-center gap-1 px-1 pb-1.5 pt-1.5 text-left outline-offset-[-2px] sm:min-h-[4.5rem] xl:min-h-[5rem]",
+                  "transition-[background-color,color] duration-150 ease-padrao",
+                  ehSelecionado
+                    ? "bg-brand text-white"
+                    : cn(fimDeSemana ? "bg-[#111114]" : "bg-painel", "text-ink hover:bg-painel-2"),
+                )}
+              >
+                {/* hoje: fio vermelho no topo + rótulo — nunca só a cor */}
+                {ehHoje && !ehSelecionado && (
+                  <span aria-hidden className="absolute inset-x-0 top-0 h-[3px] bg-destaque" />
+                )}
+                <span
                   className={cn(
-                    "relative flex aspect-square items-center justify-center rounded-lg text-sm transition-colors",
-                    !d.doMes && "opacity-40",
-                    ehSelecionado
-                      ? // com aula, a marca é rubi (texto claro); sem aula, é a
-                        // superfície elevada com anel (texto grafite)
-                        marcadas > 0
-                        ? "font-semibold text-white"
-                        : "font-semibold text-ink"
-                      : marcadas > 0
-                        ? "font-semibold text-destaque hover:bg-brand-soft"
-                        : "text-muted hover:bg-surface-2 hover:text-ink",
+                    "font-display text-[0.9375rem] leading-none tabular-nums sm:text-base",
+                    !d.doMes && !ehSelecionado ? "font-normal text-faint" : "font-semibold",
+                    ehHoje && !ehSelecionado && "text-destaque",
                   )}
                 >
-                  {ehSelecionado && (
-                    <span
-                      data-marca-selecao
-                      aria-hidden
-                      className={cn(
-                        "absolute inset-0.5 rounded-full",
-                        marcadas > 0
-                          ? "bg-brand shadow-[var(--shadow-red)]"
-                          : "bg-elevated ring-1 ring-border-strong",
-                      )}
-                    />
-                  )}
-                  {!ehSelecionado && ehHoje && (
-                    <span
-                      aria-hidden
-                      className="absolute inset-0.5 rounded-full ring-1 ring-border-strong"
-                    />
-                  )}
-                  <span className="relative">{d.dia}</span>
-                  {marcadas > 0 && (
+                  {d.dia}
+                </span>
+                {ehHoje && (
+                  <span
+                    aria-hidden
+                    className={cn(
+                      "font-mono text-[0.625rem] font-medium uppercase leading-none tracking-[0.12em]",
+                      ehSelecionado ? "text-white" : "text-destaque",
+                    )}
+                  >
+                    hoje
+                  </span>
+                )}
+
+                {n > 0 && (
+                  <>
+                    {/* celular: a contagem num quadradinho */}
                     <span
                       aria-hidden
                       className={cn(
-                        "absolute bottom-1 h-1 w-1 rounded-full",
-                        ehSelecionado ? "bg-white/80" : "bg-brand",
+                        "mt-auto flex h-4 min-w-4 items-center justify-center px-1 text-[0.6875rem] font-semibold tabular-nums sm:hidden",
+                        ehSelecionado ? "bg-white text-brand" : "bg-brand text-white",
                       )}
-                    />
-                  )}
-                </button>
-              );
-            })}
-          </div>
+                    >
+                      {n}
+                    </span>
+                    {/* tela larga: as horas (até duas) e "+N" */}
+                    <span aria-hidden className="mt-auto hidden w-full flex-wrap justify-center gap-1 sm:flex">
+                      {horas.slice(0, horas.length > 2 ? 1 : 2).map((h, k) => (
+                        <ChipHora key={`${h}-${k}`} selecionado={ehSelecionado}>
+                          {formatarHora(h)}
+                        </ChipHora>
+                      ))}
+                      {horas.length > 2 && (
+                        <ChipHora selecionado={ehSelecionado} resumo>
+                          +{horas.length - 1}
+                        </ChipHora>
+                      )}
+                    </span>
+                  </>
+                )}
+              </button>
+            );
+          })}
         </div>
-
-        {foraDeHoje && (
-          <button
-            type="button"
-            onClick={voltarParaHoje}
-            className={cn(classeBotao({ variante: "secundario", tamanho: "sm", bloco: true }), "mt-3")}
-          >
-            Voltar para hoje
-          </button>
-        )}
-      </Card>
-
-      <div ref={listaRef} className="flex flex-col gap-3">
-        <div className="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-1">
-          <h2 className="font-display text-sm font-semibold text-ink">
-            {selecionado === hoje ? "Hoje" : formatarDataCompleta(selecionado)}
-          </h2>
-          <span className="text-xs text-faint">
-            {doDia.length === 0
-              ? "nada marcado"
-              : `${doDia.length} agendamento${doDia.length > 1 ? "s" : ""}`}
-          </span>
-        </div>
-
-        {doDia.length === 0 ? (
-          <Card data-agendamento className="px-5 py-8 text-center">
-            <p className="text-sm text-muted">
-              Nenhuma aula experimental marcada para {formatarDataCompleta(selecionado)}.
-            </p>
-            <p className="mt-1 text-xs text-faint">
-              Marcar é pela conversa do WhatsApp da pessoa, em “Aula experimental”.
-            </p>
-          </Card>
-        ) : (
-          [...doDia]
-            .sort((a, b) => a.hora - b.hora)
-            .map((aula) => <LinhaDoDia key={aula.id} aula={aula} />)
-        )}
       </div>
     </div>
+  );
+}
+
+function ChipHora({
+  children,
+  selecionado,
+  resumo = false,
+}: {
+  children: React.ReactNode;
+  selecionado: boolean;
+  resumo?: boolean;
+}) {
+  return (
+    <span
+      className={cn(
+        "inline-flex h-5 items-center gap-1 px-1.5 text-[0.6875rem] font-semibold tabular-nums",
+        selecionado ? "bg-white text-brand" : resumo ? "bg-painel-2 text-ink" : "bg-surface text-[#151518]",
+      )}
+    >
+      {!resumo && <span className="h-1.5 w-1.5 rounded-full bg-brand" />}
+      {children}
+    </span>
   );
 }
 
@@ -294,163 +276,17 @@ function SetaMes({ direcao, onClick }: { direcao: -1 | 1; onClick: () => void })
       type="button"
       onClick={onClick}
       aria-label={direcao === -1 ? "Mês anterior" : "Próximo mês"}
-      className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border border-border text-muted transition-colors hover:border-border-strong hover:text-ink"
+      className="flex h-9 w-10 shrink-0 items-center justify-center border border-control text-ink transition-[border-color,transform] duration-150 ease-padrao hover:border-ink active:scale-[0.97]"
     >
-      {direcao === -1 ? "‹" : "›"}
+      <svg width="14" height="14" viewBox="0 0 14 14" fill="none" aria-hidden>
+        <path
+          d={direcao === -1 ? "M8.5 3L4.5 7l4 4" : "M5.5 3l4 4-4 4"}
+          stroke="currentColor"
+          strokeWidth="1.6"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+        />
+      </svg>
     </button>
-  );
-}
-
-/** Um agendamento do dia escolhido, com o recado da recepção logo abaixo. */
-function LinhaDoDia({ aula }: { aula: AulaExperimentalItem }) {
-  return (
-    <Card data-agendamento className="p-4">
-      <div className="flex flex-wrap items-start justify-between gap-x-3 gap-y-2">
-        <div className="min-w-0">
-          <p className="truncate text-sm font-medium text-ink">{aula.nome}</p>
-          <p className="text-xs text-muted">{aula.telefone}</p>
-        </div>
-        <div className="flex shrink-0 items-center gap-2">
-          <span className="font-display text-sm font-semibold text-destaque">
-            {formatarHora(aula.hora)}
-          </span>
-          <Badge>{aula.modalidade}</Badge>
-        </div>
-      </div>
-
-      <div className="mt-2 flex flex-wrap items-center justify-between gap-x-3 gap-y-1">
-        <span className="text-xs text-muted">
-          Marcada por {aula.agendadoPor ?? "—"}
-        </span>
-        {aula.conversaId ? (
-          <Link
-            href={`/atendimento?c=${aula.conversaId}`}
-            className="text-xs font-semibold text-destaque hover:underline"
-          >
-            Abrir conversa →
-          </Link>
-        ) : (
-          <span className="text-xs text-muted">sem conversa</span>
-        )}
-      </div>
-
-      <ObservacaoCampo aula={aula} />
-    </Card>
-  );
-}
-
-/**
- * Rascunhos de observação ainda não salvos, por aula — só na memória da aba.
- * Trocar de dia ou de visão desmonta o campo; o que foi digitado volta quando
- * ele reaparece, e sair da página com rascunho pendente pede confirmação.
- */
-const rascunhosObservacao = new Map<string, string>();
-
-function avisarSaida(e: BeforeUnloadEvent) {
-  if (rascunhosObservacao.size > 0) e.preventDefault();
-}
-
-function ehAulaSalva(v: unknown): v is { aula: AulaExperimentalItem } {
-  return typeof v === "object" && v !== null && typeof (v as { aula?: { id?: unknown } }).aula?.id === "string";
-}
-
-/**
- * O campo de observação da visita — recado interno, nunca vai para o WhatsApp.
- *
- * Salva só no botão: salvar sozinho enquanto alguém digita transformaria meia
- * frase em recado oficial. Texto vazio salvo apaga a observação.
- */
-function ObservacaoCampo({ aula }: { aula: AulaExperimentalItem }) {
-  const [salvo, setSalvo] = useState(aula.observacao ?? "");
-  const [texto, setTextoEstado] = useState(() => rascunhosObservacao.get(aula.id) ?? aula.observacao ?? "");
-  const [salvando, setSalvando] = useState(false);
-  const [erro, setErro] = useState("");
-
-  const mudou = texto.trim() !== salvo.trim();
-  const excedeu = texto.trim().length > OBSERVACAO_MAX;
-
-  useEffect(() => {
-    window.addEventListener("beforeunload", avisarSaida);
-    return () => window.removeEventListener("beforeunload", avisarSaida);
-  }, []);
-
-  function setTexto(t: string) {
-    setTextoEstado(t);
-    if (t.trim() !== salvo.trim()) rascunhosObservacao.set(aula.id, t);
-    else rascunhosObservacao.delete(aula.id);
-  }
-
-  function descartar() {
-    rascunhosObservacao.delete(aula.id);
-    setTextoEstado(salvo);
-    setErro("");
-  }
-
-  async function salvar() {
-    if (salvando || excedeu) return;
-    setErro("");
-    setSalvando(true);
-    const res = await lerResultado(
-      fetch(`/api/captacao/aulas/${aula.id}/observacao`, {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ observacao: texto }),
-      }),
-      ehAulaSalva,
-      "Não deu para salvar a observação.",
-    );
-    setSalvando(false);
-    if (res.tipo === "ok") {
-      const gravado = res.dados.aula.observacao ?? "";
-      rascunhosObservacao.delete(aula.id);
-      setSalvo(gravado);
-      setTextoEstado(gravado);
-    } else {
-      // O rascunho continua no campo para tentar de novo.
-      setErro(res.tipo === "falha" ? res.erro : "Sem confirmação do servidor. Recarregue para ver o que ficou salvo.");
-    }
-  }
-
-  return (
-    <div className="mt-3 border-t border-border pt-3">
-      <label
-        htmlFor={`obs-${aula.id}`}
-        className="text-xs font-semibold text-faint"
-      >
-        Observação interna
-      </label>
-      <textarea
-        id={`obs-${aula.id}`}
-        value={texto}
-        onChange={(e) => setTexto(e.target.value)}
-        rows={2}
-        maxLength={OBSERVACAO_MAX}
-        placeholder="Recado para quem receber essa pessoa — combinado de horário, quem vem junto, o que já foi falado."
-        aria-describedby={`obs-${aula.id}-estado`}
-        className={cn(classeCampo, "mt-1.5 resize-y")}
-      />
-
-      <div className="mt-1.5 flex flex-wrap items-center justify-between gap-x-3 gap-y-1">
-        <span id={`obs-${aula.id}-estado`} className={cn("text-xs", excedeu ? "text-danger" : mudou ? "text-warning" : "text-muted")}>
-          {mudou
-            ? `${texto.trim().length}/${OBSERVACAO_MAX} · não salvo${!texto.trim() && salvo ? " (salvar vazio apaga a observação)" : ""}`
-            : salvo
-              ? "Salvo · não é enviado à pessoa"
-              : `${texto.trim().length}/${OBSERVACAO_MAX} · não é enviado à pessoa`}
-        </span>
-
-        {mudou && (
-          <span className="flex gap-2">
-            <Botao variante="discreto" tamanho="sm" onClick={descartar} disabled={salvando}>
-              Descartar
-            </Botao>
-            <Botao variante="contorno" tamanho="sm" onClick={() => void salvar()} carregando={salvando} disabled={excedeu}>
-              {salvando ? "Salvando…" : "Salvar"}
-            </Botao>
-          </span>
-        )}
-      </div>
-      {erro && <MensagemErro className="mt-1.5 text-xs">{erro}</MensagemErro>}
-    </div>
   );
 }

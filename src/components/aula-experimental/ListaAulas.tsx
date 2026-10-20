@@ -2,7 +2,8 @@
 
 import { useMemo } from "react";
 import Link from "next/link";
-import { Badge, Card } from "@/components/ui/primitives";
+import { Badge } from "@/components/ui/primitives";
+import { EstadoVazio } from "@/components/ui/editorial";
 import { cn } from "@/lib/cn";
 import { formatarDataCompleta, formatarHora } from "@/lib/aula-experimental";
 import type { AulaExperimentalItem } from "@/lib/types";
@@ -62,7 +63,7 @@ export function ListaAulas({
       ? "Ninguém marcou aula experimental para hoje."
       : filtro === "proximas"
         ? "Nenhuma aula experimental marcada daqui para frente."
-        : "Nenhuma aula experimental marcada ainda. Marque pela conversa do WhatsApp da pessoa, em “Aula experimental”.";
+        : "Nenhuma aula experimental marcada ainda. Marque pela conversa da pessoa no Atendimento, em “Aula experimental”.";
 
   return (
     <div className="flex flex-col gap-5">
@@ -75,17 +76,18 @@ export function ListaAulas({
               onClick={() => setFiltro(chip.key)}
               aria-pressed={ativo}
               className={cn(
-                "flex min-h-9 items-center gap-1.5 rounded-lg border px-2.5 py-1.5 text-sm font-medium transition-colors sm:gap-2 sm:px-3.5 sm:py-2",
+                "flex min-h-9 items-center gap-2 border px-3 py-1.5 text-sm font-medium",
+                "transition-[background-color,border-color,color,transform] duration-150 ease-padrao active:scale-[0.97]",
                 ativo
-                  ? "border-brand/60 bg-brand-soft text-ink"
-                  : "border-border bg-surface text-muted hover:border-border-strong hover:text-ink",
+                  ? "border-brand bg-brand text-white"
+                  : "border-control text-muted hover:border-ink hover:text-ink",
               )}
             >
-              <span className="">{chip.label}</span>
+              <span>{chip.label}</span>
               <span
                 className={cn(
-                  "flex h-4 min-w-4 items-center justify-center rounded-md px-1 text-xs font-semibold sm:h-5 sm:min-w-5 sm:text-xs",
-                  ativo ? "bg-brand text-white" : "bg-surface-2 text-muted",
+                  "flex h-5 min-w-5 items-center justify-center px-1 text-xs font-semibold tabular-nums",
+                  ativo ? "bg-white text-brand" : "bg-surface-2 text-ink",
                 )}
               >
                 {contagem[chip.key]}
@@ -95,9 +97,9 @@ export function ListaAulas({
         })}
       </div>
 
-      <Card className="overflow-hidden">
+      <div className="border border-border">
         {visiveis.length === 0 ? (
-          <p className="px-5 py-10 text-center text-sm text-muted">{vazio}</p>
+          <EstadoVazio titulo={vazio} className="m-3 sm:m-4" />
         ) : (
           <>
             {/* mobile: cards empilhados, sem scroll horizontal */}
@@ -122,11 +124,10 @@ export function ListaAulas({
 
             {/* desktop: tabela */}
             <div className="hidden overflow-x-auto sm:block">
-              <table className="w-full min-w-[640px] border-collapse text-sm">
+              <table className="w-full min-w-[560px] border-collapse text-sm">
                 <thead>
                   <tr className="border-b border-border text-left">
                     <Th>Pessoa</Th>
-                    <Th>Contato</Th>
                     <Th>Modalidade</Th>
                     <Th>Aula</Th>
                     <Th>Marcada por</Th>
@@ -137,24 +138,24 @@ export function ListaAulas({
                   {visiveis.map((a) => (
                     <tr
                       key={a.id}
-                      className="border-b border-border transition-colors last:border-0 hover:bg-surface-2"
+                      className="border-b border-border transition-[background-color] duration-150 last:border-0 hover:bg-surface-2"
                     >
                       <td className="px-4 py-3">
                         <p className="font-medium text-ink">{a.nome}</p>
+                        <p className="mt-0.5 whitespace-nowrap text-xs text-muted tabular-nums">{a.telefone}</p>
                         {a.observacao && (
                           <p className="mt-0.5 line-clamp-1 max-w-xs text-xs text-muted" title={a.observacao}>
                             Obs.: {a.observacao}
                           </p>
                         )}
                       </td>
-                      <td className="px-4 py-3 text-muted">{a.telefone}</td>
                       <td className="px-4 py-3">
                         <Badge>{a.modalidade}</Badge>
                       </td>
-                      <td className="px-4 py-3">
+                      <td className="whitespace-nowrap px-4 py-3">
                         <QuandoEtiqueta aula={a} hoje={hoje} />
                       </td>
-                      <td className="px-4 py-3 text-faint">{a.agendadoPor ?? "—"}</td>
+                      <td className="px-4 py-3 text-muted">{a.agendadoPor ?? "—"}</td>
                       <td className="px-4 py-3 text-right">
                         <Acoes aula={a} hoje={hoje} />
                       </td>
@@ -165,7 +166,7 @@ export function ListaAulas({
             </div>
           </>
         )}
-      </Card>
+      </div>
     </div>
   );
 }
@@ -197,7 +198,7 @@ function Acoes({ aula, hoje }: { aula: AulaExperimentalItem; hoje: string }) {
   if (!aula.conversaId) return <span className="text-xs text-muted">sem conversa</span>;
 
   return (
-    <span className="inline-flex items-center gap-3">
+    <span className="inline-flex flex-col items-end gap-1 whitespace-nowrap">
       {aula.data <= hoje && (
         <Link
           href={`/atendimento?c=${aula.conversaId}&remarcar=${aula.data}`}
@@ -221,7 +222,7 @@ function Th({ children, className }: { children: React.ReactNode; className?: st
   return (
     <th
       className={cn(
-        "px-4 py-3 text-xs font-semibold text-faint",
+        "px-4 py-3 text-xs font-medium text-muted",
         className,
       )}
     >

@@ -95,6 +95,60 @@ export function hojeNaAcademia(agora: Date = new Date()): string {
   }).format(agora);
 }
 
+/** A hora cheia (0–23) no relógio da academia. */
+export function horaNaAcademia(agora: Date = new Date()): number {
+  const h = new Intl.DateTimeFormat("en-GB", {
+    timeZone: FUSO_ACADEMIA,
+    hour: "2-digit",
+    hourCycle: "h23",
+  }).format(agora);
+  return Number(h);
+}
+
+/**
+ * Onde a visita está em relação ao relógio da academia. Não é presença nem
+ * confirmação (o sistema não guarda nenhuma das duas): é só o horário.
+ */
+export type MomentoVisita = "passou" | "agora" | "adiante";
+
+export function momentoDaVisita(
+  aula: { data: string; hora: number },
+  hoje: string,
+  horaAgora: number,
+): MomentoVisita {
+  if (aula.data < hoje) return "passou";
+  if (aula.data > hoje) return "adiante";
+  if (aula.hora < horaAgora) return "passou";
+  if (aula.hora === horaAgora) return "agora";
+  return "adiante";
+}
+
+/**
+ * A frase sob o título da agenda: quantas visitas hoje e qual a próxima —
+ * ou, sem nada hoje, quando é a próxima. Contas feitas sobre os mesmos itens
+ * que a tela mostra.
+ */
+export function resumoDoDia(
+  aulas: readonly { data: string; hora: number }[],
+  hoje: string,
+  horaAgora: number,
+): string {
+  const deHoje = aulas.filter((a) => a.data === hoje).sort((a, b) => a.hora - b.hora);
+  if (deHoje.length > 0) {
+    const n = `${deHoje.length} visita${deHoje.length > 1 ? "s" : ""}`;
+    const proxima = deHoje.find((a) => a.hora >= horaAgora);
+    return proxima
+      ? `Hoje: ${n} · a próxima às ${formatarHora(proxima.hora)}.`
+      : `Hoje: ${n} · todas já passaram do horário.`;
+  }
+  const futura = aulas
+    .filter((a) => a.data > hoje)
+    .sort((a, b) => (a.data === b.data ? a.hora - b.hora : a.data < b.data ? -1 : 1))[0];
+  return futura
+    ? `Nenhuma visita hoje · a próxima é em ${formatarDiaMes(futura.data)} às ${formatarHora(futura.hora)}.`
+    : "Nenhuma visita marcada daqui para frente.";
+}
+
 /** "2026-08-04" → "04/08" — como a recepção fala a data. */
 export function formatarDiaMes(data: string): string {
   const [, mes, dia] = data.split("-");
@@ -113,9 +167,37 @@ export function formatarHora(hora: number): string {
 
 /** Véspera de uma data. Faz a conta em UTC para não escorregar no horário de verão. */
 export function diaAnterior(data: string): string {
+  return somarDias(data, -1);
+}
+
+/** Desloca uma data "AAAA-MM-DD" em `dias` (negativo volta). Conta em UTC. */
+export function somarDias(data: string, dias: number): string {
   const [ano, mes, dia] = data.split("-").map(Number);
-  const t = new Date(Date.UTC(ano, mes - 1, dia) - 86_400_000);
+  const t = new Date(Date.UTC(ano, mes - 1, dia) + dias * 86_400_000);
   return dataISO(t.getUTCFullYear(), t.getUTCMonth() + 1, t.getUTCDate());
+}
+
+const DIAS_SEMANA = ["domingo", "segunda", "terça", "quarta", "quinta", "sexta", "sábado"] as const;
+const MESES = [
+  "janeiro", "fevereiro", "março", "abril", "maio", "junho",
+  "julho", "agosto", "setembro", "outubro", "novembro", "dezembro",
+] as const;
+
+/** "2026-10-20" → "terça, 20 de outubro" — o dia da agenda por extenso. */
+export function formatarDiaPorExtenso(data: string): string {
+  const [ano, mes, dia] = data.split("-").map(Number);
+  const semana = new Date(Date.UTC(ano, mes - 1, dia)).getUTCDay();
+  return `${DIAS_SEMANA[semana]}, ${dia} de ${MESES[mes - 1]}`;
+}
+
+/** Nome do mês em minúsculas (1 a 12): "outubro". */
+export function nomeDoMes(mes: number): string {
+  return MESES[mes - 1];
+}
+
+/** 9 → "09:00": a hora cheia da visita no formato da agenda. */
+export function formatarHoraAgenda(hora: number): string {
+  return `${String(hora).padStart(2, "0")}:00`;
 }
 
 /**

@@ -1,19 +1,24 @@
-import { Reveal } from "@/components/ui/Reveal";
-import { PageHeader } from "@/components/ui/primitives";
-import { AulaExperimentalAbas } from "@/components/aula-experimental/AulaExperimentalAbas";
+import Link from "next/link";
+import { AgendaAulaExperimental } from "@/components/aula-experimental/AgendaAulaExperimental";
+import { ArenaWireframe } from "@/components/aula-experimental/ArenaWireframe";
+import { classeBotao } from "@/components/ui/Botao";
+import { CabecalhoEditorial, CartaoIndicador, EstadoVazio, IconeSetaDireita } from "@/components/ui/editorial";
 import { listarAulasExperimentais } from "@/lib/store";
-import { ehDataISO, hojeNaAcademia } from "@/lib/aula-experimental";
+import { ehDataISO, hojeNaAcademia, horaNaAcademia, resumoDoDia } from "@/lib/aula-experimental";
 import { requireModulo } from "@/lib/auth/rbac";
+import type { AulaExperimentalItem } from "@/lib/types";
 
 export const dynamic = "force-dynamic";
 
 /**
- * A agenda das visitas, em tela própria.
+ * A agenda das visitas, em tela própria — a tela-referência do tabloide.
  *
  * Saiu de dentro da Captação porque não é a mesma leitura: lá se trabalha o
  * funil (quem é lead, em que estágio está), aqui se olha o relógio — quem vem
- * hoje, que dia ainda cabe gente. Era uma aba escondida atrás de outra tela e
- * virava consulta que ninguém fazia.
+ * hoje, que dia já tem visita marcada.
+ *
+ * O agendamento acontece na conversa do Atendimento (com a confirmação
+ * revisada antes do envio); daqui só se navega até ela.
  */
 export default async function AulaExperimentalPage({
   searchParams,
@@ -24,27 +29,79 @@ export default async function AulaExperimentalPage({
   await requireModulo("aula-experimental");
   const { dia } = await searchParams;
   const pedido = Array.isArray(dia) ? dia[0] : dia;
-  const aulas = await listarAulasExperimentais();
-  const hoje = hojeNaAcademia();
+  // O dia e a hora são do relógio da academia, não do servidor (UTC) nem do celular.
+  const agora = new Date();
+  const hoje = hojeNaAcademia(agora);
+  const hora = horaNaAcademia(agora);
+
+  // Falha ao carregar não pode virar "zero visitas": vira aviso de erro.
+  let aulas: AulaExperimentalItem[] | null = null;
+  try {
+    aulas = await listarAulasExperimentais();
+  } catch (e) {
+    console.error("[aula-experimental] falha ao listar", e);
+  }
+
+  const abrirAtendimento = (
+    <Link href="/atendimento" className={classeBotao({ variante: "primario", tamanho: "lg" })}>
+      Abrir Atendimento
+      <IconeSetaDireita />
+    </Link>
+  );
 
   return (
-    <>
-      <Reveal>
-        <PageHeader
-          title="Aula experimental"
-          subtitle="Visitas marcadas por dia. Para marcar, abra a conversa da pessoa no Atendimento e use “Aula experimental” — o envio da confirmação é sempre revisado antes."
-        />
-      </Reveal>
+    <div className="flex flex-col gap-6 lg:gap-8">
+      <CabecalhoEditorial
+        className="entrada"
+        categoria="Relacionamento / Aula experimental"
+        titulo="Aula experimental"
+        faixa="Da primeira visita ao próximo aluno"
+        descricao={
+          aulas ? (
+            <>
+              <p className="font-semibold">{resumoDoDia(aulas, hoje, hora)}</p>
+              <p className="mt-0.5 text-muted">
+                Agende pela conversa no Atendimento — a confirmação é revisada antes do envio.
+              </p>
+            </>
+          ) : (
+            <p className="text-muted">A agenda não pôde ser carregada agora.</p>
+          )
+        }
+        acoes={abrirAtendimento}
+        decoracao={<ArenaWireframe className="h-[8.5rem] w-auto text-ink" />}
+      />
 
-      <Reveal delay={0.05}>
-        <AulaExperimentalAbas
+      {aulas ? (
+        <AgendaAulaExperimental
           aulas={aulas}
-          // O dia é do relógio da academia, não do servidor (UTC) nem do celular.
           hoje={hoje}
+          horaInicial={hora}
           // Data inválida ou ausente: o calendário abre em hoje, como sempre.
           diaInicial={ehDataISO(pedido) ? pedido : hoje}
         />
-      </Reveal>
-    </>
+      ) : (
+        <>
+          <section aria-label="Indicadores" className="grid gap-2 sm:grid-cols-3 sm:gap-4">
+            <CartaoIndicador numero="01" rotulo="Agendadas no mês" periodo="mês do calendário" estado={{ tipo: "erro" }} />
+            <CartaoIndicador numero="02" rotulo="Visitas hoje" periodo="hoje" estado={{ tipo: "erro" }} />
+            <CartaoIndicador numero="03" rotulo="Próximos 7 dias" periodo="a partir de hoje" estado={{ tipo: "erro" }} />
+          </section>
+          <EstadoVazio
+            tom="erro"
+            titulo="Não foi possível carregar as aulas experimentais."
+            acao={
+              // Recarrega a rota inteira (componente do servidor, sem estado a perder).
+              <a href="/aula-experimental" className={classeBotao({ variante: "secundario", tamanho: "md" })}>
+                Tentar de novo
+              </a>
+            }
+          >
+            Nada foi apagado: é a leitura que falhou. Se continuar, as conversas no Atendimento seguem com o
+            histórico de cada agendamento.
+          </EstadoVazio>
+        </>
+      )}
+    </div>
   );
 }
