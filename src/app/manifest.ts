@@ -11,8 +11,8 @@ export default function manifest(): MetadataRoute.Manifest {
     start_url: "/",
     display: "standalone",
     // tela de abertura no fundo do app; barra do sistema na cor do topo
-    background_color: "#21070f",
-    theme_color: "#21070f",
+    background_color: "#09090b",
+    theme_color: "#09090b",
     icons: [
       { src: "/icons/icon-192.png", sizes: "192x192", type: "image/png" },
       { src: "/icons/icon-512.png", sizes: "512x512", type: "image/png" },

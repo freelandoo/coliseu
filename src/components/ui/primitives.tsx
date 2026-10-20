@@ -129,19 +129,23 @@ export function PageHeader({
   /** Descrição opcional e enxuta; a maioria das telas dispensa. */
   subtitle?: string;
 }) {
+  // Versão compacta do cabeçalho editorial: a manchete grande fica só na tela
+  // de referência (Aula experimental); aqui o título não empurra o trabalho.
   return (
-    <header className="mb-5 flex items-center gap-3">
-      <span
-        aria-hidden
-        className="steel-plate h-8 w-8 shrink-0 rounded-lg text-sm sm:h-9 sm:w-9 sm:text-base"
-      >
-        {step ?? "•"}
-      </span>
-      <div>
-        <h1 className="font-display text-xl font-semibold tracking-wide text-ink sm:text-2xl">
-          {title}
-        </h1>
-        {subtitle && <p className="mt-0.5 max-w-2xl text-sm text-muted">{subtitle}</p>}
+    <header className="mb-5 flex items-start gap-3">
+      {step !== undefined ? (
+        <span
+          aria-hidden
+          className="steel-plate corte-canto mt-0.5 h-8 w-8 shrink-0 text-sm [--corte:7px] sm:h-9 sm:w-9 sm:text-base"
+        >
+          {step}
+        </span>
+      ) : (
+        <span aria-hidden className="mt-1 h-6 w-1.5 shrink-0 bg-brand sm:h-7" />
+      )}
+      <div className="min-w-0">
+        <h1 className="font-manchete text-[1.75rem] text-ink sm:text-[2rem]">{title}</h1>
+        {subtitle && <p className="mt-1.5 max-w-2xl text-sm text-muted">{subtitle}</p>}
       </div>
     </header>
   );

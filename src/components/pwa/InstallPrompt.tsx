@@ -149,19 +149,15 @@ export function InstallPrompt() {
       ref={barraRef}
       role="region"
       aria-label="Instalar o aplicativo"
-      className="fixed inset-x-0 bottom-0 z-20 border-t border-border bg-surface"
+      className="fixed inset-x-0 bottom-0 z-20 border-t-2 border-brand bg-painel-2"
     >
-      <div className="mx-auto flex max-w-2xl items-center gap-3 px-4 pt-3 pb-[calc(0.75rem_+_var(--safe-b))]">
+      <div className="mx-auto flex max-w-2xl items-center gap-3 px-4 pt-2 pb-[calc(0.5rem_+_var(--safe-b))]">
         {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img src="/icons/icon-192.png" alt="Coliseu" className="h-10 w-10 shrink-0 rounded-xl border border-border" />
+        <img src="/icons/icon-192.png" alt="" className="h-8 w-8 shrink-0 rounded-sm" />
         <div className="min-w-0 flex-1">
-          <p className="font-display text-sm font-semibold text-ink">
-            Instalar o Coliseu
-          </p>
+          <p className="text-sm font-semibold leading-tight text-ink">Instalar o Coliseu</p>
           {modo === "android" ? (
-            <p className="text-xs leading-snug text-muted">
-              Adicione o app à sua tela inicial — abre rápido e em tela cheia.
-            </p>
+            <p className="truncate text-xs leading-snug text-muted">Abre rápido, em tela cheia.</p>
           ) : (
             <p className="text-xs leading-snug text-muted">
               Toque em <span className="font-semibold text-ink">Compartilhar</span> {IconCompartilhar} e

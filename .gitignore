@@ -45,3 +45,6 @@ next-env.d.ts
 
 # exports da migração CloudGym/iDFace — contém biometria (fotos) e dados pessoais. LGPD: nunca commitar.
 /usuarios/
+
+# artefatos locais da skill de design (taste)
+.taste-skill/

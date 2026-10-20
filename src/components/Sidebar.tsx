@@ -134,18 +134,19 @@ export function Sidebar({
           onClick={onFechar}
           aria-current={atual ? "page" : undefined}
           className={cn(
-            "relative flex min-h-10 items-center gap-3 rounded-[10px] px-3 py-2 text-sm font-medium",
-            "transition-[background-color,color,box-shadow] duration-200 ease-padrao",
-            atual
-              ? "bg-[linear-gradient(100deg,#861d3c,#501226)] text-ink shadow-[inset_0_1px_0_rgb(234_166_183/0.17)]"
-              : "text-muted hover:bg-surface-2 hover:text-ink",
+            "relative isolate flex min-h-10 items-center gap-3 overflow-hidden px-3 py-2 text-sm font-medium",
+            "transition-[background-color,color] duration-150 ease-padrao",
+            atual ? "bg-brand text-white" : "text-muted hover:bg-surface-2 hover:text-ink",
           )}
         >
-          {/* marcador de posição: rosa, fora do item, colado na borda do menu */}
+          {/* item atual: listras diagonais no fim da faixa (decoração) */}
           {atual && (
-            <span aria-hidden className="absolute -left-3 top-1/2 h-5 w-[3px] -translate-y-1/2 rounded-r bg-destaque" />
+            <span
+              aria-hidden
+              className="listras pointer-events-none absolute inset-y-0 right-0 -z-10 w-14 text-white/20 [mask-image:linear-gradient(90deg,transparent,#000_60%)]"
+            />
           )}
-          <span className={cn("shrink-0", atual ? "text-ink" : "text-faint")}>{ICONES[d.icone]}</span>
+          <span className={cn("shrink-0", atual ? "text-white" : "text-faint")}>{ICONES[d.icone]}</span>
           <span className="min-w-0 flex-1 truncate">{d.rotulo}</span>
           {/* Não lidas do WhatsApp — só no Atendimento, some quando zera. */}
           {d.modulo === "atendimento" && <NaoLidasBadge />}
@@ -170,20 +171,23 @@ export function Sidebar({
           // de ponta a ponta: o topo não nasce sob o relógio nem o rodapé some na barra de gestos
           "pt-[var(--safe-t)] pb-[var(--safe-b)]",
           "transition-[transform,visibility] duration-200 ease-padrao motion-reduce:transition-none",
-          "lg:visible lg:sticky lg:top-0 lg:z-auto lg:w-[17rem] lg:max-w-none lg:translate-x-0 lg:bg-menu/85",
+          "lg:visible lg:sticky lg:top-0 lg:z-auto lg:w-[16.5rem] lg:max-w-none lg:translate-x-0",
           aberta ? "visible translate-x-0 shadow-[var(--shadow-overlay)]" : "invisible -translate-x-full",
         )}
       >
-        <div className="flex shrink-0 items-center gap-3 px-4 pb-3 pt-5">
-          <Link href="/" onClick={onFechar} className="flex min-w-0 flex-1 items-center gap-3 rounded-md">
-            <span className="steel-plate h-9 w-9 shrink-0 rounded-[10px] text-sm">CT</span>
+        <div className="mx-3 flex shrink-0 items-center gap-3 border-b border-border px-1 pb-4 pt-5">
+          <Link href="/" onClick={onFechar} className="flex min-w-0 flex-1 items-center gap-3">
+            <span
+              aria-hidden
+              className="corte-canto flex h-10 w-10 shrink-0 items-center justify-center bg-brand font-display text-base font-bold text-white [--corte:9px]"
+            >
+              CT
+            </span>
             <span className="min-w-0 leading-tight">
-              <span className="block truncate font-display text-xl font-semibold uppercase tracking-[0.08em] text-ink">
+              <span translate="no" className="font-manchete block truncate text-[1.375rem] text-ink">
                 Coliseu CRM
               </span>
-              <span className="mt-0.5 block truncate text-[11px] uppercase tracking-[0.1em] text-faint">
-                Academia Coliseu Team
-              </span>
+              <span className="meta-mono mt-1 block truncate text-[0.625rem] tracking-[0.06em] text-faint">Academia Coliseu Team</span>
             </span>
           </Link>
           <button
@@ -200,16 +204,31 @@ export function Sidebar({
         </div>
 
         {/* só os links rolam: topo e conta ficam sempre alcançáveis */}
-        <nav aria-label="Módulos" className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-3 pb-3 pt-2">
+        <nav aria-label="Módulos" className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-3 pb-3 pt-4">
           {principais.map((g) => (
             <section key={g.id} aria-labelledby={`grupo-${g.id}`} className="mb-5 last:mb-0">
-              <h2 id={`grupo-${g.id}`} className="mb-1.5 px-3 text-xs font-medium uppercase tracking-[0.14em] text-faint">
+              <h2 id={`grupo-${g.id}`} className="meta-mono mb-2 px-3 text-[0.6875rem] text-faint">
                 {g.rotulo}
               </h2>
               <ul className="flex flex-col gap-0.5">{g.itens.map(item)}</ul>
             </section>
           ))}
         </nav>
+
+        {/* assinatura do tabloide: só em telas altas, nunca disputa espaço com o menu */}
+        <div
+          aria-hidden
+          className="mx-4 mb-3 hidden shrink-0 items-end gap-3 [@media(min-height:860px)]:lg:flex"
+        >
+          <span className="h-9 w-24 shrink-0 bg-[repeating-linear-gradient(90deg,var(--color-ink)_0_1px,transparent_1px_3px,var(--color-ink)_3px_5px,transparent_5px_6px,var(--color-ink)_6px_7px,transparent_7px_10px)] opacity-70" />
+          <span className="meta-mono text-[0.5625rem] leading-relaxed text-faint">
+            Disciplina
+            <br />
+            Pessoas
+            <br />
+            Resultados
+          </span>
+        </div>
 
         {conta && (
           <nav aria-label={conta.rotulo} className="shrink-0 border-t border-border px-3 py-3">

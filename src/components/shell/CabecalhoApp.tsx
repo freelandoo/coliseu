@@ -36,7 +36,7 @@ export function CabecalhoApp({
     .join("");
 
   return (
-    <header className="sticky top-0 z-30 border-b border-border bg-bg/92 pt-[var(--safe-t)]">
+    <header className="sticky top-0 z-30 border-b border-border bg-bg pt-[var(--safe-t)]">
       <div className="flex h-[var(--altura-topo)] items-center gap-3 px-4 sm:px-6 lg:px-10">
         <button
           type="button"
@@ -53,7 +53,7 @@ export function CabecalhoApp({
 
         {trilha.length > 0 && (
           <nav aria-label="Localização" className="min-w-0 flex-1">
-            <ol className="flex min-w-0 items-center gap-1.5 text-sm">
+            <ol className="meta-mono flex min-w-0 items-center gap-2 text-[0.75rem]">
               {trilha.map((m, i) => {
                 const ultima = i === trilha.length - 1;
                 return (
@@ -72,11 +72,11 @@ export function CabecalhoApp({
                       </span>
                     )}
                     {m.href && !ultima ? (
-                      <Link href={m.href} className="truncate text-muted transition-colors hover:text-ink">
+                      <Link href={m.href} className="truncate text-muted transition-[color] duration-150 hover:text-ink">
                         {m.rotulo}
                       </Link>
                     ) : (
-                      <span aria-current="page" className="truncate font-semibold text-ink">
+                      <span aria-current="page" className="truncate text-ink">
                         {m.rotulo}
                       </span>
                     )}
@@ -94,11 +94,11 @@ export function CabecalhoApp({
           href="/perfil"
           aria-label={`Minha conta — ${nome}`}
           aria-current={pathname === "/perfil" ? "page" : undefined}
-          className="flex min-h-10 shrink-0 items-center gap-2 rounded-lg px-1.5 text-sm text-muted transition-colors hover:bg-surface-2 hover:text-ink"
+          className="flex min-h-10 shrink-0 items-center gap-2.5 px-1.5 text-sm text-muted transition-[background-color,color] duration-150 hover:bg-surface-2 hover:text-ink"
         >
           <span
             aria-hidden
-            className="flex h-8 w-8 items-center justify-center rounded-[10px] border border-border-strong bg-surface-2 text-xs font-semibold text-ink"
+            className="flex h-8 w-8 items-center justify-center border border-border-strong font-display text-sm font-semibold text-ink"
           >
             {iniciais || "?"}
           </span>

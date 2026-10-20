@@ -24,9 +24,11 @@ export type VarianteBotao =
 
 export type TamanhoBotao = "sm" | "md" | "lg";
 
+// Pressionar encolhe 3% (retorno imediato do clique); cor e escala com
+// propriedades explícitas, 150ms.
 const BASE =
   "inline-flex select-none items-center justify-center gap-2 rounded-lg text-center font-semibold " +
-  "transition-colors duration-150 ease-padrao " +
+  "transition-[background-color,border-color,color,transform] duration-150 ease-padrao active:scale-[0.97] disabled:active:scale-100 " +
   "disabled:cursor-not-allowed disabled:opacity-55 aria-disabled:cursor-not-allowed aria-disabled:opacity-55";
 
 const VARIANTE: Record<VarianteBotao, string> = {

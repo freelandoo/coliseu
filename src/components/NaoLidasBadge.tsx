@@ -47,9 +47,9 @@ export function NaoLidasBadge() {
 
   if (naoLidas <= 0) return null;
   return (
-    // Mora no menu escuro: chip rosa com texto vinho (8:1), legível também
-    // sobre o item ativo, que é rubi.
-    <span className="flex h-5 min-w-5 items-center justify-center rounded-md bg-destaque px-1 text-xs font-semibold tabular-nums text-bg-deep">
+    // Mora no menu escuro: chip vermelho com texto branco (7:1); o anel claro
+    // separa o chip do item ativo, que também é vermelho.
+    <span className="flex h-5 min-w-6 items-center justify-center bg-brand px-1.5 text-xs font-semibold tabular-nums text-white ring-1 ring-white/35">
       {naoLidas}
     </span>
   );

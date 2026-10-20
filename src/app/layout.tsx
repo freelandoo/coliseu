@@ -1,6 +1,20 @@
 import type { Metadata, Viewport } from "next";
-import { Oswald, Sora } from "next/font/google";
+import { Anton, IBM_Plex_Mono, Oswald, Sora } from "next/font/google";
 import "./globals.css";
+
+// Manchete do tabloide: só nos títulos editoriais grandes (nunca em dado).
+const anton = Anton({
+  variable: "--font-anton",
+  subsets: ["latin"],
+  weight: "400",
+});
+
+// Metadados (categoria, trilha, data da agenda) — uso moderado.
+const plexMono = IBM_Plex_Mono({
+  variable: "--font-plex-mono",
+  subsets: ["latin"],
+  weight: ["400", "500"],
+});
 
 const oswald = Oswald({
   variable: "--font-oswald",
@@ -33,8 +47,8 @@ export const metadata: Metadata = {
 export const viewport: Viewport = {
   width: "device-width",
   initialScale: 1,
-  // cor da barra do navegador/sistema = fundo do shell (rubi muito escuro)
-  themeColor: "#21070f",
+  // cor da barra do navegador/sistema = fundo do shell (preto)
+  themeColor: "#09090b",
   viewportFit: "cover",
 };
 
@@ -46,7 +60,7 @@ export default function RootLayout({
   return (
     <html
       lang="pt-BR"
-      className={`${oswald.variable} ${sora.variable} h-full antialiased`}
+      className={`${anton.variable} ${plexMono.variable} ${oswald.variable} ${sora.variable} h-full antialiased`}
     >
       <body className="min-h-full">{children}</body>
     </html>

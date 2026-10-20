@@ -78,7 +78,7 @@ export function Campo({
         </p>
       )}
       {erro && (
-        <p id={idErro} className="mt-1.5 flex items-start gap-1.5 text-xs font-medium text-danger">
+        <p id={idErro} className="mt-1.5 flex items-start gap-1.5 text-xs font-medium text-alerta">
           <IconeAlerta />
           <span>{erro}</span>
         </p>
@@ -93,7 +93,7 @@ export function Campo({
  */
 export function MensagemErro({ children, className }: { children: ReactNode; className?: string }) {
   return (
-    <p role="alert" className={cn("flex items-start gap-1.5 text-sm text-danger", className)}>
+    <p role="alert" className={cn("flex items-start gap-1.5 text-sm text-alerta", className)}>
       <IconeAlerta />
       <span>{children}</span>
     </p>
