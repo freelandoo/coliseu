@@ -137,15 +137,20 @@ async function tickInterno() {
             console.log(`[${ts()}] [agent] SHUTDOWN recebido — encerrando o agente de simulação`);
             process.exit(0);
           }
+          // ENROLL devolve a foto capturada: vai no ack (servidor ≥ 2026-10-20 aceita `result`).
+          let resultado: { userImage?: string } | undefined;
           if (c.type === "ENABLE" && p.externalUserId) await device.enableUser(p.externalUserId);
           else if (c.type === "DISABLE" && p.externalUserId) await device.disableUser(p.externalUserId);
           // enabled default FALSE: provisionar não pode liberar a catraca — o ENABLE
           // emitido pela política é quem habilita (aluno só entra depois de pago).
           else if (c.type === "UPSERT_USER" && p.externalUserId) await device.upsertUser({ externalUserId: p.externalUserId, nome: p.nome ?? p.externalUserId, enabled: p.enabled === true });
           else if (c.type === "REMOVE_USER" && p.externalUserId) await device.removeUser(p.externalUserId);
-          else if (c.type === "ENROLL" && p.externalUserId) await device.startBiometricEnrollment({ externalUserId: p.externalUserId, type: p.type ?? "FACE" });
+          else if (c.type === "ENROLL" && p.externalUserId) {
+            const r = await device.startBiometricEnrollment({ externalUserId: p.externalUserId, type: p.type ?? "FACE" });
+            if (r.userImage) resultado = { userImage: r.userImage };
+          }
           else if (c.type === "OPEN") await device.openTurnstile({ direction: p.direction ?? "ENTRY" });
-          await ackCommand(c.id, "SUCCEEDED");
+          await ackCommand(c.id, "SUCCEEDED", undefined, resultado);
           console.log(`[agent] comando ${c.type} ok`);
         } catch (e) {
           const msg = e instanceof Error ? e.message : String(e);

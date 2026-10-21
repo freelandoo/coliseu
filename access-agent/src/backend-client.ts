@@ -18,8 +18,10 @@ export async function pullCommands(deviceId: string): Promise<Array<{ id: string
   return r.json();
 }
 
-export async function ackCommand(commandId: string, status: "SUCCEEDED" | "FAILED", error?: string) {
-  const r = await fetch(`${BASE}/api/agent/commands/ack`, { method: "POST", headers: headers(), body: JSON.stringify({ commandId, status, error }) });
+export async function ackCommand(
+  commandId: string, status: "SUCCEEDED" | "FAILED", error?: string, result?: { userImage?: string },
+) {
+  const r = await fetch(`${BASE}/api/agent/commands/ack`, { method: "POST", headers: headers(), body: JSON.stringify({ commandId, status, error, ...(result ? { result } : {}) }) });
   if (!r.ok) throw new Error(`ack HTTP ${r.status}`);
 }
 

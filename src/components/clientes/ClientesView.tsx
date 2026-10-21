@@ -17,7 +17,16 @@ import {
 import { Botao } from "@/components/ui/Botao";
 import { classeCampoEmLinha } from "@/components/ui/Campo";
 import { formatData } from "@/lib/mock-data";
-import { comParametro, lerEnum, SITUACOES_ALUNO, type SituacaoAluno } from "@/lib/navegacao";
+import {
+  comParametro,
+  FILTROS_APP_ALUNO,
+  lerEnum,
+  SITUACOES_ALUNO,
+  type FiltroAppAluno,
+  type SituacaoAluno,
+} from "@/lib/navegacao";
+import { combinaFiltroApp } from "@/lib/freelandoo/rotulos";
+import { BarraTreino, FotoAluno } from "@/components/clientes/FreelandooAluno";
 import { consultaAlunosLembrada, lembrarConsultaAlunos } from "@/lib/memoria-navegacao";
 import { useCascata } from "@/lib/useCascata";
 
@@ -31,7 +40,44 @@ const CHIPS: { key: Filtro; label: string }[] = [
   { key: "cancelado", label: "Cancelados" },
 ];
 
+/** App de treinos (Freelandoo) — filtro independente da situação (`?app=`). */
+const CHIPS_APP: { key: FiltroAppAluno; label: string }[] = [
+  { key: "todos", label: "Todos" },
+  { key: "na_freelandoo", label: "Na Freelandoo" },
+  { key: "sem_conta", label: "Sem conta" },
+  { key: "falta_dado", label: "Falta dado" },
+  { key: "treino_vencido", label: "Treino vencido" },
+];
+
 const soDigitos = (s: string) => s.replace(/\D/g, "");
+
+/**
+ * Nome do aluno na lista. Conta ativa na Freelandoo vira linha rica: foto
+ * grande e a barrinha do treino. Aguardando aceite ganha só o selo.
+ */
+function NomeAluno({ p, children }: { p: Pessoa; children: React.ReactNode }) {
+  const conta = p.freelandoo;
+  if (conta?.estado === "ativa") {
+    return (
+      <span className="flex min-w-0 items-center gap-3">
+        <FotoAluno nome={p.nome} url={conta.fotoUrl} />
+        <span className="flex min-w-0 flex-col gap-1">
+          {children}
+          <BarraTreino venceEm={conta.treinoVenceEm} validadeDias={conta.treinoValidadeDias} />
+        </span>
+      </span>
+    );
+  }
+  if (conta?.estado === "aguardando_aceite") {
+    return (
+      <span className="flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1">
+        {children}
+        <Badge tone="info">Aguardando aceite</Badge>
+      </span>
+    );
+  }
+  return <>{children}</>;
+}
 
 export function situacaoDe(p: Pessoa): {
   rotulo: string;
@@ -72,6 +118,8 @@ export function ClientesView({
   // A busca pode ter CPF/telefone: fica só na memória da aba (memoria-navegacao).
   const situacaoUrl = useSearchParams().get("situacao");
   const filtro: Filtro = lerEnum(situacaoUrl, SITUACOES_ALUNO, "todos");
+  const appUrl = useSearchParams().get("app");
+  const filtroApp: FiltroAppAluno = lerEnum(appUrl, FILTROS_APP_ALUNO, "todos");
   const [busca, setBusca] = useState(() => consultaAlunosLembrada()?.busca ?? "");
   const buscaRef = useRef<HTMLInputElement>(null);
   const listaRef = useRef<HTMLDivElement>(null);
@@ -84,6 +132,14 @@ export function ClientesView({
       `${pathname}${comParametro(window.location.search.slice(1), "situacao", f, "todos")}`,
     );
     lembrarConsultaAlunos({ busca, situacao: f });
+  }
+
+  function setFiltroApp(f: FiltroAppAluno) {
+    window.history.replaceState(
+      null,
+      "",
+      `${pathname}${comParametro(window.location.search.slice(1), "app", f, "todos")}`,
+    );
   }
 
   function mudarBusca(b: string) {
@@ -133,6 +189,15 @@ export function ClientesView({
     return c;
   }, [pessoas]);
 
+  const contagemApp = useMemo(() => {
+    const agora = new Date();
+    const c = {} as Record<FiltroAppAluno, number>;
+    for (const chip of CHIPS_APP) {
+      c[chip.key] = pessoas.filter((p) => combinaFiltroApp(p.freelandoo, chip.key, agora)).length;
+    }
+    return c;
+  }, [pessoas]);
+
   // Botão de renovação/pagamento — compartilhado entre a tabela (desktop)
   // e os cards (mobile). Pendente vira checkout de balcão: confirma o
   // pagamento, ativa e libera a catraca.
@@ -161,6 +226,7 @@ export function ClientesView({
   const qd = soDigitos(busca);
   const visiveis = pessoas.filter((p) => {
     if (!combina(p, filtro)) return false;
+    if (!combinaFiltroApp(p.freelandoo, filtroApp)) return false;
     if (!q) return true;
     return (
       p.nome.toLowerCase().includes(q) ||
@@ -214,11 +280,42 @@ export function ClientesView({
         })}
       </div>
 
-      {(q || filtro !== "todos") && pessoas.length > 0 && (
+      <div role="group" aria-label="App de treinos (Freelandoo)" className="-mt-2 flex flex-wrap items-center gap-1.5 sm:gap-2">
+        <span className="mr-1 text-xs font-medium text-faint">App de treinos</span>
+        {CHIPS_APP.map((chip) => {
+          const ativo = filtroApp === chip.key;
+          return (
+            <button type="button"
+              key={chip.key}
+              onClick={() => setFiltroApp(chip.key)}
+              aria-pressed={ativo}
+              className={cn(
+                "flex min-h-8 items-center gap-1.5 rounded-lg border px-2.5 py-1 text-xs font-medium transition-colors sm:px-3",
+                ativo
+                  ? "border-brand/60 bg-brand-soft text-ink"
+                  : "border-border bg-surface text-muted hover:border-border-strong hover:text-ink",
+              )}
+            >
+              <span>{chip.label}</span>
+              <span
+                className={cn(
+                  "flex h-4 min-w-4 items-center justify-center rounded-md px-1 text-xs font-semibold",
+                  ativo ? "bg-brand text-white" : "bg-surface-2 text-muted",
+                )}
+              >
+                {contagemApp[chip.key]}
+              </span>
+            </button>
+          );
+        })}
+      </div>
+
+      {(q || filtro !== "todos" || filtroApp !== "todos") && pessoas.length > 0 && (
         <div role="status" className="-mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-muted">
           <span>
             {visiveis.length} de {pessoas.length} aluno{pessoas.length === 1 ? "" : "s"}
             {filtro !== "todos" && ` · ${CHIPS.find((c) => c.key === filtro)?.label}`}
+            {filtroApp !== "todos" && ` · ${CHIPS_APP.find((c) => c.key === filtroApp)?.label}`}
             {q && ` · busca “${busca.trim()}”`}
           </span>
           <Botao
@@ -227,6 +324,7 @@ export function ClientesView({
             onClick={() => {
               mudarBusca("");
               setFiltro("todos");
+              setFiltroApp("todos");
             }}
           >
             Limpar consulta
@@ -242,7 +340,9 @@ export function ClientesView({
               ? "Nenhum aluno cadastrado ainda. Matricule um lead pela Captação ou use “+ Nova matrícula”."
               : q
                 ? `Ninguém encontrado para “${busca.trim()}”${filtro !== "todos" ? " nesta situação" : ""}. A busca cobre nome, código, CPF e telefone.`
-                : "Nenhum aluno nesta situação."}
+                : filtroApp !== "todos"
+                  ? "Nenhum aluno neste filtro do app de treinos."
+                  : "Nenhum aluno nesta situação."}
           </p>
         ) : (
           <>
@@ -253,14 +353,16 @@ export function ClientesView({
               return (
                 <div key={p.id} className="flex flex-col gap-2 px-4 py-3">
                   <div className="min-w-0">
-                    <Link
-                      href={`/matriculados/${p.id}`}
-                      data-ficha-id={p.id}
-                      onClick={() => aoAbrirFicha(p.id)}
-                      className="block truncate rounded text-sm font-medium text-ink underline-offset-2 hover:text-destaque hover:underline"
-                    >
-                      {p.nome}
-                    </Link>
+                    <NomeAluno p={p}>
+                      <Link
+                        href={`/matriculados/${p.id}`}
+                        data-ficha-id={p.id}
+                        onClick={() => aoAbrirFicha(p.id)}
+                        className="block min-w-0 truncate rounded text-sm font-medium text-ink underline-offset-2 hover:text-destaque hover:underline"
+                      >
+                        {p.nome}
+                      </Link>
+                    </NomeAluno>
                     <p className="text-xs text-muted">
                       {p.telefone || p.email || "—"}
                       <span className="ml-2 font-mono text-faint">{p.codigo}</span>
@@ -303,14 +405,16 @@ export function ClientesView({
                     >
                       <td className="px-4 py-3 font-mono text-xs text-faint">{p.codigo}</td>
                       <td className="px-4 py-3 font-medium text-ink">
-                        <Link
-                          href={`/matriculados/${p.id}`}
-                          data-ficha-id={p.id}
-                          onClick={() => aoAbrirFicha(p.id)}
-                          className="rounded underline-offset-2 hover:text-destaque hover:underline"
-                        >
-                          {p.nome}
-                        </Link>
+                        <NomeAluno p={p}>
+                          <Link
+                            href={`/matriculados/${p.id}`}
+                            data-ficha-id={p.id}
+                            onClick={() => aoAbrirFicha(p.id)}
+                            className="rounded underline-offset-2 hover:text-destaque hover:underline"
+                          >
+                            {p.nome}
+                          </Link>
+                        </NomeAluno>
                       </td>
                       <td className="px-4 py-3 text-ink">{planoDe(p)}</td>
                       <td className="px-4 py-3 text-muted">

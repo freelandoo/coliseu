@@ -1,6 +1,10 @@
 import { prisma } from "@/lib/db";
 import type { DeviceCommand } from "@prisma/client";
 import { ABRIR_VALIDADE_MS } from "@/lib/repositories/access";
+// Só enfileiram (banco): a catraca nunca alcança rede nem o envio de WhatsApp
+// — ver lib/freelandoo/envio-automatico.test.ts.
+import { avaliarContaFreelandooSemFalhar } from "@/lib/freelandoo/gatilhos";
+import { enfileirarFotoFreelandoo } from "@/lib/freelandoo/tarefas";
 
 /**
  * Quanto do histórico de heartbeats fica guardado. Nada lê esse histórico (o
@@ -87,6 +91,8 @@ export async function entregarComandos(deviceId: string): Promise<DeviceCommand[
 
 export async function ackComando(input: {
   commandId: string; status: "SUCCEEDED" | "FAILED"; error?: string;
+  /** ENROLL concluído: foto capturada pelo iDFace (jpeg em base64), agente ≥ 0.5.0. */
+  userImage?: string;
 }): Promise<void> {
   const cmd = await prisma.deviceCommand.findUnique({ where: { id: input.commandId } });
   if (!cmd) return;
@@ -125,6 +131,16 @@ export async function ackComando(input: {
       const { recalcularAcessoDePessoa } = await import("@/lib/access/outbox");
       try { await recalcularAcessoDePessoa(cmd.personId); } catch (e) {
         console.error("[ack] recalcular pós-ENROLL falhou:", e);
+      }
+      // Foto do cadastro vai para a Freelandoo (Q7): fica na tarefa só até o
+      // envio. Antes descartada; o Coliseu guarda apenas a URL que volta.
+      if (input.userImage) {
+        try {
+          const ok = await enfileirarFotoFreelandoo(cmd.personId, input.userImage);
+          if (!ok) console.warn("[ack] foto do ENROLL não enfileirada (Freelandoo não configurada, ou foto vazia, grande demais ou inválida)");
+        } catch (e) {
+          console.error("[ack] enfileirar foto Freelandoo falhou:", e);
+        }
       }
     } else {
       await prisma.accessCredential.updateMany({
@@ -188,6 +204,9 @@ export async function ingestarEvento(input: {
       },
       data: { ultimaPresenca: quando },
     });
+    // Aluno antigo ganha a conta na 1ª passagem válida (Q2). Só enfileira;
+    // sem a integração configurada nem consulta o banco.
+    await avaliarContaFreelandooSemFalhar(personId);
   }
   return { created: true };
 }

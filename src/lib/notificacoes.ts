@@ -14,7 +14,9 @@ export type TipoNotificacao =
   | "pagamento_recebido"
   | "pagamento_vencido"
   | "pagamento_estornado"
-  | "pagamento_chargeback";
+  | "pagamento_chargeback"
+  | "freelandoo_falhou"
+  | "freelandoo_chave_invalida";
 
 export interface NovaNotificacao {
   tipo: TipoNotificacao;

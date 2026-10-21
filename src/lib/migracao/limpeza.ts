@@ -4,6 +4,8 @@
  * docs/superpowers/plans/2026-10-05-importacao-cloudgym-analytics.md.
  */
 
+import { cpfValido } from "@/lib/cpf";
+
 /** Formas de pagamento do CloudGym, confirmadas no código das telas do painel. */
 export const FORMAS_PAGAMENTO = {
   CC: "Débito Recorrente",
@@ -53,17 +55,8 @@ export function planoAposentado(nome: string, status: string | null | undefined)
   return (status ?? "").trim() === "deleted" || /^w\s+nao\s+usar\b/.test(chaveNome(nome));
 }
 
-/** Dígitos verificadores do CPF. Sequências repetidas (111…) são inválidas. */
-export function cpfValido(digitos: string): boolean {
-  if (!/^\d{11}$/.test(digitos) || /^(\d)\1{10}$/.test(digitos)) return false;
-  const dv = (n: number) => {
-    let soma = 0;
-    for (let i = 0; i < n; i++) soma += Number(digitos[i]) * (n + 1 - i);
-    const resto = (soma * 10) % 11;
-    return resto === 10 ? 0 : resto;
-  };
-  return dv(9) === Number(digitos[9]) && dv(10) === Number(digitos[10]);
-}
+// cpfValido subiu para lib/cpf.ts (também usado pela elegibilidade Freelandoo).
+export { cpfValido };
 
 /** Só dígitos, zero à esquerda até 11, DV conferido. null quando vazio ou inválido. */
 export function limparCpf(bruto: string | null | undefined): string | null {

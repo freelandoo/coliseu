@@ -46,6 +46,7 @@ Ver `.env.example`. Obrigatórias em produção:
 - `ASAAS_ENV=production` + `ASAAS_API_KEY` + `ASAAS_WEBHOOK_TOKEN` — sem elas o billing fica em modo demonstração (ver **Pagamentos (Asaas)**)
 - `FREELANDOO_API_TOKEN` — fallback opcional; o token da integração Freelandoo agora é gerado/rotacionado pelo ADMIN no card "Integração Freelandoo" do painel (tabela `ApiToken` tem precedência sobre esta env). A env só é usada enquanto nenhum token tiver sido gerado pelo painel.
 - `EVOLUTION_URL` + `EVOLUTION_API_KEY` + `WHATSAPP_WEBHOOK_SECRET` + `PUBLIC_APP_URL` — atendimento no WhatsApp; sem elas a Captação mostra "WhatsApp não configurado" e o resto do app segue normal
+- `FREELANDOO_API_URL` + `FREELANDOO_PARTNER_KEY` — contas do app de treinos (Coliseu → Freelandoo, ver **Acesso Freelandoo**). Sem elas nada é enfileirado, a fila e a sincronização não rodam e a ficha mostra "integração não configurada"
 
 ## Pagamentos (Asaas)
 
@@ -153,6 +154,38 @@ O webhook é registrado sozinho na Evolution quando a recepção clica em
 - Nenhuma mensagem sai sem clique da recepção. Há teste de arquitetura
   (`src/lib/whatsapp/sem-automacao.test.ts`) que falha se alguém ligar a ingestão
   ao envio.
+
+## Acesso Freelandoo (contas do app de treinos)
+
+Design: `docs/superpowers/specs/2026-10-20-coliseu-freelandoo-acesso-design.md`.
+É o sentido Coliseu → Freelandoo (API de parceiro `/partner/v1`); a Gym
+Provider API antiga (Freelandoo → Coliseu, `FREELANDOO_API_TOKEN`) segue igual.
+
+1. Na Freelandoo, o dono da academia gera a **chave de parceiro** em
+   `/academias` (mostrada uma vez).
+2. No serviço `coliseu` do Railway: `FREELANDOO_API_URL` (ex.:
+   `https://freelandoo-backend-production.up.railway.app`, sem barra no fim) e
+   `FREELANDOO_PARTNER_KEY` (a chave do passo 1). Redeploy.
+3. Migration `20261020120000_freelandoo_acesso` (campos `freelandoo*` em
+   `Person` + tabela `TarefaFreelandoo`) roda no `prisma migrate deploy` do
+   preDeploy.
+
+Como funciona:
+- Aluno antigo ganha a conta na 1ª passagem válida pela catraca; aluno novo,
+  na matrícula; qualquer um pelo botão **Criar acesso** na ficha. Os gatilhos só
+  enfileiram — a catraca nunca espera a Freelandoo.
+- O agendador processa a fila **a cada minuto** (até 20 tarefas; falha repete em
+  1 min, na 10ª vira "falhou" com aviso no sino) e sincroniza foto/situação/treino
+  **a cada 10 min** (e ao abrir a ficha). Como todo o agendador, só roda em
+  produção ou com `AGENDADOR_DEV=1`.
+- O link de primeiro acesso sai **uma vez** no WhatsApp da academia
+  (`lib/freelandoo/boas-vindas.ts`) — única exceção ao "nada sai sozinho",
+  travada por `src/lib/freelandoo/envio-automatico.test.ts`. Sem telefone
+  válido: a conta é criada e a ficha mostra "acesso não enviado".
+- Chave recusada (401/403): a fila para inteira e o painel do admin mostra o
+  aviso em **Integração API (Freelandoo)**. Troque a env; as tarefas esperam.
+- A foto do cadastro de face vem no ack do ENROLL (agente **≥ 0.5.0**) e fica na
+  tarefa só até subir para a Freelandoo.
 
 ## Agente da catraca (recepção da academia)
 

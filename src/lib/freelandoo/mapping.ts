@@ -5,9 +5,8 @@ export type GymMembershipStatus = "active" | "overdue" | "canceled" | "expired" 
 /** Contrato Gym Provider API — status de pagamento expostos à Freelandoo. */
 export type GymPaymentStatus = "pending" | "paid" | "overdue" | "canceled" | "refunded";
 
-export function normalizarCpf(raw: string | null | undefined): string {
-  return String(raw ?? "").replace(/\D/g, "");
-}
+// normalizarCpf mora em lib/cpf.ts; reexportado para quem já importava daqui.
+export { normalizarCpf } from "@/lib/cpf";
 
 export function mapMembershipStatus(s: MembershipStatus): GymMembershipStatus {
   switch (s) {

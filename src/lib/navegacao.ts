@@ -201,6 +201,10 @@ export type VisaoAgenda = (typeof VISOES_AGENDA)[number];
 export const SITUACOES_ALUNO = ["todos", "ativo", "pendente", "inadimplente", "cancelado"] as const;
 export type SituacaoAluno = (typeof SITUACOES_ALUNO)[number];
 
+/** Filtro do app de treinos na lista de alunos (`?app=`). */
+export const FILTROS_APP_ALUNO = ["todos", "na_freelandoo", "sem_conta", "falta_dado", "treino_vencido"] as const;
+export type FiltroAppAluno = (typeof FILTROS_APP_ALUNO)[number];
+
 /**
  * Ids opacos que podem viajar na URL (pessoa, conversa). Qualquer outra coisa
  * vira `null` — não chega a consulta nem a montar link.

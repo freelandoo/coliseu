@@ -18,6 +18,8 @@ import { contarAlunosAtivosRepo } from "@/lib/repositories/pessoas";
 import { conversasComNaoLidasRepo, paginaConversasRepo, totaisNaoLidasRepo } from "@/lib/repositories/whatsapp";
 import { statusTokenFreelandoo } from "@/lib/freelandoo/token";
 import { FreelandooTokenCard } from "@/components/painel/FreelandooTokenCard";
+import { freelandooConfigurado } from "@/lib/freelandoo/cliente";
+import { situacaoChaveFreelandoo } from "@/lib/freelandoo/situacao";
 import { CentralAgenda } from "@/components/painel/CentralAgenda";
 import { CentralAtendimento } from "@/components/painel/CentralAtendimento";
 import { CarimboData } from "@/components/painel/CarimboData";
@@ -249,15 +251,52 @@ async function Fechamento() {
 }
 
 async function Integracoes() {
-  const status = await tentar("token Freelandoo", statusTokenFreelandoo);
-  if (status === null) {
-    return <p className="px-1 pt-3 text-sm text-muted">Situação do token indisponível agora.</p>;
-  }
+  const [status, chave] = await Promise.all([
+    tentar("token Freelandoo", statusTokenFreelandoo),
+    tentar("chave de parceiro Freelandoo", () => situacaoChaveFreelandoo(freelandooConfigurado())),
+  ]);
   return (
-    <div className="pt-3">
-      <FreelandooTokenCard inicial={status} />
+    <div className="flex flex-col gap-3 pt-3">
+      <AvisoAcessoFreelandoo chave={chave} />
+      {status === null ? (
+        <p className="px-1 text-sm text-muted">Situação do token indisponível agora.</p>
+      ) : (
+        <FreelandooTokenCard inicial={status} />
+      )}
     </div>
   );
+}
+
+/**
+ * Contas do app de treinos (Coliseu → Freelandoo). A fila para inteira quando
+ * a chave de parceiro é recusada — o aviso fica aqui até a próxima chamada
+ * aceita.
+ */
+function AvisoAcessoFreelandoo({ chave }: { chave: Awaited<ReturnType<typeof situacaoChaveFreelandoo>> | null }) {
+  if (chave === null) {
+    return <p className="px-1 text-sm text-muted">Situação da chave de parceiro indisponível agora.</p>;
+  }
+  if (!chave.configurada) {
+    return (
+      <p className="px-1 text-sm text-muted">
+        Contas do app de treinos: integração não configurada (FREELANDOO_API_URL e FREELANDOO_PARTNER_KEY).
+      </p>
+    );
+  }
+  if (chave.invalida) {
+    return (
+      <div role="alert" className="rounded-md border border-danger/30 bg-danger-soft px-4 py-3 text-sm text-ink">
+        <p className="font-semibold text-danger">Chave de parceiro da Freelandoo recusada</p>
+        <p className="mt-1 text-muted">
+          A fila de contas do app de treinos está parada
+          {chave.desde ? ` desde ${new Date(chave.desde).toLocaleString("pt-BR", { timeZone: FUSO_ACADEMIA, dateStyle: "short", timeStyle: "short" })}` : ""}
+          . Gere uma chave nova em /academias na Freelandoo e troque FREELANDOO_PARTNER_KEY no Railway; nada se perde, as
+          tarefas esperam na fila.
+        </p>
+      </div>
+    );
+  }
+  return <p className="px-1 text-sm text-muted">Contas do app de treinos: chave de parceiro aceita.</p>;
 }
 
 /**

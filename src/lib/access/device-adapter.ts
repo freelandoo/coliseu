@@ -43,6 +43,8 @@ export interface EnrollmentInput {
 export interface EnrollmentResult {
   sessionId: string;
   status: "IN_PROGRESS" | "ENROLLED" | "FAILED";
+  /** Foto capturada (jpeg em base64), quando o aparelho devolve — vai no ack do ENROLL. */
+  userImage?: string;
 }
 
 /** Contrato independente de fabricante. FakeDeviceAdapter (Fase 4) e ControlId (Fase 5). */

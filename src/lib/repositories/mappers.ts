@@ -66,6 +66,16 @@ export function toPessoa(p: PPerson & { memberships: MembershipComAutor[] }): Pe
             numero: p.numero ?? undefined,
           }
         : undefined,
+    freelandoo:
+      p.freelandooEstado && p.freelandooEstado !== "sem_conta"
+        ? {
+            estado: p.freelandooEstado,
+            fotoUrl: p.freelandooFotoUrl ?? undefined,
+            treinoNome: p.freelandooTreinoNome ?? undefined,
+            treinoVenceEm: p.freelandooTreinoVenceEm?.toISOString(),
+            treinoValidadeDias: p.freelandooTreinoValidadeDias ?? undefined,
+          }
+        : undefined,
   };
 }
 

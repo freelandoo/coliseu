@@ -8,6 +8,7 @@ import { situacaoDe } from "@/components/clientes/ClientesView";
 import { AcessoDoCadastro, type AcessoDaPessoa } from "@/components/clientes/AcessoDoCadastro";
 import { PagamentosDoAluno } from "@/components/clientes/PagamentosDoAluno";
 import { CatracaDoAluno } from "@/components/clientes/CatracaDoAluno";
+import { FreelandooDoAluno } from "@/components/clientes/FreelandooDoAluno";
 import { CamposCadastro } from "@/components/clientes/CamposCadastro";
 import { RemoverPessoa } from "@/components/clientes/RemoverPessoa";
 import { RenovarModal } from "@/components/matriculados/RenovarModal";
@@ -301,6 +302,8 @@ export function FichaCliente({
       </div>
 
       {!ehLead && <CatracaDoAluno personId={pessoa.id} />}
+
+      {!ehLead && <FreelandooDoAluno personId={pessoa.id} nome={pessoa.nome} />}
 
       {!ehLead && <PagamentosDoAluno personId={pessoa.id} podeGerir={podeGerirAcesso} />}
 

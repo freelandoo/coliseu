@@ -1,5 +1,14 @@
 [
   {
+    "version": "0.5.0",
+    "date": "2026-10-20",
+    "itens": [
+      "Cadastro de face: a foto capturada pelo iDFace passa a seguir para o servidor junto com a confirmação do cadastro (antes era descartada). O Coliseu repassa a foto para a conta do aluno no app de treinos da Freelandoo; o Coliseu não guarda a imagem.",
+      "Servidor antigo ignora o campo novo: atualizar o agente antes ou depois do CRM não quebra nada.",
+      "ATUALIZAR na recepção: copie o coliseu-agent.cjs do kit novo como coliseu-agent.new.cjs e rode o update.bat (como administrador). O .env atual continua valendo."
+    ]
+  },
+  {
     "version": "0.4.0",
     "date": "2026-10-06",
     "itens": [

@@ -140,7 +140,9 @@ export class ControlIdDeviceAdapter implements AccessDeviceAdapter {
         : (res.error ?? "erro desconhecido");
       throw new Error(`cadastro facial falhou no aparelho: ${motivo}`);
     }
-    return { sessionId: `${input.externalUserId}:${type}`, status: "ENROLLED" };
+    // A foto da captura segue no ack (servidor repassa à Freelandoo). Antes era descartada.
+    const foto = typeof user_image === "string" && user_image.length > 0 ? user_image : undefined;
+    return { sessionId: `${input.externalUserId}:${type}`, status: "ENROLLED", ...(foto ? { userImage: foto } : {}) };
   }
 
   async cancelBiometricEnrollment(_sessionId: string): Promise<void> {

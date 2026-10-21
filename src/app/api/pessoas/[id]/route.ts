@@ -11,6 +11,7 @@ import { cancelarAssinaturasAnteriores } from "@/lib/billing/cobrancas";
 import { prisma } from "@/lib/db";
 import type { Pessoa } from "@/lib/types";
 import { exigirSessaoApi } from "@/lib/auth/api-guard";
+import { avaliarContaFreelandooSemFalhar } from "@/lib/freelandoo/gatilhos";
 
 type Ctx = { params: Promise<{ id: string }> };
 
@@ -93,6 +94,10 @@ export async function PATCH(req: Request, { params }: Ctx) {
     if (!pessoa) {
       return NextResponse.json({ erro: "Pessoa não encontrada" }, { status: 404 });
     }
+
+    // Aluno novo ganha a conta na Freelandoo na matrícula (Q2). Só enfileira:
+    // a matrícula não espera a Freelandoo e não falha por causa dela.
+    await avaliarContaFreelandooSemFalhar(id);
 
     // A assinatura nova já existe: as anteriores param de cobrar (senão o
     // aluno pagaria duas mensalidades). Falha aqui não desfaz a matrícula.

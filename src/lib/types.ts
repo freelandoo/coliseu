@@ -3,6 +3,8 @@
 // Espelha o fluxograma: Captação → Matrícula → Cobrança → Retenção
 // ============================================================
 
+import type { EstadoFreelandoo } from "@/lib/freelandoo/rotulos";
+
 export type Origem = "whatsapp" | "redes" | "balcao" | "indicacao";
 
 export const ORIGEM_LABEL: Record<Origem, string> = {
@@ -170,6 +172,17 @@ export interface Pessoa {
   // ficha opcional
   dataNascimento?: string;
   endereco?: Endereco;
+  /** Conta no app de treinos (Freelandoo). Ausente = sem conta. */
+  freelandoo?: FreelandooResumo;
+}
+
+/** Cópia local da conta Freelandoo, para a lista de alunos. */
+export interface FreelandooResumo {
+  estado: EstadoFreelandoo;
+  fotoUrl?: string;
+  treinoNome?: string;
+  treinoVenceEm?: string; // ISO
+  treinoValidadeDias?: number;
 }
 
 /** Dados mínimos para criar um cadastro (entra como lead novo). */

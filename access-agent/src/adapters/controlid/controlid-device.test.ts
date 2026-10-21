@@ -139,6 +139,28 @@ test("enroll facial: síncrono com captura automática; sucesso = ENROLLED", asy
   assert.equal(enroll!.body.countdown, 3);
 });
 
+test("enroll facial: a foto da captura (user_image) volta no resultado, para o ack", async () => {
+  installFetch((path) => {
+    if (path === "/login.fcgi") return { json: { session: "S1" } };
+    if (path === "/remote_enroll.fcgi") return { json: { success: true, user_id: 1001, user_image: "/9j/4AAQSkZJRg==" } };
+    return { json: {} };
+  });
+  const a = newAdapter();
+  const r = await a.startBiometricEnrollment({ externalUserId: "1001", type: "FACE" });
+  assert.equal(r.status, "ENROLLED");
+  assert.equal(r.userImage, "/9j/4AAQSkZJRg==");
+});
+
+test("enroll facial: sem user_image, o resultado não inventa foto", async () => {
+  installFetch((path) => {
+    if (path === "/login.fcgi") return { json: { session: "S1" } };
+    if (path === "/remote_enroll.fcgi") return { json: { success: true } };
+    return { json: {} };
+  });
+  const r = await newAdapter().startBiometricEnrollment({ externalUserId: "1001", type: "FACE" });
+  assert.equal(r.userImage, undefined);
+});
+
 test("enroll facial: FACE_EXISTS vira erro legível (face legada no aparelho)", async () => {
   installFetch((path) => {
     if (path === "/login.fcgi") return { json: { session: "S1" } };

@@ -12,6 +12,13 @@ import { expect, test } from "vitest";
  *
  * Se este teste falhar, alguém ligou os dois lados. Isso pode ser legítimo — mas
  * é uma decisão de produto, e tem que ser tomada de propósito.
+ *
+ * Decisão de 2026-10-20 (acesso Freelandoo, Q4): única exceção à regra "nada é
+ * enviado sozinho" — a mensagem de boas-vindas com o link de primeiro acesso,
+ * uma vez por aluno, em `lib/freelandoo/boas-vindas.ts`, disparada pela fila
+ * no agendador (nunca por mensagem recebida). Travada em
+ * `lib/freelandoo/envio-automatico.test.ts`. Esta promessa aqui continua
+ * igual: a ingestão do WhatsApp não alcança envio nenhum.
  */
 
 const RAIZ = resolve(__dirname, "../..");

@@ -232,6 +232,22 @@ model Person {
   inativadoEm      DateTime?    @db.Date
   criadoEm         DateTime     @default(now())
 
+  /// Acesso Freelandoo (2026-10-20): conta no app de treinos criada pelo
+  /// Coliseu via API de parceiro. Cópia local do que a Freelandoo devolve —
+  /// a fonte de verdade da conta e do treino é ela.
+  freelandooUserId             String?          @unique
+  freelandooEstado             FreelandooEstado @default(sem_conta)
+  /// Motivo do "falta dado"/"menor"/conflito (ver lib/freelandoo/elegibilidade).
+  freelandooMotivo             String?
+  freelandooFotoUrl            String?
+  freelandooTreinoNome         String?
+  freelandooTreinoVenceEm      DateTime?
+  freelandooTreinoValidadeDias Int?
+  freelandooSincronizadoEm     DateTime?
+  /// Quando a mensagem com o link de 1º acesso saiu. Nulo com conta criada =
+  /// "acesso não enviado" na ficha.
+  freelandooAcessoEnviadoEm    DateTime?
+
   unit   Unit   @relation(fields: [unitId], references: [id])
   unitId String
 
@@ -256,8 +272,59 @@ model Person {
   checkIns        CheckIn[]
   npsRespostas    NpsResposta[]
 
+  tarefasFreelandoo TarefaFreelandoo[]
+
   @@index([unitId, fase])
   @@index([nome])
+}
+
+/// Situação da conta do aluno na Freelandoo (app de treinos).
+enum FreelandooEstado {
+  sem_conta
+  /// Falta CPF válido, e-mail ou data de nascimento — completar libera.
+  falta_dado
+  menor
+  aguardando_aceite
+  ativa
+  /// E-mail já usado por outra conta (CPF diferente) na Freelandoo.
+  conflito_email
+  /// 10 tentativas sem sucesso — "Tentar de novo" na ficha.
+  falhou
+}
+
+enum TarefaFreelandooTipo {
+  CRIAR_ACESSO
+  ENVIAR_FOTO
+  ENVIAR_BOAS_VINDAS
+  REENVIAR_LINK
+}
+
+enum TarefaFreelandooStatus {
+  PENDENTE
+  EM_ANDAMENTO
+  OK
+  FALHOU
+}
+
+/// Fila da integração Freelandoo (mesmo padrão de DeviceCommand): quem dispara
+/// (catraca, matrícula, ficha) só enfileira; o agendador processa 1/min.
+model TarefaFreelandoo {
+  id          String                 @id @default(cuid())
+  person      Person                 @relation(fields: [personId], references: [id], onDelete: Cascade)
+  personId    String
+  tipo        TarefaFreelandooTipo
+  status      TarefaFreelandooStatus @default(PENDENTE)
+  tentativas  Int                    @default(0)
+  proximaEm   DateTime               @default(now())
+  ultimoErro  String?
+  dedupeKey   String                 @unique
+  /// ENVIAR_FOTO: jpeg em base64 (apagado ao concluir); boas-vindas: o link.
+  payload     Json?
+  criadoEm    DateTime               @default(now())
+  concluidoEm DateTime?
+
+  @@index([status, proximaEm])
+  @@index([personId])
 }
 
 model Plan {
