@@ -28,7 +28,8 @@ export function primeiroNome(nome: string): string {
 export function textoBoasVindas(nome: string, link: string): string {
   const quem = primeiroNome(nome);
   return (
-    `Olá${quem ? `, ${quem}` : ""}! Seu acesso ao app de treinos da Academia Coliseu está pronto. ` +
+    `Olá${quem ? `, ${quem}` : ""}! A Coliseu agora oferece um app para controle dos seus treinos, ` +
+    `e oferece controle de macros, água e avaliação física. ` +
     `Toque para criar sua senha: ${link} (vale por 7 dias).`
   );
 }
