@@ -68,10 +68,16 @@ async function main() {
   const authToken = process.env.ASAAS_WEBHOOK_TOKEN;
   if (!authToken) throw new Error("ASAAS_WEBHOOK_TOKEN não configurado — o webhook ficaria aberto");
 
+  // O Asaas exige e-mail para avisar quando a fila do webhook pausa; sem env,
+  // vai o e-mail da própria conta.
+  const email =
+    process.env.ASAAS_WEBHOOK_EMAIL ||
+    (await api<{ email: string }>("GET", "/myAccount/commercialInfo")).email;
+
   const corpo = {
     name: "coliseu",
     url,
-    email: process.env.ASAAS_WEBHOOK_EMAIL || undefined,
+    email,
     enabled: true,
     interrupted: false,
     apiVersion: 3,
