@@ -4,6 +4,7 @@ import { SimuladorAcesso, type AlunoOpcao } from "@/components/acesso/SimuladorA
 import { CadastroFace } from "@/components/acesso/CadastroFace";
 import { NovaCatraca } from "@/components/acesso/NovaCatraca";
 import { PararAgente } from "@/components/acesso/PararAgente";
+import { TestarFicha } from "@/components/acesso/TestarFicha";
 import { LiberarCatraca } from "@/components/acesso/LiberarCatraca";
 import { HistoricoLiberacoes } from "@/components/acesso/HistoricoLiberacoes";
 import { dataHoraNaAcademia } from "@/lib/aula-experimental";
@@ -54,6 +55,7 @@ export function AcessoDashboard({ dados, podeCriar }: { dados: Dados; podeCriar:
               <div className="flex flex-col items-end gap-2">
                 <Badge tone={d.status === "ONLINE" ? "ok" : d.status === "MAINTENANCE" ? "warn" : "danger"}>{rotulo(STATUS_CATRACA, d.status)}</Badge>
                 {podeCriar && d.status === "ONLINE" && <PararAgente deviceId={d.id} />}
+                {podeCriar && <TestarFicha deviceId={d.id} />}
               </div>
               <LiberarCatraca deviceId={d.id} online={d.status === "ONLINE"} />
             </Card>
