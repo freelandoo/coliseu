@@ -123,3 +123,31 @@ Produção em 22/10: 944 alunos, 1.379 leads, 12.970 ex-alunos, 946 matrículas,
 
 O JS por tela não muda nesta etapa (o que pesa é o three.js da moldura, fora de
 escopo).
+
+## Etapa 3 — Atendimento (2026-10-22)
+
+Organização, sem mudar o que a tela faz. Os dois componentes gigantes viraram
+orquestradores pequenos; cada peça tem um arquivo e um trabalho:
+
+| Arquivo | antes | depois |
+|---|---|---|
+| `ConversaPainel.tsx` | 1173 l. | 500 l. (rascunho, envio, apagar, classificar) |
+| `AtendimentoInbox.tsx` | 800 l. | 409 l. (seleção, abas, ficha, celular) |
+
+- `captacao/conversa/`: `useHistorico` (abrir pelo fim, anteriores, novidades
+  por SSE + rede de segurança, rolagem e aviso de "mensagens novas"), `Bolha`
+  (mídia, citação, arrastar para citar), `BarraAcoes` (bandeiras, gavetas,
+  limpar/remover), `CaixaResposta` (convite, citação, anexo, áudio, texto) e
+  `ConfirmarExclusao`.
+- `captacao/inbox/`: `useListaConversas` (paginação, tempo real, ordem congelada
+  sob o ponteiro, nome de grupo), `useBuscaServidor`, `FiltrosLista` (abas,
+  bandeiras, campo de busca), `ListaConversas`, `CabecalhoConversa`.
+- `captacao/icones.tsx`: os SVGs que se repetiam em linha.
+- Teste: `e2e/atendimento.spec.ts` semeia uma instância própria com 3 conversas
+  (pessoa ligada a cadastro, lead com interesse, grupo) e apaga no fim. Cobre
+  abas Pessoas/Grupos, abrir histórico, citar + Esc, rascunho guardado ao trocar
+  de conversa, busca por palavra do histórico, filtro por bandeira, ficha ao
+  lado, confirmação de limpar (admin) e recepção sem limpar/remover.
+
+**Medição:** `/atendimento` 1516 KB → 1518 KB de JS (igual; a meta era
+organização). Tempo até a tela pronta local ~480 ms com 3 conversas.
