@@ -17,12 +17,17 @@ export interface ControlIdAdapterOptions extends ControlIdClientOptions {
   /** portal físico acionado (door=N em execute_actions). Default 1. */
   doorId?: number;
   /**
-   * Como o botão "Liberar catraca" destrava o giro. "auto" (default) tenta
-   * catra → sec_box → door e fica com a primeira que o aparelho aceitar.
-   * `door` sozinho só aciona o relé de porta — numa catraca ele registra
-   * "Interface WEB" mas NÃO destrava o braço (visto em campo, 06/10/2026).
+   * Como o botão "Liberar catraca" destrava o giro.
+   * - "autorizacao" (default): simula a entrada autorizada de um usuário reservado
+   *   (remote_user_authorization). É o único jeito que gira a catraca da academia —
+   *   o aparelho só destrava pelo fluxo de identificação (visto em campo, 23/10/2026);
+   *   catra/sec_box/door são aceitos pela API, batem o relé e o braço não solta.
+   * - "auto": tenta catra → sec_box → door e fica com a primeira que o aparelho aceitar.
+   * - "catra" | "sec_box" | "door": só essa ação.
    */
-  openAction?: "auto" | "catra" | "sec_box" | "door";
+  openAction?: OpenAction;
+  /** id do usuário reservado da liberação no aparelho. Default 999999999. */
+  openUserId?: number;
   /** sentido liberado na ação catra: clockwise | anticlockwise | both. Default both. */
   catraAllow?: string;
   /** nº máximo de access_logs puxados por ciclo. Default 100. */
@@ -35,14 +40,24 @@ export interface ControlIdAdapterOptions extends ControlIdClientOptions {
  * Driver real do Control iD iDFace (Fase 5). Implementa o mesmo contrato
  * AccessDeviceAdapter do FakeDeviceAdapter — o loop do agente não muda.
  */
+type AcaoExecute = "catra" | "sec_box" | "door";
+export type OpenAction = "autorizacao" | "auto" | AcaoExecute;
+
+/** Fora da faixa dos alunos (>12M, max+1) e dos funcionários do CloudGym (negativos). */
+export const OPEN_USER_ID_PADRAO = 999_999_999;
+const OPEN_USER_NOME = "Visitante";
+
 export class ControlIdDeviceAdapter implements AccessDeviceAdapter {
   private readonly client: ControlIdClient;
   private readonly accessRuleId: number;
   private readonly doorId: number;
-  private readonly openAction: "auto" | "catra" | "sec_box" | "door";
+  private readonly openAction: OpenAction;
+  private readonly openUserId: number;
+  /** Usuário reservado já garantido no aparelho nesta execução. */
+  private usuarioLiberacaoPronto = false;
   private readonly catraAllow: string;
   /** Ação que funcionou no modo auto — as próximas liberações vão direto nela. */
-  private acaoQueFunciona: "catra" | "sec_box" | "door" | null = null;
+  private acaoQueFunciona: AcaoExecute | null = null;
   private readonly logPageSize: number;
   private readonly mapOptions: MapOptions;
 
@@ -50,10 +65,15 @@ export class ControlIdDeviceAdapter implements AccessDeviceAdapter {
     this.client = new ControlIdClient(opts);
     this.accessRuleId = opts.accessRuleId ?? 1;
     this.doorId = opts.doorId ?? 1;
-    this.openAction = opts.openAction ?? "auto";
+    this.openAction = opts.openAction ?? "autorizacao";
+    this.openUserId = opts.openUserId ?? OPEN_USER_ID_PADRAO;
     this.catraAllow = opts.catraAllow ?? "both";
     this.logPageSize = opts.logPageSize ?? 100;
-    this.mapOptions = opts.mapOptions ?? {};
+    // A liberação gera um "Acesso concedido" do usuário reservado: não é giro de aluno.
+    this.mapOptions = {
+      ...opts.mapOptions,
+      remoteOpenUserIds: [...(opts.mapOptions?.remoteOpenUserIds ?? []), this.openUserId],
+    };
   }
 
   async testConnection(): Promise<DeviceHealth> {
@@ -202,7 +222,7 @@ export class ControlIdDeviceAdapter implements AccessDeviceAdapter {
     return { events, cursor: maxId > lastId ? String(maxId) : cursor };
   }
 
-  private acaoCatraca(tipo: "catra" | "sec_box" | "door") {
+  private acaoCatraca(tipo: AcaoExecute) {
     if (tipo === "catra") return { action: "catra", parameters: `allow=${this.catraAllow}` };
     // SecBox (módulo de acionamento externo): id fixo 65793, reason 3 = interface/API.
     if (tipo === "sec_box") return { action: "sec_box", parameters: "id=65793,reason=3" };
@@ -210,7 +230,8 @@ export class ControlIdDeviceAdapter implements AccessDeviceAdapter {
   }
 
   async openTurnstile(_direction: AccessDirection): Promise<void> {
-    const ordem: Array<"catra" | "sec_box" | "door"> =
+    if (this.openAction === "autorizacao") return this.liberarPorAutorizacao();
+    const ordem: AcaoExecute[] =
       this.openAction !== "auto"
         ? [this.openAction]
         : this.acaoQueFunciona
@@ -231,5 +252,28 @@ export class ControlIdDeviceAdapter implements AccessDeviceAdapter {
       }
     }
     throw ultimoErro instanceof Error ? ultimoErro : new Error("nenhuma ação de liberação aceita pelo aparelho");
+  }
+
+  /**
+   * Mesmo truque do CloudGym: o aparelho recebe uma entrada autorizada como se o
+   * usuário reservado tivesse sido reconhecido, mostra o nome na tela e destrava
+   * o giro pelo próprio fluxo de identificação.
+   */
+  private async liberarPorAutorizacao(): Promise<void> {
+    if (!this.usuarioLiberacaoPronto) {
+      await this.client.post("/create_or_modify_objects.fcgi", {
+        object: "users",
+        values: [{ id: this.openUserId, name: OPEN_USER_NOME, registration: String(this.openUserId) }],
+      });
+      this.usuarioLiberacaoPronto = true;
+    }
+    await this.client.post("/remote_user_authorization.fcgi", {
+      event: 7,
+      user_id: this.openUserId,
+      user_name: OPEN_USER_NOME,
+      user_image: false,
+      portal_id: 1,
+      actions: [],
+    });
   }
 }

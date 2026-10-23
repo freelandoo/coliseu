@@ -1,5 +1,14 @@
 [
   {
+    "version": "0.6.0",
+    "date": "2026-10-23",
+    "itens": [
+      "Botão \"Liberar catraca\" passa a girar a catraca de verdade: o agente registra no iDFace a entrada autorizada do usuário \"Visitante\" (criado sozinho no aparelho), o mesmo truque do aluno coringa do CloudGym. A tela do iDFace mostra \"Visitante\". Antes o agente mandava abrir o relé (catra/sec_box/door): o aparelho aceitava e batia o relé, mas essa catraca só destrava pelo fluxo de identificação.",
+      "As liberações do Visitante não contam como giro nem como presença de aluno; no CRM aparecem como \"Liberação remota (CRM)\".",
+      "Novo padrão IDFACE_OPEN_ACTION=autorizacao. ATUALIZAR na recepção: copie o coliseu-agent.cjs do kit novo como coliseu-agent.new.cjs e rode o update.bat (como administrador). No .env, APAGUE a linha IDFACE_OPEN_ACTION=sec_box (ou troque por autorizacao)."
+    ]
+  },
+  {
     "version": "0.5.1",
     "date": "2026-10-23",
     "itens": [
