@@ -7,9 +7,14 @@ function headers() {
   return h;
 }
 
-export async function heartbeat(deviceId: string, firmware: string) {
-  const r = await fetch(`${BASE}/api/agent/heartbeat`, { method: "POST", headers: headers(), body: JSON.stringify({ deviceId, firmware, connectivity: "ok" }) });
+/**
+ * Com `precisaCursor`, o servidor devolve o último log do aparelho que ele já
+ * recebeu (null se nenhum; servidor antigo nem manda o campo).
+ */
+export async function heartbeat(deviceId: string, firmware: string, precisaCursor = false): Promise<{ cursor?: string | null }> {
+  const r = await fetch(`${BASE}/api/agent/heartbeat`, { method: "POST", headers: headers(), body: JSON.stringify({ deviceId, firmware, connectivity: "ok", ...(precisaCursor ? { precisaCursor: true } : {}) }) });
   if (!r.ok) throw new Error(`heartbeat HTTP ${r.status}`);
+  return (await r.json().catch(() => ({}))) as { cursor?: string | null };
 }
 
 export async function pullCommands(deviceId: string): Promise<Array<{ id: string; type: string; payload: unknown }>> {

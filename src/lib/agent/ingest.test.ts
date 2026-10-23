@@ -34,6 +34,19 @@ test("registrarHeartbeat apaga o histórico do aparelho com mais de 7 dias", asy
   await prisma.deviceHeartbeat.delete({ where: { id: recente.id } });
 });
 
+test("registrarHeartbeat devolve o último log recebido só quando o agente pede (reinstalação)", async () => {
+  const unitId = (await prisma.accessDevice.findUniqueOrThrow({ where: { id: deviceId } })).unitId;
+  const evs = await Promise.all(["900000001", "900000123", "abc"].map((deviceEventId) =>
+    prisma.accessEvent.create({ data: { deviceId, unitId, deviceEventId, deviceTime: new Date(), decision: "ALLOWED" } })));
+
+  expect((await registrarHeartbeat({ deviceId })).cursor).toBeUndefined();
+  const r = await registrarHeartbeat({ deviceId, precisaCursor: true });
+  // ordem numérica (não texto) e ignora ids não numéricos
+  expect(Number(r.cursor)).toBeGreaterThanOrEqual(900000123);
+
+  await prisma.accessEvent.deleteMany({ where: { id: { in: evs.map((e) => e.id) } } });
+});
+
 test("entregarComandos marca PENDING como DISPATCHED", async () => {
   const cmd = await prisma.deviceCommand.create({ data: { deviceId, personId, type: "ENABLE", dedupeKey: `ing-${Date.now()}` } });
   const entregues = await entregarComandos(deviceId);

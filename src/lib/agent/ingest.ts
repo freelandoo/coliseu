@@ -16,7 +16,9 @@ export const RETENCAO_HEARTBEAT_MS = 7 * 86_400_000;
 
 export async function registrarHeartbeat(input: {
   deviceId: string; firmware?: string; connectivity?: string; clockDriftMs?: number;
-}): Promise<{ ok: boolean; erro?: string }> {
+  /** agente sem cursor local (reinstalado): devolve de onde retomar os giros */
+  precisaCursor?: boolean;
+}): Promise<{ ok: boolean; erro?: string; cursor?: string }> {
   // DEVICE_ID errado no .env do agente é o erro nº 1 de instalação: responde 404
   // claro em vez de estourar 500 (o agente mostra "heartbeat HTTP 404" no log).
   const existe = await prisma.accessDevice.findUnique({ where: { id: input.deviceId }, select: { id: true } });
@@ -35,7 +37,21 @@ export async function registrarHeartbeat(input: {
       where: { deviceId: input.deviceId, at: { lt: new Date(Date.now() - RETENCAO_HEARTBEAT_MS) } },
     }),
   ]);
-  return { ok: true };
+  return { ok: true, cursor: input.precisaCursor ? await ultimoCursorRecebido(input.deviceId) : undefined };
+}
+
+/**
+ * Maior id de log do aparelho que já chegou aqui. Agente reinstalado (sem o
+ * arquivo de cursor) retoma daqui em vez de pular para o presente — senão os
+ * giros guardados no aparelho e ainda não enviados se perdem. Pode ficar um
+ * pouco atrás do cursor real (logs não mapeados não viram evento); reler esses
+ * é inofensivo, o unique (deviceId, deviceEventId) descarta duplicados.
+ */
+async function ultimoCursorRecebido(deviceId: string): Promise<string | undefined> {
+  const [r] = await prisma.$queryRaw<{ max: bigint | null }[]>`
+    SELECT max("deviceEventId"::bigint) AS max FROM "AccessEvent"
+    WHERE "deviceId" = ${deviceId} AND "deviceEventId" ~ '^[0-9]{1,18}$'`;
+  return r?.max != null ? String(r.max) : undefined;
 }
 
 /** Janela após a qual um comando DISPATCHED sem ack volta a ser entregue. */

@@ -1,5 +1,13 @@
 [
   {
+    "version": "0.5.1",
+    "date": "2026-10-23",
+    "itens": [
+      "Reinstalação sem perder giros: se a pasta do agente for apagada ou ele for instalado de novo, o agente pergunta ao CRM qual foi o último giro recebido e continua dali. Antes, uma instalação nova começava do presente e os giros guardados no iDFace que ainda não tinham chegado ao CRM se perdiam.",
+      "Enquanto não consegue falar com o CRM pela primeira vez, o agente não lê os giros do aparelho (eles continuam guardados no iDFace)."
+    ]
+  },
+  {
     "version": "0.5.0",
     "date": "2026-10-20",
     "itens": [

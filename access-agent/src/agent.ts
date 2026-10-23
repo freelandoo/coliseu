@@ -80,6 +80,10 @@ function saveCursor(cursor?: string): void {
   if (cursor) try { writeFileSync(CURSOR_FILE, cursor); } catch { /* best-effort */ }
 }
 let cursor = loadCursor();
+// Sem cursor local (instalação nova ou pasta apagada): pergunta ao servidor até
+// onde ele já recebeu antes de ler o aparelho — senão o bootstrap pula para o
+// presente e os giros guardados no iDFace e ainda não enviados se perdem.
+let cursorConsultado = cursor !== undefined;
 
 async function pushUmEvento(ev: AccessEventRecord): Promise<void> {
   await pushEvent({
@@ -116,7 +120,15 @@ async function tick() {
 async function tickInterno() {
   // Etapa A — heartbeat (nuvem)
   try {
-    await heartbeat(DEVICE_ID, firmwareTag);
+    const hb = await heartbeat(DEVICE_ID, firmwareTag, !cursorConsultado);
+    if (!cursorConsultado) {
+      cursorConsultado = true;
+      if (hb.cursor) {
+        cursor = hb.cursor;
+        saveCursor(cursor);
+        console.log(`[${ts()}] [agent] sem cursor local — retomando os giros do log ${cursor} (último recebido pelo servidor)`);
+      }
+    }
     marcarNuvem(true);
   } catch (e) {
     marcarNuvem(false, e instanceof Error ? e.message : String(e));
@@ -163,7 +175,9 @@ async function tickInterno() {
     }
   }
 
-  // Etapa C — eventos (device -> nuvem)
+  // Etapa C — eventos (device -> nuvem). Sem cursor e sem ter falado com o
+  // servidor ainda, espera: começar do presente agora descartaria o histórico.
+  if (!cursorConsultado) return;
   let batch: { events: AccessEventRecord[]; cursor?: string } | null = null;
   try {
     batch = await device.pullAccessEvents(cursor);
