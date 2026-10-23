@@ -6,6 +6,15 @@ import { NovaCatraca } from "@/components/acesso/NovaCatraca";
 import { PararAgente } from "@/components/acesso/PararAgente";
 import { LiberarCatraca } from "@/components/acesso/LiberarCatraca";
 import { HistoricoLiberacoes } from "@/components/acesso/HistoricoLiberacoes";
+import { dataHoraNaAcademia } from "@/lib/aula-experimental";
+import {
+  DECISAO,
+  MOTIVO_CURTO,
+  STATUS_CATRACA,
+  STATUS_COMANDO,
+  TIPO_COMANDO,
+  rotulo,
+} from "@/lib/access/rotulos";
 
 interface Dados {
   devices: { id: string; name: string; status: string; firmware: string; lastHeartbeatAt: string | null }[];
@@ -17,7 +26,7 @@ interface Dados {
 
 function fmt(iso: string | null): string {
   if (!iso) return "—";
-  return new Date(iso).toLocaleString("pt-BR");
+  return dataHoraNaAcademia(iso);
 }
 
 export function AcessoDashboard({ dados, podeCriar }: { dados: Dados; podeCriar: boolean }) {
@@ -26,8 +35,8 @@ export function AcessoDashboard({ dados, podeCriar }: { dados: Dados; podeCriar:
       <section className="grid grid-cols-2 gap-4 lg:grid-cols-4">
         <Stat label="Catracas" value={dados.devices.length} hint="dispositivos" />
         <Stat label="Online" value={dados.devices.filter((d) => d.status === "ONLINE").length} tone="ok" />
-        <Stat label="Pend. biometria" value={dados.pendentesBio} tone="warn" hint="alunos sem face" />
-        <Stat label="Pend. sync" value={dados.pendentesSync} tone="warn" hint="mapeamentos" />
+        <Stat label="Sem face" value={dados.pendentesBio} tone="warn" hint="alunos sem biometria cadastrada" />
+        <Stat label="Envio pendente" value={dados.pendentesSync} tone="warn" hint="alunos ainda não atualizados no aparelho" />
       </section>
 
       <section>
@@ -37,19 +46,24 @@ export function AcessoDashboard({ dados, podeCriar }: { dados: Dados; podeCriar:
             <Card key={d.id} className="flex flex-wrap items-center justify-between gap-4 p-5">
               <div>
                 <p className="font-medium text-ink">{d.name}</p>
-                <p className="text-xs text-faint">firmware {d.firmware} · heartbeat {fmt(d.lastHeartbeatAt)}</p>
+                <p className="text-xs text-faint">firmware {d.firmware} · último sinal {fmt(d.lastHeartbeatAt)}</p>
                 <p className="mt-1 font-mono text-xs text-faint" title="DEVICE_ID do .env do agente">
                   {d.id}
                 </p>
               </div>
               <div className="flex flex-col items-end gap-2">
-                <Badge tone={d.status === "ONLINE" ? "ok" : d.status === "MAINTENANCE" ? "warn" : "danger"}>{d.status}</Badge>
+                <Badge tone={d.status === "ONLINE" ? "ok" : d.status === "MAINTENANCE" ? "warn" : "danger"}>{rotulo(STATUS_CATRACA, d.status)}</Badge>
                 {podeCriar && d.status === "ONLINE" && <PararAgente deviceId={d.id} />}
               </div>
               <LiberarCatraca deviceId={d.id} online={d.status === "ONLINE"} />
             </Card>
           ))}
           {podeCriar && <NovaCatraca />}
+          {!podeCriar && dados.devices.length === 0 && (
+            <Card className="p-5 text-sm text-muted md:col-span-2">
+              Nenhuma catraca cadastrada ainda. Quem cadastra é o administrador, em “Nova catraca”.
+            </Card>
+          )}
         </div>
       </section>
 
@@ -63,13 +77,18 @@ export function AcessoDashboard({ dados, podeCriar }: { dados: Dados; podeCriar:
         <h2 className="mb-4 font-display text-sm font-semibold text-faint">Comandos pendentes</h2>
         <Card className="overflow-hidden">
           {dados.comandos.length === 0 ? (
-            <p className="px-5 py-8 text-center text-sm text-faint">Nenhum comando pendente.</p>
+            <p className="px-5 py-8 text-center text-sm text-muted">
+              Nada na fila: o aparelho está com tudo o que o sistema mandou.
+            </p>
           ) : (
             <div className="divide-y divide-border">
               {dados.comandos.map((c) => (
                 <div key={c.id} className="flex items-center justify-between px-5 py-3">
-                  <span className="text-sm text-ink">{c.type}</span>
-                  <Badge tone={c.status === "DEAD_LETTER" ? "danger" : "neutral"}>{c.status}</Badge>
+                  <span className="text-sm text-ink">
+                    {rotulo(TIPO_COMANDO, c.type)}
+                    <span className="ml-2 text-xs text-faint">{fmt(c.createdAt)}</span>
+                  </span>
+                  <Badge tone={c.status === "DEAD_LETTER" ? "danger" : "neutral"}>{rotulo(STATUS_COMANDO, c.status)}</Badge>
                 </div>
               ))}
             </div>
@@ -81,16 +100,24 @@ export function AcessoDashboard({ dados, podeCriar }: { dados: Dados; podeCriar:
         <h2 className="mb-4 font-display text-sm font-semibold text-faint">Acessos recentes</h2>
         <Card className="overflow-hidden">
           {dados.eventos.length === 0 ? (
-            <p className="px-5 py-8 text-center text-sm text-faint">Nenhum acesso registrado ainda.</p>
+            <p className="px-5 py-8 text-center text-sm text-muted">
+              Nenhum acesso registrado ainda. Cada passagem na catraca aparece aqui, a mais recente primeiro.
+            </p>
           ) : (
             <div className="divide-y divide-border">
               {dados.eventos.map((e) => (
                 <div key={e.id} className="flex items-center justify-between px-5 py-3">
                   <div>
                     <p className="text-sm text-ink">{e.nome}</p>
-                    <p className="text-xs text-faint">{fmt(e.deviceTime)} · {e.reason}</p>
+                    <p className="text-xs text-faint">
+                      {fmt(e.deviceTime)}
+                      {e.reason ? ` · ${rotulo(MOTIVO_CURTO, e.reason)}` : ""}
+                    </p>
                   </div>
-                  <Badge tone={e.decision === "ALLOWED" ? "ok" : "danger"}>{e.decision}{e.physicallyPassed ? " ✓" : ""}</Badge>
+                  <Badge tone={e.decision === "ALLOWED" ? "ok" : "danger"}>
+                    {rotulo(DECISAO, e.decision)}
+                    {e.physicallyPassed ? " · passou" : ""}
+                  </Badge>
                 </div>
               ))}
             </div>

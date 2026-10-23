@@ -1,5 +1,6 @@
 "use client";
 import { useState } from "react";
+import { dataHoraNaAcademia } from "@/lib/aula-experimental";
 import { Badge, Card } from "@/components/ui/primitives";
 import { MensagemErro, classeCampoEmLinha } from "@/components/ui/Campo";
 import { classeBotao } from "@/components/ui/Botao";
@@ -115,7 +116,7 @@ export function AgentKitCard({
         <p className="mt-4 border-t border-border pt-3 font-mono text-xs text-faint">
           Última versão: {kitInfo.version ?? "—"}
           {kitInfo.commit ? ` (${kitInfo.commit})` : ""} · gerada em{" "}
-          {new Date(kitInfo.builtAt).toLocaleString("pt-BR")}
+          {dataHoraNaAcademia(kitInfo.builtAt)}
         </p>
       )}
 

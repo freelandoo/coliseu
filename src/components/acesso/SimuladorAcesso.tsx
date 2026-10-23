@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { MOTIVO_CURTO, rotulo } from "@/lib/access/rotulos";
 import { useRouter } from "next/navigation";
 import { Card, Badge } from "@/components/ui/primitives";
 import { cn } from "@/lib/cn";
@@ -123,11 +124,11 @@ export function SimuladorAcesso({ alunos }: { alunos: AlunoOpcao[] }) {
                   {resultado.deviceName ? ` · ${resultado.deviceName}` : ""}
                 </p>
               </div>
-              <Badge tone={resultado.allow ? "ok" : "danger"}>{resultado.allow ? "ALLOWED" : "DENIED"}</Badge>
+              <Badge tone={resultado.allow ? "ok" : "danger"}>{resultado.allow ? "Liberado" : "Negado"}</Badge>
             </div>
             <div className="mt-4 flex flex-wrap gap-2 text-xs">
-              <Badge tone="neutral">motivo: {resultado.reason}</Badge>
-              <Badge tone="neutral">status: {resultado.status}</Badge>
+              <Badge tone="neutral">motivo: {rotulo(MOTIVO_CURTO, resultado.reason)}</Badge>
+              <Badge tone="neutral">matrícula: {STATUS_LABEL[resultado.status] ?? resultado.status}</Badge>
               <Badge tone={resultado.physicallyPassed ? "ok" : "neutral"}>
                 giro: {resultado.physicallyPassed ? "sim" : "não"}
               </Badge>

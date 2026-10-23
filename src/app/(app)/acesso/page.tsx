@@ -2,12 +2,13 @@ import { Reveal } from "@/components/ui/Reveal";
 import { PageHeader } from "@/components/ui/primitives";
 import { AcessoDashboard } from "@/components/acesso/AcessoDashboard";
 import { prisma } from "@/lib/db";
-import { requireUser, podePapel, type Papel } from "@/lib/auth/rbac";
+import { requireModulo, podePapel, type Papel } from "@/lib/auth/rbac";
 
 export const dynamic = "force-dynamic";
 
 export default async function AcessoPage() {
-  const user = await requireUser();
+  // Os três papéis têm o módulo; o guard é o mesmo do menu, para não divergirem.
+  const user = await requireModulo("acesso");
   const [devices, pendentesBio, pendentesSync, comandos, eventos, alunos] = await Promise.all([
     prisma.accessDevice.findMany({ orderBy: { name: "asc" } }),
     prisma.person.count({ where: { fase: "aluno", credentials: { none: { status: "ENROLLED" } } } }),

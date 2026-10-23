@@ -95,6 +95,18 @@ export function hojeNaAcademia(agora: Date = new Date()): string {
   }).format(agora);
 }
 
+/**
+ * Data e hora no relógio da academia ("23/10/26, 14:05"). Mesmo motivo de
+ * `hojeNaAcademia`: componente que o servidor (UTC) pinta e o navegador
+ * hidrata precisa dar o mesmo texto nos dois.
+ */
+export function dataHoraNaAcademia(
+  iso: string | Date,
+  opcoes: Intl.DateTimeFormatOptions = { dateStyle: "short", timeStyle: "short" },
+): string {
+  return new Intl.DateTimeFormat("pt-BR", { timeZone: FUSO_ACADEMIA, ...opcoes }).format(new Date(iso));
+}
+
 /** A hora cheia (0–23) no relógio da academia. */
 export function horaNaAcademia(agora: Date = new Date()): number {
   const h = new Intl.DateTimeFormat("en-GB", {

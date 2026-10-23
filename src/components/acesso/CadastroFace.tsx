@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { STATUS_CATRACA, rotulo } from "@/lib/access/rotulos";
 import { useRouter } from "next/navigation";
 import { Card, Badge } from "@/components/ui/primitives";
 import { classeBotao } from "@/components/ui/Botao";
@@ -92,7 +93,7 @@ export function CadastroFace({ alunos, devices }: { alunos: AlunoFaceOpcao[]; de
               {devices.length === 0 && <option value="">Nenhuma catraca</option>}
               {devices.map((d) => (
                 <option key={d.id} value={d.id}>
-                  {d.name}{d.status !== "ONLINE" ? ` — ${d.status.toLowerCase()}` : ""}
+                  {d.name}{d.status !== "ONLINE" ? ` — ${rotulo(STATUS_CATRACA, d.status).toLowerCase()}` : ""}
                 </option>
               ))}
             </select>

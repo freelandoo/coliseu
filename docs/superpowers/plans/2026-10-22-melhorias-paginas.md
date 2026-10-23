@@ -242,3 +242,33 @@ skill de dataviz, paleta validada com o `validate_palette.js`):
   em Cobrança, Planos e Despesas.
 - Teste: `e2e/cobranca.spec.ts` (filtro de atrasadas, nome abre a ficha; lançar
   despesa, cancelar e confirmar a exclusão).
+
+## Etapa 7 — Acesso, Perfil e Backup (2026-10-23)
+
+Acabamento:
+- **A catraca fala português na tela.** `src/lib/access/rotulos.ts` traduz o
+  que o agente grava: status do aparelho (Online/Offline/Em manutenção), tipo e
+  situação do comando ("Enviar aluno", "Desistiu (falhou várias vezes)"),
+  decisão (Liberado/Negado) e motivo curto ("inadimplente", "sem face"). Código
+  desconhecido aparece como veio. Indicadores renomeados: "Sem face", "Envio
+  pendente"; "heartbeat" virou "último sinal". Simulador e cadastro de face
+  usam os mesmos rótulos.
+- **Datas no fuso da academia** (`dataHoraNaAcademia`): Acesso, kit do agente
+  (Minha conta) e Backup formatavam com `toLocaleString` sem fuso num
+  componente que o servidor (UTC no Railway) pinta e o navegador hidrata — o
+  horário mudava de 3 h entre os dois.
+- Vazios que explicam (comandos, acessos, catracas para quem não é admin,
+  backup) e plural certo ("1 conversa guardada").
+- `/acesso` usa `requireModulo("acesso")`, o mesmo guard do menu (os três
+  papéis têm o módulo; antes era só `requireUser`).
+- Teste: `e2e/acesso.spec.ts` semeia um acesso negado e um comando que
+  desistiu; `/acesso` e `/perfil` sem nenhum código cru e sem erro de
+  hidratação; técnico abre o controle de acesso.
+
+## Fechamento (2026-10-23)
+
+Etapas 0–7 feitas e publicadas. Suíte: 621 testes de unidade (Vitest) e 25
+fluxos de navegador (Playwright: fundação, celular, alunos, atendimento,
+captação, relatórios, cobrança/despesas, acesso). JS por tela entre 1.414 KB e
+1.518 KB; 844 KB disso é o three.js do Coliseu 3D e da malha, fora do escopo
+por decisão.

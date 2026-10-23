@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import { dataHoraNaAcademia } from "@/lib/aula-experimental";
 import { Badge, Card } from "@/components/ui/primitives";
 import { Modal, TituloModal } from "@/components/ui/Modal";
 import { cn } from "@/lib/cn";
@@ -13,7 +14,7 @@ function paraInput(d: Date): string {
 }
 
 function dataHora(iso: string): string {
-  return new Date(iso).toLocaleString("pt-BR", {
+  return dataHoraNaAcademia(iso, {
     day: "2-digit",
     month: "2-digit",
     year: "2-digit",
@@ -135,7 +136,9 @@ export function BackupView({ inicial }: { inicial: ConversaBackupItem[] }) {
           ))}
         </div>
         <p className="ml-auto text-xs text-faint">
-          {carregando ? "Carregando…" : `${backups.length} conversa(s) guardada(s)`}
+          {carregando
+            ? "Carregando…"
+            : `${backups.length} ${backups.length === 1 ? "conversa guardada" : "conversas guardadas"}`}
         </p>
       </Card>
 
@@ -149,8 +152,9 @@ export function BackupView({ inicial }: { inicial: ConversaBackupItem[] }) {
       )}
 
       {backups.length === 0 ? (
-        <Card className="p-10 text-center text-sm text-faint">
-          Nenhuma conversa excluída no período.
+        <Card className="p-10 text-center text-sm text-muted">
+          Nenhuma conversa excluída no período. Quando alguém limpar ou remover uma conversa no Atendimento, a
+          cópia aparece aqui e pode voltar.
         </Card>
       ) : (
         <div className="flex flex-col gap-2">
