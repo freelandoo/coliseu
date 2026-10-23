@@ -18,8 +18,8 @@ import { useCamada } from "@/components/ui/camada";
  * O portal para `document.body` não é detalhe de estilo, é o que faz funcionar:
  * qualquer ancestral com `transform` vira containing block e faz `position:
  * fixed` se comportar como `absolute`, prendendo o modal dentro do container.
- * O `Reveal` (GSAP `from` com `y`) deixa um transform inline em toda seção das
- * páginas, então todo modal renderizado dentro dele ficava preso e cortado.
+ * O `Reveal` (entrada com `transform`) envolve quase toda seção das
+ * páginas, e um modal renderizado dentro dele ficava preso e cortado.
  *
  * Centraliza com `m-auto` em vez de `items-center`: com conteúdo mais alto que a
  * viewport, `items-center` empurra o topo para fora da tela e ele fica

@@ -69,7 +69,7 @@ export function gradeDoMes(ano: number, mes: number): DiaGrade[] {
   });
 }
 
-/** Linhas que a grade ocupa — 4 (fevereiro cheio) a 6. O GSAP usa para o stagger. */
+/** Linhas que a grade ocupa — 4 (fevereiro cheio) a 6. */
 export function semanasDoMes(ano: number, mes: number): number {
   const diaDaSemanaDo1 = new Date(Date.UTC(ano, mes - 1, 1)).getUTCDay();
   return Math.ceil((diaDaSemanaDo1 + diasNoMes(ano, mes)) / 7);

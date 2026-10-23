@@ -1,6 +1,6 @@
 import { prisma } from "@/lib/db";
 import { toPessoa } from "@/lib/repositories/mappers";
-import type { NovaPessoa, Pessoa, PessoaFase } from "@/lib/types";
+import type { LeadEstagio, NovaPessoa, Pessoa, PessoaFase } from "@/lib/types";
 import type { AsaasMatricula } from "@/lib/asaas";
 import { upsertBillingCustomerRepo, upsertBillingSubscriptionRepo, upsertPaymentRepo } from "@/lib/repositories/billing";
 import { unitIdAtual } from "@/lib/repositories/unit";
@@ -34,6 +34,17 @@ export async function listarPessoasRepo(fases?: Exclude<PessoaFase, "exaluno">[]
     orderBy: { criadoEm: "desc" },
   });
   return rows.map(toPessoa);
+}
+
+/**
+ * Leads por estágio, contados no banco. Lead sem estágio gravado conta como
+ * "novo" — o mesmo que `listarLeads` mostra na Captação.
+ */
+export async function contarLeadsPorEstagioRepo(): Promise<Record<LeadEstagio, number>> {
+  const grupos = await prisma.person.groupBy({ by: ["estagio"], where: { fase: "lead" }, _count: { _all: true } });
+  const total: Record<LeadEstagio, number> = { novo: 0, qualificado: 0, interesse: 0, convertido: 0, perdido: 0 };
+  for (const g of grupos) total[(g.estagio ?? "novo") as LeadEstagio] += g._count._all;
+  return total;
 }
 
 /**

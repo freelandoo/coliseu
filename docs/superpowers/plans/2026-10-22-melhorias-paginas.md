@@ -181,3 +181,43 @@ conversas (1.754 ligadas a cadastro), 19 aulas experimentais.
 | Linhas de lead desenhadas na Captação | ~2.760 | 100 |
 | Mapa lead → conversa | 1.754 linhas, 130 KB, 289 ms | 1.379 linhas, 102 KB, 245 ms |
 | Aulas para o aviso do dia | 19 linhas | só as de hoje |
+
+## Etapa 5 — Painel e Relatórios (2026-10-23)
+
+**Relatórios redesenhados como infográficos** (SVG/HTML próprios, regras da
+skill de dataviz, paleta validada com o `validate_palette.js`):
+- **Um eixo por gráfico.** "Evolução da receita" punha reais e matrículas
+  vencidas no mesmo gráfico com duas escalas — o alinhamento inventava uma
+  correlação. Agora: "Recebido por mês" (linha 2px, véu de 10%, mês corrente
+  tracejado e marcado com *) e "Matrículas por mês" (novas × vencidas sem
+  renovar, colunas lado a lado, mesma unidade, legenda).
+- **Barras de uma cor só, com destaque.** As barras eram pintadas por estado
+  (verde/âmbar/vermelho), mas no papel âmbar e vermelho ficam a ΔE 0,9 para
+  deuteranopia (validador: FAIL). Agora cada gráfico tem a cor da marca e só a
+  barra que conta a história fica nela (Atrasado, 21+ dias, Convertido, pico de
+  evasão — empate no pico destaca todas); o rótulo diz o estado. Barra de 18px,
+  ponta arredondada, valor fora da barra em tinta (nunca cortado).
+- **Resultado do mês vira conta** (receita − despesas = lucro) com a fração da
+  receita que as despesas comem; antes eram três barras do zero, que não
+  mostravam prejuízo.
+- **Tooltip** no hover e pelas setas do teclado (o gráfico recebe foco), com
+  todas as séries do mês; **"Ver em tabela"** em todo cartão. SVG medido em
+  pixels (ResizeObserver): o texto do eixo não encolhe no celular.
+- Animação de entrada em CSS (`.barra-cresce`, `.coluna-cresce`, `.traca`);
+  `prefers-reduced-motion` zera tudo.
+- **GSAP saiu do projeto**: Relatórios era o último uso. `gsap` e `@gsap/react`
+  desinstalados; `concluirSeReduzido` (sem uso) e o teste dele removidos.
+- **Dados:** leads e cobranças entram só como contagem no banco
+  (`contarLeadsPorEstagioRepo`, `contarCobrancasPorStatusRepo`).
+- Painel: sem mudança — já era CSS puro e só faz contagens; os números dele
+  continuam como estão (tela de abertura, decisão anterior).
+- Teste: `e2e/relatorios.spec.ts` (sem rolagem lateral, tooltip pelo teclado nos
+  dois gráficos do tempo, tabela com os 6 meses).
+
+**Medição:**
+
+| | antes | depois |
+|---|---|---|
+| JS de /relatorios | ~1.480 KB | 1.414 KB |
+| Leads lidos por Relatórios (produção) | 1.379 linhas com matrículas, 1,1 MB, 614 ms (+ mapa de conversas) | 2 linhas, 87 B, 185 ms |
+| Cobranças lidas por Relatórios | todas as linhas | 1 contagem por status |

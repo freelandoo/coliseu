@@ -7,6 +7,14 @@ export async function listarCobrancasRepo(status?: CobrancaStatus[]): Promise<Co
   return rows.map(toCobranca);
 }
 
+/** Quantas cobranças há em cada status — contadas no banco, sem trazer as linhas. */
+export async function contarCobrancasPorStatusRepo(): Promise<Record<CobrancaStatus, number>> {
+  const grupos = await prisma.cobranca.groupBy({ by: ["status"], _count: { _all: true } });
+  const total: Record<CobrancaStatus, number> = { pendente: 0, pago: 0, atrasado: 0, cancelado: 0, estornado: 0 };
+  for (const g of grupos) total[g.status as CobrancaStatus] = g._count._all;
+  return total;
+}
+
 export interface CobrancasEmAberto {
   /** pendente + atrasado */
   quantidade: number;

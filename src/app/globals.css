@@ -549,8 +549,47 @@ html[data-malha-viva] body::after {
   outline-offset: 2px;
 }
 
-/* respeita usuários sensíveis a movimento (CSS). As animações GSAP
-   consultam a mesma preferência em src/lib/movimento.ts. */
+/* gráficos dos Relatórios: a barra cresce da base, a linha se traça, o véu
+   aparece. Só transform/opacity/dashoffset — nada que refaça o layout. */
+@keyframes cresce-x {
+  from {
+    transform: scaleX(0);
+  }
+}
+@keyframes cresce-y {
+  from {
+    transform: scaleY(0);
+  }
+}
+@keyframes traca-linha {
+  from {
+    stroke-dashoffset: 1;
+  }
+}
+@keyframes aparece {
+  from {
+    opacity: 0;
+  }
+}
+.barra-cresce {
+  transform-origin: left center;
+  animation: cresce-x 700ms cubic-bezier(0.215, 0.61, 0.355, 1) both;
+}
+.coluna-cresce {
+  transform-box: fill-box;
+  transform-origin: bottom center;
+  animation: cresce-y 600ms cubic-bezier(0.215, 0.61, 0.355, 1) both;
+}
+.traca {
+  stroke-dasharray: 1;
+  animation: traca-linha 1100ms cubic-bezier(0.215, 0.61, 0.355, 1) both;
+}
+.aparece {
+  animation: aparece 900ms ease-out both;
+}
+
+/* respeita usuários sensíveis a movimento (CSS). O que anima por JavaScript
+   (Coliseu 3D, malha) consulta a mesma preferência em src/lib/movimento.ts. */
 @media (prefers-reduced-motion: reduce) {
   *,
   *::before,

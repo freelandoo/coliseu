@@ -1,34 +1,29 @@
 import { Reveal } from "@/components/ui/Reveal";
 import { PageHeader } from "@/components/ui/primitives";
 import { ExportarRelatorio } from "@/components/relatorios/ExportarRelatorio";
-import {
-  RelatoriosView,
-  type RelatoriosData,
-} from "@/components/relatorios/RelatoriosView";
-import { diasSemPresenca, faixaAusencia } from "@/lib/mock-data";
+import { RelatoriosView, type RelatoriosData } from "@/components/relatorios/RelatoriosView";
+import { diasSemPresenca, faixaAusencia, formatBRL } from "@/lib/mock-data";
 import { serieMensalRepo } from "@/lib/repositories/relatorios";
+import { contarCobrancasPorStatusRepo } from "@/lib/repositories/cobrancas";
+import { contarLeadsPorEstagioRepo } from "@/lib/repositories/pessoas";
 import { pontoDeEvasao, retencaoPorCoorte } from "@/lib/fidelidade";
-import {
-  listarAlunos,
-  listarCobrancas,
-  listarLeads,
-  listarPlanos,
-  totalDespesas,
-} from "@/lib/store";
-import {
-  LEAD_ESTAGIO_LABEL,
-  type LeadEstagio,
-} from "@/lib/types";
+import { listarAlunos, listarPlanos, totalDespesas } from "@/lib/store";
+import { LEAD_ESTAGIO_LABEL, type LeadEstagio } from "@/lib/types";
 import { requireModulo } from "@/lib/auth/rbac";
 
 export const dynamic = "force-dynamic";
 
+const ORDEM_FUNIL: LeadEstagio[] = ["novo", "qualificado", "interesse", "convertido", "perdido"];
+
 export default async function RelatoriosPage() {
   await requireModulo("relatorios");
-  const [alunos, cobrancas, leads, planos, despesas, serie] = await Promise.all([
+  // Leads e cobranças entram só como contagem (no banco): a tela não lista
+  // nenhum deles, e eram ~1.400 leads com matrículas + ~800 cobranças lidos
+  // inteiros para virar seis números.
+  const [alunos, cobrancas, leadsPorEstagio, planos, despesas, serie] = await Promise.all([
     listarAlunos(),
-    listarCobrancas(),
-    listarLeads(),
+    contarCobrancasPorStatusRepo(),
+    contarLeadsPorEstagioRepo(),
     listarPlanos(),
     totalDespesas(),
     serieMensalRepo(),
@@ -44,10 +39,7 @@ export default async function RelatoriosPage() {
 
   // ---------- financeiro ----------
   const mrr = naoCancelados.reduce((s, a) => s + valorMensal(a.planoId), 0);
-  const receitaRisco = inadimplentes.reduce(
-    (s, a) => s + valorMensal(a.planoId),
-    0,
-  );
+  const receitaRisco = inadimplentes.reduce((s, a) => s + valorMensal(a.planoId), 0);
   const taxaInadimplencia = base ? (inadimplentes.length / base) * 100 : 0;
   const ticketMedio = base ? mrr / base : 0;
 
@@ -56,8 +48,8 @@ export default async function RelatoriosPage() {
   const margemLucro = mrr > 0 ? (lucro / mrr) * 100 : 0;
 
   // ---------- captação ----------
-  const totalLeads = leads.length;
-  const convertidos = leads.filter((l) => l.estagio === "convertido").length;
+  const totalLeads = ORDEM_FUNIL.reduce((s, e) => s + leadsPorEstagio[e], 0);
+  const convertidos = leadsPorEstagio.convertido;
   const taxaConversao = totalLeads ? (convertidos / totalLeads) * 100 : 0;
 
   // ---------- presença / evasão ----------
@@ -69,136 +61,77 @@ export default async function RelatoriosPage() {
   const frequentes = comFaixa.filter((x) => x.faixa === null).length;
   const taxaEvasao = base ? (evasao / base) * 100 : 0;
 
-  // ---------- gráficos ----------
-  const funilTone: Record<LeadEstagio, RelatoriosData["funil"][number]["tone"]> = {
-    novo: "neutral",
-    qualificado: "warn",
-    interesse: "brand",
-    convertido: "ok",
-    perdido: "neutral",
-  };
-  const ordemFunil: LeadEstagio[] = [
-    "novo",
-    "qualificado",
-    "interesse",
-    "convertido",
-    "perdido",
-  ];
-  const funil = ordemFunil.map((e) => ({
+  // ---------- distribuições ----------
+  const funil = ORDEM_FUNIL.map((e) => ({
     label: LEAD_ESTAGIO_LABEL[e],
-    valor: leads.filter((l) => l.estagio === e).length,
-    tone: funilTone[e],
+    valor: leadsPorEstagio[e],
+    destaque: e === "convertido",
   }));
 
   const planosData = planos.map((p) => ({
     label: p.nome,
     valor: naoCancelados.filter((a) => a.planoId === p.id).length,
-    tone: "neutral" as const,
   }));
 
   const financeiro = [
-    {
-      label: "Pago",
-      valor: cobrancas.filter((c) => c.status === "pago").length,
-      tone: "ok" as const,
-    },
-    {
-      label: "Pendente",
-      valor: cobrancas.filter((c) => c.status === "pendente").length,
-      tone: "warn" as const,
-    },
-    {
-      label: "Atrasado",
-      valor: cobrancas.filter((c) => c.status === "atrasado").length,
-      tone: "danger" as const,
-    },
+    { label: "Pago", valor: cobrancas.pago },
+    { label: "Pendente", valor: cobrancas.pendente },
+    { label: "Atrasado", valor: cobrancas.atrasado, destaque: true },
   ];
 
-  // ---------- fidelidade: ponto de evasão (#1) e retenção por coorte (#2) ----------
   const evasao_ = pontoDeEvasao(alunos);
   const evasaoTempo = evasao_.dist.map((d) => ({
     label: d.label,
     valor: d.count,
-    tone: (d.label === evasao_.pico.label && d.count > 0 ? "danger" : "neutral") as RelatoriosData["evasaoTempo"][number]["tone"],
+    // Empate no pico: todas as faixas empatadas são o ponto de evasão.
+    destaque: d.count > 0 && d.count === evasao_.pico.count,
   }));
-  const coorte = retencaoPorCoorte(alunos);
-  const retencaoCoorte = coorte.map((c) => ({
-    label: c.label,
-    valor: Math.round(c.pct),
-    tone: (c.pct >= 70 ? "ok" : c.pct >= 40 ? "warn" : "danger") as RelatoriosData["retencaoCoorte"][number]["tone"],
-  }));
+  const retencaoCoorte = retencaoPorCoorte(alunos).map((c) => ({ label: c.label, valor: Math.round(c.pct) }));
 
   const retencao = [
-    { label: "Em dia", valor: frequentes, tone: "ok" as const },
-    {
-      label: "7 dias",
-      valor: comFaixa.filter((x) => x.faixa === 7).length,
-      tone: "warn" as const,
-    },
-    {
-      label: "14 dias",
-      valor: comFaixa.filter((x) => x.faixa === 14).length,
-      tone: "danger" as const,
-    },
-    {
-      label: "21 dias",
-      valor: comFaixa.filter((x) => x.faixa === 21).length,
-      tone: "danger" as const,
-    },
+    { label: "Em dia", valor: frequentes },
+    { label: "7 dias", valor: comFaixa.filter((x) => x.faixa === 7).length },
+    { label: "14 dias", valor: comFaixa.filter((x) => x.faixa === 14).length },
+    { label: "21+ dias", valor: comFaixa.filter((x) => x.faixa === 21).length, destaque: true },
   ];
 
   const data: RelatoriosData = {
     kpis: [
-      {
-        label: "Receita recorrente (MRR)",
-        valor: mrr,
-        formato: "moeda",
-        hint: `Ticket médio ${ticketMedio.toLocaleString("pt-BR", { style: "currency", currency: "BRL" })}`,
-      },
+      { label: "Receita recorrente (MRR)", valor: mrr, formato: "moeda", hint: `Ticket médio ${formatBRL(ticketMedio)}` },
       {
         label: "Taxa de inadimplência",
         valor: taxaInadimplencia,
         formato: "pct",
-        tone: "danger",
-        hint: `${receitaRisco.toLocaleString("pt-BR", { style: "currency", currency: "BRL" })} em risco`,
+        tom: inadimplentes.length ? "ruim" : "neutro",
+        hint: `${formatBRL(receitaRisco)} em risco`,
       },
       {
         label: "Taxa de conversão",
         valor: taxaConversao,
         formato: "pct",
-        tone: "ok",
-        hint: `${convertidos} de ${totalLeads} leads`,
+        hint: `${convertidos} de ${totalLeads.toLocaleString("pt-BR")} leads`,
       },
       {
         label: "Risco de evasão",
         valor: taxaEvasao,
         formato: "pct",
-        tone: "warn",
-        hint: `${evasao} alunos há 21+ dias`,
+        tom: evasao ? "alerta" : "neutro",
+        hint: `${evasao} alunos há 21+ dias sem aparecer`,
       },
       {
         label: "Lucro do mês",
         valor: lucro,
         formato: "moeda",
-        tone: lucro >= 0 ? "ok" : "danger",
+        tom: lucro >= 0 ? "bom" : "ruim",
         hint: `Margem ${margemLucro.toFixed(1).replace(".", ",")}%`,
       },
-      {
-        label: "Base ativa",
-        valor: base,
-        formato: "int",
-        hint: `${inadimplentes.length} inadimplentes`,
-      },
+      { label: "Base ativa", valor: base, formato: "int", hint: `${inadimplentes.length} inadimplentes` },
     ],
+    resultado: { receita: mrr, despesas, lucro },
     funil,
     planos: planosData,
     financeiro,
     retencao,
-    resultado: [
-      { label: "Receita", valor: mrr, tone: "ok" },
-      { label: "Despesas", valor: despesas, tone: "danger" },
-      { label: "Lucro", valor: lucro, tone: lucro >= 0 ? "ok" : "danger" },
-    ],
     serie,
     evasaoTempo,
     retencaoCoorte,
@@ -216,9 +149,7 @@ export default async function RelatoriosPage() {
         </div>
       </Reveal>
 
-      <Reveal delay={0.1}>
-        <RelatoriosView data={data} />
-      </Reveal>
+      <RelatoriosView data={data} />
     </>
   );
 }
