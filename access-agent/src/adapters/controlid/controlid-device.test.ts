@@ -68,13 +68,32 @@ test("liberar (padrão): entrada autorizada do usuário reservado Visitante, cri
   const a = newAdapter();
   await a.openTurnstile({ direction: "ENTRY" });
   await a.openTurnstile({ direction: "ENTRY" });
-  const criar = calls.filter((c) => c.path === "/create_or_modify_objects.fcgi");
+  const criar = calls.filter((c) => c.path === "/create_objects.fcgi" && c.body.object === "users");
   assert.equal(criar.length, 1, "garante o usuário só na primeira liberação");
   assert.deepEqual(criar[0].body.values[0], { id: OPEN_USER_ID_PADRAO, name: "Visitante", registration: String(OPEN_USER_ID_PADRAO) });
   const aut = calls.filter((c) => c.path === "/remote_user_authorization.fcgi");
   assert.equal(aut.length, 2);
   assert.deepEqual(aut[0].body, { event: 7, user_id: OPEN_USER_ID_PADRAO, user_name: "Visitante", user_image: false, portal_id: 1, actions: [] });
   assert.equal(calls.filter((c) => c.path === "/execute_actions.fcgi").length, 0);
+});
+
+test("liberar: Visitante já existe no aparelho → não recria; erro ao garantir não impede liberar", async () => {
+  installFetch((path, body) => {
+    if (path === "/login.fcgi") return { json: { session: "S1" } };
+    if (path === "/load_objects.fcgi" && body.object === "users") return { json: { users: [{ id: OPEN_USER_ID_PADRAO }] } };
+    return { json: {} };
+  });
+  await newAdapter().openTurnstile({ direction: "ENTRY" });
+  assert.equal(calls.filter((c) => c.path === "/create_objects.fcgi").length, 0);
+  assert.equal(calls.filter((c) => c.path === "/remote_user_authorization.fcgi").length, 1);
+
+  installFetch((path) => {
+    if (path === "/login.fcgi") return { json: { session: "S1" } };
+    if (path === "/load_objects.fcgi") return { status: 400, text: "bad" };
+    return { json: {} };
+  });
+  await newAdapter().openTurnstile({ direction: "ENTRY" });
+  assert.equal(calls.filter((c) => c.path === "/remote_user_authorization.fcgi").length, 1);
 });
 
 test("liberação do Visitante não vira giro nem presença de aluno", async () => {

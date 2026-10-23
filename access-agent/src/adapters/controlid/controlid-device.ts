@@ -261,11 +261,24 @@ export class ControlIdDeviceAdapter implements AccessDeviceAdapter {
    */
   private async liberarPorAutorizacao(): Promise<void> {
     if (!this.usuarioLiberacaoPronto) {
-      await this.client.post("/create_or_modify_objects.fcgi", {
-        object: "users",
-        values: [{ id: this.openUserId, name: OPEN_USER_NOME, registration: String(this.openUserId) }],
-      });
-      this.usuarioLiberacaoPronto = true;
+      // Só cria se faltar: recriar o Visitante já existente volta HTTP 400 no
+      // iDFace (visto em campo, 23/10). Falha aqui não impede a liberação.
+      try {
+        const r = await this.client.post<{ users?: unknown[] }>("/load_objects.fcgi", {
+          object: "users",
+          fields: ["id"],
+          where: [{ object: "users", field: "id", operator: "=", value: this.openUserId }],
+        });
+        if (!r.users?.length) {
+          await this.client.post("/create_objects.fcgi", {
+            object: "users",
+            values: [{ id: this.openUserId, name: OPEN_USER_NOME, registration: String(this.openUserId) }],
+          });
+        }
+        this.usuarioLiberacaoPronto = true;
+      } catch (e) {
+        console.log(`[${new Date().toISOString()}] [liberar] não consegui garantir o usuário Visitante: ${e instanceof Error ? e.message : e} — liberando assim mesmo`);
+      }
     }
     await this.client.post("/remote_user_authorization.fcgi", {
       event: 7,

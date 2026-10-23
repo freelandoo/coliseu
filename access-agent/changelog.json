@@ -1,5 +1,13 @@
 [
   {
+    "version": "0.6.1",
+    "date": "2026-10-23",
+    "itens": [
+      "Correção do \"Liberar catraca\": depois de reiniciar o agente, a primeira liberação falhava porque o iDFace recusava recriar o usuário Visitante que já existia. Agora o agente só cria o Visitante se ele não existir, e mesmo se essa conferência falhar a liberação é enviada.",
+      "ATUALIZAR na recepção: copie o coliseu-agent.cjs do kit novo como coliseu-agent.new.cjs e rode o update.bat (como administrador). O .env continua igual."
+    ]
+  },
+  {
     "version": "0.6.0",
     "date": "2026-10-23",
     "itens": [
