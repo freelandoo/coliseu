@@ -7,8 +7,7 @@ import { listarPessoas, listarPlanos } from "@/lib/store";
 export const dynamic = "force-dynamic";
 
 export default async function MatriculadosPage() {
-  const [todas, planos] = await Promise.all([listarPessoas(), listarPlanos()]);
-  const pessoas = todas.filter((p) => p.fase === "aluno");
+  const [pessoas, planos] = await Promise.all([listarPessoas(["aluno"]), listarPlanos()]);
 
   return (
     <>

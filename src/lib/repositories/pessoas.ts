@@ -1,6 +1,6 @@
 import { prisma } from "@/lib/db";
 import { toPessoa } from "@/lib/repositories/mappers";
-import type { NovaPessoa, Pessoa } from "@/lib/types";
+import type { NovaPessoa, Pessoa, PessoaFase } from "@/lib/types";
 import type { AsaasMatricula } from "@/lib/asaas";
 import { upsertBillingCustomerRepo, upsertBillingSubscriptionRepo, upsertPaymentRepo } from "@/lib/repositories/billing";
 import { unitIdAtual } from "@/lib/repositories/unit";
@@ -14,19 +14,22 @@ const withMemberships = {
 };
 
 export async function proximoCodigoRepo(): Promise<string> {
-  const rows = await prisma.person.findMany({ select: { codigo: true } });
-  const maior = rows.reduce((max, r) => {
-    const n = Number(r.codigo.replace(/\D/g, "")) || 0;
-    return n > max ? n : max;
-  }, 0);
-  return `CD${String(maior + 1).padStart(5, "0")}`;
+  // Maior parte numérica dos códigos, calculada no banco: com o histórico do
+  // CloudGym são 15 mil cadastros, e lê-los todos custava ~250 ms por cadastro.
+  const [r] = await prisma.$queryRaw<{ maior: number }[]>`
+    SELECT coalesce(max(nullif(regexp_replace(codigo, '[^0-9]', '', 'g'), '')::bigint), 0)::int AS maior
+    FROM "Person"`;
+  return `CD${String((r?.maior ?? 0) + 1).padStart(5, "0")}`;
 }
 
-export async function listarPessoasRepo(): Promise<Pessoa[]> {
-  // Ex-alunos do histórico do CloudGym (13 mil) ficam fora das telas do dia a
-  // dia — elas carregam a base inteira em memória. O Analytics lê direto.
+/**
+ * Pessoas das telas do dia a dia. Ex-alunos do histórico do CloudGym (13 mil)
+ * ficam sempre de fora — o Analytics lê direto. `fases` recorta no banco: a
+ * lista de alunos não precisa trazer os leads junto para descartá-los depois.
+ */
+export async function listarPessoasRepo(fases?: Exclude<PessoaFase, "exaluno">[]): Promise<Pessoa[]> {
   const rows = await prisma.person.findMany({
-    where: { fase: { not: "exaluno" } },
+    where: { fase: fases ? { in: fases } : { not: "exaluno" } },
     include: withMemberships,
     orderBy: { criadoEm: "desc" },
   });

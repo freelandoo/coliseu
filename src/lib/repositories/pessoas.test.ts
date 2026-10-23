@@ -30,3 +30,12 @@ test("criarPessoaRepo cria lead com código novo", async () => {
   expect(p.fase).toBe("lead");
   expect(p.codigo).toMatch(/^CD\d{5}$/);
 });
+
+test("listarPessoasRepo recorta por fase no banco", async () => {
+  const alunos = await listarPessoasRepo(["aluno"]);
+  expect(alunos.length).toBeGreaterThan(0);
+  expect(alunos.every((p) => p.fase === "aluno")).toBe(true);
+  const leads = await listarPessoasRepo(["lead"]);
+  expect(leads.every((p) => p.fase === "lead")).toBe(true);
+  expect(alunos.length + leads.length).toBe((await listarPessoasRepo()).length);
+});

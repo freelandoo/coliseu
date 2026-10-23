@@ -1,9 +1,9 @@
 import { prisma } from "@/lib/db";
 import { toCobranca } from "@/lib/repositories/mappers";
-import type { Cobranca } from "@/lib/types";
+import type { Cobranca, CobrancaStatus } from "@/lib/types";
 
-export async function listarCobrancasRepo(): Promise<Cobranca[]> {
-  const rows = await prisma.cobranca.findMany();
+export async function listarCobrancasRepo(status?: CobrancaStatus[]): Promise<Cobranca[]> {
+  const rows = await prisma.cobranca.findMany(status ? { where: { status: { in: status } } } : undefined);
   return rows.map(toCobranca);
 }
 

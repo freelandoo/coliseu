@@ -6,9 +6,10 @@ import { linkPagamentoWhatsApp } from "@/lib/asaas";
 import { idSeguro } from "@/lib/navegacao";
 import {
   candidatosMatricula,
-  listarAlunos,
   listarCobrancas,
+  listarPessoas,
   listarPlanos,
+  paraAluno,
 } from "@/lib/store";
 
 export const dynamic = "force-dynamic";
@@ -21,21 +22,22 @@ export default async function RenovarPage({
 }) {
   const { pessoa } = await searchParams;
   const preSelecionadoId = idSeguro(Array.isArray(pessoa) ? pessoa[0] : pessoa);
-  const [candidatos, alunos, cobrancas, planos] = await Promise.all([
-    candidatosMatricula(),
-    listarAlunos(),
-    listarCobrancas(),
+  // Uma leitura de leads + alunos serve aos candidatos e à lista de pendentes;
+  // das cobranças só interessam as pendentes.
+  const [pessoas, cobrancas, planos] = await Promise.all([
+    listarPessoas(["lead", "aluno"]),
+    listarCobrancas(["pendente"]),
     listarPlanos(),
   ]);
+  const candidatos = await candidatosMatricula(pessoas);
+  const alunos = pessoas.filter((p) => p.fase === "aluno").map(paraAluno);
   const planoById = new Map(planos.map((p) => [p.id, p]));
 
   // Matrículas já pendentes (dados semente) para a lista "Aguardando pagamento".
   const matriculadosIniciais = alunos
     .filter((a) => a.status === "pendente")
     .map((a) => {
-      const cobranca = cobrancas.find(
-        (c) => c.alunoId === a.id && c.status === "pendente",
-      );
+      const cobranca = cobrancas.find((c) => c.alunoId === a.id);
       const plano = planoById.get(a.planoId);
       const link = cobranca?.linkPagamento || undefined;
       return {

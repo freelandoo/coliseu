@@ -17,8 +17,9 @@ import { mapaConversaPorPessoaRepo } from "@/lib/repositories/whatsapp";
 import { listarAulasExperimentaisRepo } from "@/lib/repositories/aulas-experimentais";
 import {
   LEAD_ESTAGIO_LABEL, ORIGEM_LABEL,
-  type Aluno, type AulaExperimentalItem, type Candidato, type Cobranca, type Despesa, type Lead,
-  type LeadEstagio, type NovaDespesa, type NovaPessoa, type NovoPlano, type Pessoa, type Plano,
+  type Aluno, type AulaExperimentalItem, type Candidato, type Cobranca, type CobrancaStatus, type Despesa, type Lead,
+  type LeadEstagio, type NovaDespesa, type NovaPessoa, type NovoPlano, type Pessoa, type PessoaFase,
+  type Plano,
 } from "@/lib/types";
 import type { AsaasMatricula } from "@/lib/asaas";
 import { diasEntre } from "@/lib/mock-data";
@@ -31,7 +32,8 @@ export const atualizarPlano = (id: string, patch: Partial<Plano>): Promise<Plano
   atualizarPlanoRepo(id, patch);
 
 /* ---------- pessoas ---------- */
-export const listarPessoas = (): Promise<Pessoa[]> => listarPessoasRepo();
+export const listarPessoas = (fases?: Exclude<PessoaFase, "exaluno">[]): Promise<Pessoa[]> =>
+  listarPessoasRepo(fases);
 export const obterPessoa = (id: string): Promise<Pessoa | undefined> => obterPessoaRepo(id);
 export const proximoCodigoCadastro = (): Promise<string> => proximoCodigoRepo();
 export const criarPessoa = (input: NovaPessoa): Promise<Pessoa> => criarPessoaRepo(input);
@@ -43,7 +45,8 @@ export const matricularPessoa = (
 ): Promise<Pessoa | undefined> => matricularPessoaRepo(id, planoId, asaas, matriculadoPorId);
 
 /* ---------- cobranças ---------- */
-export const listarCobrancas = (): Promise<Cobranca[]> => listarCobrancasRepo();
+export const listarCobrancas = (status?: CobrancaStatus[]): Promise<Cobranca[]> =>
+  listarCobrancasRepo(status);
 export const marcarCobrancaPaga = (asaasId: string): Promise<boolean> => marcarCobrancaPagaRepo(asaasId);
 export const marcarCobrancaAtrasada = (asaasId: string): Promise<boolean> => marcarCobrancaAtrasadaRepo(asaasId);
 
@@ -58,30 +61,31 @@ export const listarAulasExperimentais = (): Promise<AulaExperimentalItem[]> =>
   listarAulasExperimentaisRepo();
 
 /* ---------- derivados ---------- */
+/** Pessoa na fase aluno vista como `Aluno` (datas ausentes caem no cadastro). */
+export function paraAluno(p: Pessoa): Aluno {
+  return {
+    id: p.id, codigo: p.codigo, nome: p.nome,
+    telefone: p.telefone ?? "", email: p.email ?? "", cpf: p.cpf ?? "",
+    planoId: p.planoId ?? "", status: p.status ?? "ativo",
+    matriculadoEm: p.matriculadoEm ?? p.criadoEm,
+    vencimentoPlano: p.vencimentoPlano ?? p.criadoEm,
+    ultimaPresenca: p.ultimaPresenca ?? p.criadoEm,
+    dataNascimento: p.dataNascimento,
+    cep: p.endereco?.cep, estado: p.endereco?.estado, cidade: p.endereco?.cidade,
+    rua: p.endereco?.rua, numero: p.endereco?.numero,
+  };
+}
+
 export async function listarAlunos(): Promise<Aluno[]> {
-  const pessoas = await listarPessoasRepo();
-  return pessoas
-    .filter((p) => p.fase === "aluno")
-    .map((p) => ({
-      id: p.id, codigo: p.codigo, nome: p.nome,
-      telefone: p.telefone ?? "", email: p.email ?? "", cpf: p.cpf ?? "",
-      planoId: p.planoId ?? "", status: p.status ?? "ativo",
-      matriculadoEm: p.matriculadoEm ?? p.criadoEm,
-      vencimentoPlano: p.vencimentoPlano ?? p.criadoEm,
-      ultimaPresenca: p.ultimaPresenca ?? p.criadoEm,
-      dataNascimento: p.dataNascimento,
-      cep: p.endereco?.cep, estado: p.endereco?.estado, cidade: p.endereco?.cidade,
-      rua: p.endereco?.rua, numero: p.endereco?.numero,
-    }));
+  return (await listarPessoasRepo(["aluno"])).map(paraAluno);
 }
 
 export async function listarLeads(): Promise<Lead[]> {
   const [pessoas, conversas] = await Promise.all([
-    listarPessoasRepo(),
+    listarPessoasRepo(["lead"]),
     mapaConversaPorPessoaRepo(),
   ]);
   return pessoas
-    .filter((p) => p.fase === "lead")
     .map((p) => ({
       id: p.id, nome: p.nome, telefone: p.telefone ?? "",
       origem: p.origem, estagio: p.estagio ?? "novo",
@@ -90,20 +94,17 @@ export async function listarLeads(): Promise<Lead[]> {
     }));
 }
 
-export async function alunoPorId(id: string): Promise<Aluno | undefined> {
-  return (await listarAlunos()).find((a) => a.id === id);
-}
-
 export async function receitaRecorrente(): Promise<number> {
-  const [pessoas, planos] = await Promise.all([listarPessoasRepo(), listarPlanosRepo()]);
+  const [pessoas, planos] = await Promise.all([listarPessoasRepo(["aluno"]), listarPlanosRepo()]);
   const byId = new Map(planos.map((p) => [p.id, p]));
   return pessoas
-    .filter((p) => p.fase === "aluno" && p.status !== "cancelado")
+    .filter((p) => p.status !== "cancelado")
     .reduce((s, p) => s + (p.planoId ? byId.get(p.planoId)?.valorMensal ?? 0 : 0), 0);
 }
 
-export async function candidatosMatricula(): Promise<Candidato[]> {
-  const pessoas = await listarPessoasRepo();
+/** `pessoas`: leads e alunos já carregados pela tela, para não ler a base duas vezes. */
+export async function candidatosMatricula(pessoas?: Pessoa[]): Promise<Candidato[]> {
+  pessoas ??= await listarPessoasRepo(["lead", "aluno"]);
   const doLead: Candidato[] = pessoas
     .filter((p) => p.fase === "lead" && ["novo", "qualificado", "interesse"].includes(p.estagio ?? ""))
     .map((p) => ({

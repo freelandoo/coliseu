@@ -91,3 +91,35 @@ Produção em 22/10: set = 63 matrículas / R$ 87.651 / 34 vencidas; out (parcia
 
 844 KB de cada tela é o three.js da malha de fundo/Coliseu 3D — fora do escopo por
 decisão (Q4). Tempo até a tela pronta local ~100–170 ms antes e depois (ruído).
+
+## Etapa 2 — Alunos (2026-10-22)
+
+Produção em 22/10: 944 alunos, 1.379 leads, 12.970 ex-alunos, 946 matrículas,
+8 cobranças.
+
+- `listarPessoasRepo(fases?)` recorta a fase **no banco** (ex-aluno continua
+  sempre de fora). Lista de alunos, Retenção, Fidelidade, Cobrança e o MRR de
+  Despesas leem só `aluno`; Captação lê só `lead`. Antes todas traziam leads +
+  alunos e filtravam em memória.
+- Renovação: uma leitura de leads + alunos alimenta os candidatos e a lista
+  "Aguardando pagamento" (antes eram duas leituras completas), e das cobranças
+  vêm só as pendentes. `candidatosMatricula(pessoas?)` aceita o que a tela já leu.
+- Código do cadastro novo (`proximoCodigoRepo`) é o maior número calculado em SQL,
+  sem ler os 15.293 códigos.
+- `alunoPorId` de `store.ts` (sem uso, lia a base inteira) saiu; `paraAluno`
+  ficou exportado.
+- Ficha: já lia uma pessoa só; sem mudança.
+- Testes: `pessoas.test.ts` cobre o recorte; `e2e/alunos.spec.ts` (lista sem
+  leads, ficha a partir da lista, renovação com lead, aluno a renovar e pendente).
+
+**Medição** (consultas contra o banco de produção, a partir da máquina local, com
+~200 ms de latência por ida e volta — dentro do Railway o ganho relativo é maior):
+
+| Consulta | antes | depois |
+|---|---|---|
+| Lista de alunos | 2.323 linhas, 2,3 MB, 969 ms | 944 linhas, 1,2 MB, 656 ms |
+| Renovação | 2 × 2.323 linhas + todas as cobranças | 1 × 2.323 linhas + pendentes |
+| Código do cadastro novo | 15.293 linhas, ~280 ms | 1 linha, ~215 ms (≈ latência pura) |
+
+O JS por tela não muda nesta etapa (o que pesa é o three.js da moldura, fora de
+escopo).
