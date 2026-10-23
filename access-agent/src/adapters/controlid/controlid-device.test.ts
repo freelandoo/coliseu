@@ -1,6 +1,6 @@
 import { test, beforeEach, afterEach } from "node:test";
 import assert from "node:assert/strict";
-import { ControlIdDeviceAdapter, OPEN_USER_ID_PADRAO } from "./controlid-device.js";
+import { ControlIdDeviceAdapter } from "./controlid-device.js";
 import { mapAccessLog, EVENT, type ControlIdAccessLog } from "./mapping.js";
 
 interface Call { url: string; path: string; body: any }
@@ -64,58 +64,24 @@ test("liberar: se o aparelho recusa catra, tenta sec_box e memoriza a que funcio
   assert.deepEqual(acoes, ["catra", "sec_box", "sec_box"]);
 });
 
-test("liberar (padrão): entrada autorizada do usuário reservado Visitante, criado uma vez", async () => {
+test("liberar (padrão): corpo idêntico ao do CloudGym — autorização com a sec_box 65793 embutida", async () => {
   const a = newAdapter();
   await a.openTurnstile({ direction: "ENTRY" });
-  await a.openTurnstile({ direction: "ENTRY" });
-  const criar = calls.filter((c) => c.path === "/create_objects.fcgi" && c.body.object === "users");
-  assert.equal(criar.length, 1, "garante o usuário só na primeira liberação");
-  assert.deepEqual(criar[0].body.values[0], { id: OPEN_USER_ID_PADRAO, name: "Visitante", registration: String(OPEN_USER_ID_PADRAO) });
-  const grupo = calls.filter((c) => c.path === "/create_objects.fcgi" && c.body.object === "user_groups");
-  assert.deepEqual(grupo.map((c) => c.body.values[0]), [{ user_id: OPEN_USER_ID_PADRAO, group_id: 1 }], "Visitante entra no Grupo 1 (regra do portal)");
   const aut = calls.filter((c) => c.path === "/remote_user_authorization.fcgi");
-  assert.equal(aut.length, 2);
-  assert.deepEqual(aut[0].body, { event: 7, user_id: OPEN_USER_ID_PADRAO, user_name: "Visitante", user_image: false, portal_id: 1, actions: [] });
-  assert.equal(calls.filter((c) => c.path === "/execute_actions.fcgi").length, 0);
+  assert.equal(aut.length, 1);
+  // literal capturado na rede em 23/10/2026 (ordem dos campos inclusive)
+  assert.equal(
+    JSON.stringify(aut[0].body),
+    '{"user_id":0,"user_image":false,"user_name":"Acesso liberado ","portal_id":1,"event":7,"actions":[{"action":"sec_box","parameters":"id=65793, reason=3"}]}',
+  );
+  assert.equal(calls.filter((c) => c.path !== "/login.fcgi" && c.path !== "/remote_user_authorization.fcgi").length, 0, "nada além do login e da liberação");
 });
 
-test("liberar: Visitante já existe no aparelho → não recria; erro ao garantir não impede liberar", async () => {
-  installFetch((path, body) => {
-    if (path === "/login.fcgi") return { json: { session: "S1" } };
-    if (path === "/load_objects.fcgi" && body.object === "users") return { json: { users: [{ id: OPEN_USER_ID_PADRAO }] } };
-    if (path === "/load_objects.fcgi" && body.object === "user_groups") return { json: { user_groups: [{ user_id: OPEN_USER_ID_PADRAO, group_id: 1 }] } };
-    return { json: {} };
-  });
-  await newAdapter().openTurnstile({ direction: "ENTRY" });
-  assert.equal(calls.filter((c) => c.path === "/create_objects.fcgi").length, 0);
-  assert.equal(calls.filter((c) => c.path === "/remote_user_authorization.fcgi").length, 1);
-
-  installFetch((path) => {
-    if (path === "/login.fcgi") return { json: { session: "S1" } };
-    if (path === "/load_objects.fcgi") return { status: 400, text: "bad" };
-    return { json: {} };
-  });
-  await newAdapter().openTurnstile({ direction: "ENTRY" });
-  assert.equal(calls.filter((c) => c.path === "/remote_user_authorization.fcgi").length, 1);
-});
-
-test("liberação do Visitante não vira giro nem presença de aluno", async () => {
-  installFetch((path) => {
-    if (path === "/login.fcgi") return { json: { session: "S1" } };
-    if (path === "/load_objects.fcgi") {
-      return { json: { access_logs: [
-        { id: 11, time: 1_700_000_000, event: EVENT.ACCESS_GRANTED, user_id: OPEN_USER_ID_PADRAO },
-        { id: 12, time: 1_700_000_010, event: EVENT.ACCESS_GRANTED, user_id: 12000005 },
-      ] } };
-    }
-    return { json: {} };
-  });
-  const { events } = await newAdapter().pullAccessEvents("10");
-  assert.equal(events[0].externalUserId, undefined);
-  assert.equal(events[0].physicallyPassed, false);
-  assert.equal(events[0].reason, "Liberação remota (CRM)");
-  assert.equal(events[1].externalUserId, "12000005");
-  assert.equal(events[1].physicallyPassed, true);
+test("liberar: SecBox configurável sem perder dígitos (id acima de 2^53)", async () => {
+  const a = new ControlIdDeviceAdapter({ host: "10.0.0.9", login: "admin", password: "x", secBoxId: "122641794705223193" });
+  await a.openTurnstile({ direction: "ENTRY" });
+  const aut = calls.find((c) => c.path === "/remote_user_authorization.fcgi");
+  assert.equal(aut?.body.actions[0].parameters, "id=122641794705223193, reason=3");
 });
 
 test("liberar com ação fixa (IDFACE_OPEN_ACTION=door) usa só ela", async () => {

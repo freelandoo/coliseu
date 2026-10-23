@@ -71,8 +71,6 @@ const REASON: Record<number, string> = {
 export interface MapOptions {
   /** portal_ids tratados como saída; qualquer outro é entrada (default: tudo entrada). */
   exitPortalIds?: number[];
-  /** user_ids reservados à liberação remota (botão do CRM): concedido, mas não é giro. */
-  remoteOpenUserIds?: number[];
 }
 
 /**
@@ -93,16 +91,14 @@ export function mapAccessLog(log: ControlIdAccessLog, opts: MapOptions = {}): Ac
   const direction: "ENTRY" | "EXIT" =
     log.portal_id != null && opts.exitPortalIds?.includes(log.portal_id) ? "EXIT" : "ENTRY";
 
-  const liberacaoRemota = log.user_id != null && opts.remoteOpenUserIds?.includes(log.user_id) === true;
-
   return {
     deviceEventId: String(log.id),
-    externalUserId: log.user_id && !liberacaoRemota ? String(log.user_id) : undefined,
+    externalUserId: log.user_id ? String(log.user_id) : undefined,
     deviceTime: new Date(log.time * 1000).toISOString(),
     direction,
     decision: isAllowed ? "ALLOWED" : "DENIED",
-    reason: liberacaoRemota ? "Liberação remota (CRM)" : (REASON[log.event] ?? `event=${log.event}`),
-    physicallyPassed: isAllowed && !ABERTURA_REMOTA.has(log.event) && !liberacaoRemota,
+    reason: REASON[log.event] ?? `event=${log.event}`,
+    physicallyPassed: isAllowed && !ABERTURA_REMOTA.has(log.event),
     mode: "ONLINE",
     cursor: String(log.id),
   };

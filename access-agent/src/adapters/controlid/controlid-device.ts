@@ -18,18 +18,16 @@ export interface ControlIdAdapterOptions extends ControlIdClientOptions {
   doorId?: number;
   /**
    * Como o botão "Liberar catraca" destrava o giro.
-   * - "autorizacao" (default): simula a entrada autorizada de um usuário reservado
-   *   (remote_user_authorization). É o único jeito que gira a catraca da academia —
-   *   o aparelho só destrava pelo fluxo de identificação (visto em campo, 23/10/2026);
-   *   catra/sec_box/door são aceitos pela API, batem o relé e o braço não solta.
+   * - "autorizacao" (default): o comando do CloudGym, capturado na rede em 23/10/2026 —
+   *   remote_user_authorization (event 7, user_id 0, portal 1) com a ação sec_box
+   *   EMBUTIDA. É o único jeito que gira a catraca da academia: a mesma sec_box
+   *   mandada solta por execute_actions bate o relé e o braço não solta.
    * - "auto": tenta catra → sec_box → door e fica com a primeira que o aparelho aceitar.
    * - "catra" | "sec_box" | "door": só essa ação.
    */
   openAction?: OpenAction;
-  /** id do usuário reservado da liberação no aparelho. Default 999999999. */
-  openUserId?: number;
-  /** grupo do aparelho que dá ao usuário reservado a regra de acesso do portal. Default 1. */
-  openGroupId?: number;
+  /** SecBox ligado à catraca (doors_state lista dois; o da catraca é o 65793). */
+  secBoxId?: string;
   /** sentido liberado na ação catra: clockwise | anticlockwise | both. Default both. */
   catraAllow?: string;
   /** nº máximo de access_logs puxados por ciclo. Default 100. */
@@ -45,19 +43,15 @@ export interface ControlIdAdapterOptions extends ControlIdClientOptions {
 type AcaoExecute = "catra" | "sec_box" | "door";
 export type OpenAction = "autorizacao" | "auto" | AcaoExecute;
 
-/** Fora da faixa dos alunos (>12M, max+1) e dos funcionários do CloudGym (negativos). */
-export const OPEN_USER_ID_PADRAO = 999_999_999;
-const OPEN_USER_NOME = "Visitante";
+/** Texto da tela do iDFace na liberação — o mesmo do CloudGym. */
+const MENSAGEM_LIBERACAO = "Acesso liberado ";
 
 export class ControlIdDeviceAdapter implements AccessDeviceAdapter {
   private readonly client: ControlIdClient;
   private readonly accessRuleId: number;
   private readonly doorId: number;
   private readonly openAction: OpenAction;
-  private readonly openUserId: number;
-  private readonly openGroupId: number;
-  /** Usuário reservado já garantido no aparelho nesta execução. */
-  private usuarioLiberacaoPronto = false;
+  private readonly secBoxId: string;
   private readonly catraAllow: string;
   /** Ação que funcionou no modo auto — as próximas liberações vão direto nela. */
   private acaoQueFunciona: AcaoExecute | null = null;
@@ -69,15 +63,11 @@ export class ControlIdDeviceAdapter implements AccessDeviceAdapter {
     this.accessRuleId = opts.accessRuleId ?? 1;
     this.doorId = opts.doorId ?? 1;
     this.openAction = opts.openAction ?? "autorizacao";
-    this.openUserId = opts.openUserId ?? OPEN_USER_ID_PADRAO;
-    this.openGroupId = opts.openGroupId ?? 1;
+    // string: ids de SecBox passam de 2^53 (ex.: 122641794705223193) e perderiam dígitos.
+    this.secBoxId = opts.secBoxId ?? "65793";
     this.catraAllow = opts.catraAllow ?? "both";
     this.logPageSize = opts.logPageSize ?? 100;
-    // A liberação gera um "Acesso concedido" do usuário reservado: não é giro de aluno.
-    this.mapOptions = {
-      ...opts.mapOptions,
-      remoteOpenUserIds: [...(opts.mapOptions?.remoteOpenUserIds ?? []), this.openUserId],
-    };
+    this.mapOptions = opts.mapOptions ?? {};
   }
 
   async testConnection(): Promise<DeviceHealth> {
@@ -229,7 +219,7 @@ export class ControlIdDeviceAdapter implements AccessDeviceAdapter {
   private acaoCatraca(tipo: AcaoExecute) {
     if (tipo === "catra") return { action: "catra", parameters: `allow=${this.catraAllow}` };
     // SecBox (módulo de acionamento externo): id fixo 65793, reason 3 = interface/API.
-    if (tipo === "sec_box") return { action: "sec_box", parameters: "id=65793,reason=3" };
+    if (tipo === "sec_box") return { action: "sec_box", parameters: `id=${this.secBoxId},reason=3` };
     return { action: "door", parameters: `door=${this.doorId}` };
   }
 
@@ -259,51 +249,18 @@ export class ControlIdDeviceAdapter implements AccessDeviceAdapter {
   }
 
   /**
-   * Mesmo truque do CloudGym: o aparelho recebe uma entrada autorizada como se o
-   * usuário reservado tivesse sido reconhecido, mostra o nome na tela e destrava
-   * o giro pelo próprio fluxo de identificação.
+   * Corpo idêntico ao do CloudGym (captura de rede, 23/10/2026). O relé só arma o
+   * giro quando acionado DENTRO de uma autorização de acesso; user_id 0 = ninguém
+   * (não precisa de usuário no aparelho) e o aparelho não grava access_logs dela.
    */
   private async liberarPorAutorizacao(): Promise<void> {
-    if (!this.usuarioLiberacaoPronto) {
-      // Só cria se faltar: recriar o Visitante já existente volta HTTP 400 no
-      // iDFace (visto em campo, 23/10). Falha aqui não impede a liberação.
-      try {
-        const r = await this.client.post<{ users?: unknown[] }>("/load_objects.fcgi", {
-          object: "users",
-          fields: ["id"],
-          where: [{ object: "users", field: "id", operator: "=", value: this.openUserId }],
-        });
-        if (!r.users?.length) {
-          await this.client.post("/create_objects.fcgi", {
-            object: "users",
-            values: [{ id: this.openUserId, name: OPEN_USER_NOME, registration: String(this.openUserId) }],
-          });
-        }
-        // Sem grupo o aparelho mostra "Visitante" e registra a entrada, mas não
-        // destrava: a regra de acesso do portal vem do grupo (os funcionários que
-        // o CloudGym usa para liberar estão no Grupo 1 — visto em campo, 23/10).
-        const g = await this.client.post<{ user_groups?: unknown[] }>("/load_objects.fcgi", {
-          object: "user_groups",
-          where: [{ object: "user_groups", field: "user_id", operator: "=", value: this.openUserId }],
-        });
-        if (!g.user_groups?.length) {
-          await this.client.post("/create_objects.fcgi", {
-            object: "user_groups",
-            values: [{ user_id: this.openUserId, group_id: this.openGroupId }],
-          });
-        }
-        this.usuarioLiberacaoPronto = true;
-      } catch (e) {
-        console.log(`[${new Date().toISOString()}] [liberar] não consegui garantir o usuário Visitante: ${e instanceof Error ? e.message : e} — liberando assim mesmo`);
-      }
-    }
     await this.client.post("/remote_user_authorization.fcgi", {
-      event: 7,
-      user_id: this.openUserId,
-      user_name: OPEN_USER_NOME,
+      user_id: 0,
       user_image: false,
+      user_name: MENSAGEM_LIBERACAO,
       portal_id: 1,
-      actions: [],
+      event: 7,
+      actions: [{ action: "sec_box", parameters: `id=${this.secBoxId}, reason=3` }],
     });
   }
 }

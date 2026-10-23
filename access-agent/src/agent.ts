@@ -34,8 +34,7 @@ if (ADAPTER === "controlid") {
     accessRuleId: process.env.IDFACE_RULE_ID ? Number(process.env.IDFACE_RULE_ID) : undefined,
     doorId: process.env.IDFACE_DOOR_ID ? Number(process.env.IDFACE_DOOR_ID) : undefined,
     openAction: (process.env.IDFACE_OPEN_ACTION as OpenAction | undefined) || undefined,
-    openUserId: process.env.IDFACE_OPEN_USER_ID ? Number(process.env.IDFACE_OPEN_USER_ID) : undefined,
-    openGroupId: process.env.IDFACE_OPEN_GROUP_ID ? Number(process.env.IDFACE_OPEN_GROUP_ID) : undefined,
+    secBoxId: process.env.IDFACE_SECBOX_ID || undefined,
     catraAllow: process.env.IDFACE_CATRA_ALLOW || undefined,
   });
   firmwareTag = "controlid-idface";

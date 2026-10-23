@@ -1,5 +1,15 @@
 [
   {
+    "version": "0.7.0",
+    "date": "2026-10-23",
+    "itens": [
+      "\"Liberar catraca\" agora manda exatamente o comando do CloudGym, capturado na rede da academia: uma entrada autorizada (sem usuário) com o relé da catraca (SecBox 65793) embutido. A tela do iDFace mostra \"Acesso liberado\". As tentativas anteriores (relé solto, usuário Visitante, grupo) faziam o relé bater sem destravar o braço.",
+      "Não cria mais o usuário Visitante no aparelho. O que já foi criado (id 999999999) fica sem uso e pode ser apagado pela tela do iDFace.",
+      "Nova opção IDFACE_SECBOX_ID (padrão 65793) para catracas ligadas em outro SecBox.",
+      "ATUALIZAR na recepção: copie o coliseu-agent.cjs do kit novo como coliseu-agent.new.cjs e rode o update.bat (como administrador). No .env, apague as linhas IDFACE_OPEN_ACTION e IDFACE_OPEN_USER_ID se existirem."
+    ]
+  },
+  {
     "version": "0.6.2",
     "date": "2026-10-23",
     "itens": [
