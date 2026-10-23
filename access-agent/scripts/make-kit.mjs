@@ -79,7 +79,11 @@ await build({
 });
 
 console.log("[2/4] NSSM...");
+// O zip fica versionado em vendor/: o nssm.cc e o Wayback caem juntos e já
+// derrubaram o build de produção (23/10/2026). Download só se o arquivo sumir.
 const nssmZip = path.join(cache, "nssm-2.24.zip");
+const nssmVendor = path.join(root, "vendor", "nssm-2.24.zip");
+if (existsSync(nssmVendor) && sha256(nssmVendor) === NSSM_SHA256) copyFileSync(nssmVendor, nssmZip);
 await download(NSSM_URLS, nssmZip, NSSM_SHA256);
 // extração com jszip — o kit é gerado tanto no Windows (dev) quanto no build Linux do deploy
 const nssmExe = path.join(cache, "nssm.exe");
