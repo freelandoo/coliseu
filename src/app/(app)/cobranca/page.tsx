@@ -15,9 +15,10 @@ export const dynamic = "force-dynamic";
 
 export default async function CobrancaPage() {
   await requireModulo("cobranca");
+  // Só o que está em aberto: pagas, canceladas e estornadas não aparecem aqui.
   const [alunos, cobrancas, planos] = await Promise.all([
     listarAlunos(),
-    listarCobrancas(),
+    listarCobrancas(["pendente", "atrasado"]),
     listarPlanos(),
   ]);
   const alunoById = new Map(alunos.map((a) => [a.id, a]));
@@ -29,6 +30,7 @@ export default async function CobrancaPage() {
       const aluno = alunoById.get(c.alunoId);
       return {
         id: c.id,
+        pessoaId: aluno ? c.alunoId : undefined,
         nome: aluno?.nome ?? "—",
         telefone: aluno?.telefone ?? "",
         detalhe: `${formatBRL(c.valor)} · vence ${formatData(c.vencimento)}`,
@@ -44,6 +46,7 @@ export default async function CobrancaPage() {
       const aluno = alunoById.get(c.alunoId);
       return {
         id: c.id,
+        pessoaId: aluno ? c.alunoId : undefined,
         nome: aluno?.nome ?? "—",
         telefone: aluno?.telefone ?? "",
         detalhe: `${formatBRL(c.valor)} · vence ${formatData(c.vencimento)}`,
@@ -61,9 +64,10 @@ export default async function CobrancaPage() {
     .sort((a, b) => a.dias - b.dias)
     .map(({ aluno, dias }) => ({
       id: `renov-${aluno.id}`,
+      pessoaId: aluno.id,
       nome: aluno.nome,
       telefone: aluno.telefone,
-      detalhe: `${planoById.get(aluno.planoId)?.nome} · expira em ${dias}d`,
+      detalhe: `${planoById.get(aluno.planoId)?.nome ?? "Sem plano"} · expira em ${dias}d`,
       categoria: "arenovar" as const,
       dias,
     }));

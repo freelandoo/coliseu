@@ -221,3 +221,24 @@ skill de dataviz, paleta validada com o `validate_palette.js`):
 | JS de /relatorios | ~1.480 KB | 1.414 KB |
 | Leads lidos por Relatórios (produção) | 1.379 linhas com matrículas, 1,1 MB, 614 ms (+ mapa de conversas) | 2 linhas, 87 B, 185 ms |
 | Cobranças lidas por Relatórios | todas as linhas | 1 contagem por status |
+
+## Etapa 6 — Cobrança e Despesas (2026-10-23)
+
+- **Cobrança lê só o que está em aberto** (`listarCobrancas(["pendente",
+  "atrasado"])`); pagas, canceladas e estornadas não aparecem na tela e não
+  precisam viajar. Produção hoje tem 8 cobranças (Asaas em mock), mas a tabela
+  cresce um registro por mensalidade.
+- **Estado vazio que explica**: cada filtro diz o que apareceria ali ("Mensalidade
+  vencida sem pagamento aparece aqui, da mais antiga para a mais nova"), em vez
+  de "Nada nesta categoria." — lista vazia não parece falha de carregamento.
+- O nome na lista leva à ficha do aluno; "Cobrar" sem telefone mostra "sem
+  telefone" em vez de um `wa.me/55` quebrado; plano ausente sai "Sem plano" (antes
+  "undefined · expira em…"). Chips com `aria-pressed`.
+- **Despesas**: excluir pede confirmação (o valor sai do lucro e do relatório) e
+  mostra o erro se a exclusão falhar — antes apagava num clique e falhava calado.
+  Lista vazia explica o que lançar e onde entra; sem despesas, o lucro avisa que
+  "por enquanto é a receita inteira" (produção: 0 despesas).
+- Tokens legados `red-*`/`text-warn` trocados pelos atuais (`brand-*`, `warning`)
+  em Cobrança, Planos e Despesas.
+- Teste: `e2e/cobranca.spec.ts` (filtro de atrasadas, nome abre a ficha; lançar
+  despesa, cancelar e confirmar a exclusão).

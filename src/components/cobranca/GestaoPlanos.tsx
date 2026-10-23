@@ -137,7 +137,7 @@ export function GestaoPlanos({ planos }: { planos: PlanoComContagem[] }) {
       {aviso && <p className="text-sm text-ok">{aviso}</p>}
 
       {mesclando && (
-        <div className="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-red/40 bg-red-ghost px-4 py-3 text-sm">
+        <div className="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-brand/40 bg-brand-soft px-4 py-3 text-sm">
           <span className="text-ink">
             {selecionados.size === 0
               ? "Marque os planos que vão virar um só (pode incluir arquivados)."
@@ -168,7 +168,7 @@ export function GestaoPlanos({ planos }: { planos: PlanoComContagem[] }) {
               className={cn(
                 "flex items-center gap-1.5 rounded-lg border px-2.5 py-1.5 text-xs font-medium transition-colors sm:gap-2 sm:px-3.5 sm:py-2 sm:text-sm",
                 ativo
-                  ? "border-red/60 bg-red-ghost text-ink"
+                  ? "border-brand/60 bg-brand-soft text-ink"
                   : "border-border bg-surface text-muted hover:border-border-strong hover:text-ink",
               )}
             >
@@ -176,7 +176,7 @@ export function GestaoPlanos({ planos }: { planos: PlanoComContagem[] }) {
               <span
                 className={cn(
                   "flex h-4 min-w-4 items-center justify-center rounded-md px-1 text-xs font-semibold sm:h-5 sm:min-w-5 sm:text-xs",
-                  ativo ? "bg-red text-white" : "bg-surface-2 text-faint",
+                  ativo ? "bg-brand text-white" : "bg-surface-2 text-faint",
                 )}
               >
                 {contagem[chip.key]}
@@ -208,7 +208,7 @@ export function GestaoPlanos({ planos }: { planos: PlanoComContagem[] }) {
                         checked={selecionados.has(p.id)}
                         onChange={() => alternar(p.id)}
                         aria-label={`Selecionar ${p.nome}`}
-                        className="mt-1 accent-red"
+                        className="mt-1 accent-brand"
                       />
                     )}
                     <div className="min-w-0 flex-1">
@@ -304,7 +304,7 @@ export function GestaoPlanos({ planos }: { planos: PlanoComContagem[] }) {
                               checked={selecionados.has(p.id)}
                               onChange={() => alternar(p.id)}
                               aria-label={`Selecionar ${p.nome}`}
-                              className="accent-red"
+                              className="accent-brand"
                             />
                           )}
                         </td>

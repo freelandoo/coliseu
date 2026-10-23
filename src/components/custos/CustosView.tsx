@@ -7,7 +7,7 @@ import { cn } from "@/lib/cn";
 import { formatBRL, formatData } from "@/lib/mock-data";
 import type { Despesa } from "@/lib/types";
 import { Botao, classeBotao } from "@/components/ui/Botao";
-import { Modal, TituloModal } from "@/components/ui/Modal";
+import { DescricaoModal, Modal, TituloModal } from "@/components/ui/Modal";
 import { MensagemErro, classeCampo, classeRotulo } from "@/components/ui/Campo";
 import { useCascata } from "@/lib/useCascata";
 
@@ -37,9 +37,34 @@ export function CustosView({
   const lucro = receita - totalDespesas;
   const margem = receita > 0 ? (lucro / receita) * 100 : 0;
 
-  async function excluir(id: string) {
-    await fetch(`/api/despesas/${id}`, { method: "DELETE" });
-    router.refresh();
+  // Excluir pede confirmação: o lançamento sai do lucro e do relatório financeiro.
+  const [excluindo, setExcluindo] = useState<Despesa | null>(null);
+  const [apagando, setApagando] = useState(false);
+  const [erroExcluir, setErroExcluir] = useState("");
+
+  function excluir(d: Despesa) {
+    setErroExcluir("");
+    setExcluindo(d);
+  }
+
+  async function confirmarExclusao() {
+    if (!excluindo || apagando) return;
+    setApagando(true);
+    setErroExcluir("");
+    try {
+      const r = await fetch(`/api/despesas/${excluindo.id}`, { method: "DELETE" });
+      if (!r.ok && r.status !== 404) {
+        const d = (await r.json().catch(() => null)) as { erro?: string } | null;
+        setErroExcluir(d?.erro ?? "Não foi possível excluir. Tente de novo.");
+        return;
+      }
+      setExcluindo(null);
+      router.refresh();
+    } catch {
+      setErroExcluir("Sem conexão para excluir. Tente de novo.");
+    } finally {
+      setApagando(false);
+    }
   }
 
   return (
@@ -66,7 +91,11 @@ export function CustosView({
             label="Lucro"
             value={formatBRL(lucro)}
             tone={lucro >= 0 ? "ok" : "danger"}
-            hint={`Margem ${margem.toFixed(1).replace(".", ",")}%`}
+            hint={
+              despesas.length
+                ? `Margem ${margem.toFixed(1).replace(".", ",")}%`
+                : "Sem despesa lançada: por enquanto o lucro é a receita inteira"
+            }
           />
         </div>
       </section>
@@ -81,7 +110,7 @@ export function CustosView({
             <button type="button"
               key={cat}
               onClick={() => setModalCategoria(cat)}
-              className="rounded-lg border border-border bg-surface px-3 py-2 text-xs font-medium text-ink transition-colors hover:border-red/40 hover:bg-surface-2 sm:px-4 sm:py-2.5 sm:text-sm"
+              className="rounded-lg border border-border bg-surface px-3 py-2 text-xs font-medium text-ink transition-colors hover:border-brand/40 hover:bg-surface-2 sm:px-4 sm:py-2.5 sm:text-sm"
             >
               + {cat}
             </button>
@@ -102,9 +131,13 @@ export function CustosView({
         </h2>
         <Card className="overflow-hidden">
           {despesas.length === 0 ? (
-            <p className="px-5 py-10 text-center text-sm text-faint">
-              Nenhuma despesa lançada ainda.
-            </p>
+            <div className="mx-auto max-w-md px-5 py-10 text-center">
+              <p className="text-sm font-semibold text-ink">Nenhuma despesa lançada ainda.</p>
+              <p className="mt-1 text-sm text-muted">
+                Lance aluguel, salários, luz e o resto pelos botões acima. Cada lançamento entra no lucro daqui e
+                no relatório financeiro.
+              </p>
+            </div>
           ) : (
             <>
             {/* mobile: cards empilhados, sem scroll horizontal */}
@@ -116,7 +149,7 @@ export function CustosView({
                       <p className="text-sm font-medium text-ink">
                         {d.categoria}
                         {d.recorrente && (
-                          <span className="ml-2 text-xs text-warn">
+                          <span className="ml-2 text-xs text-warning">
                             fixa
                           </span>
                         )}
@@ -132,7 +165,7 @@ export function CustosView({
                   </div>
                   <div className="text-right">
                     <button type="button"
-                      onClick={() => excluir(d.id)}
+                      onClick={() => excluir(d)}
                       className="text-xs font-medium text-faint transition-colors hover:text-danger"
                     >
                       Excluir
@@ -164,7 +197,7 @@ export function CustosView({
                       <td className="px-4 py-3">
                         <span className="font-medium text-ink">{d.categoria}</span>
                         {d.recorrente && (
-                          <span className="ml-2 text-xs text-warn">
+                          <span className="ml-2 text-xs text-warning">
                             fixa
                           </span>
                         )}
@@ -175,7 +208,7 @@ export function CustosView({
                       </td>
                       <td className="px-4 py-3 text-right">
                         <button type="button"
-                          onClick={() => excluir(d.id)}
+                          onClick={() => excluir(d)}
                           className="text-xs font-medium text-faint transition-colors hover:text-danger"
                         >
                           Excluir
@@ -200,6 +233,26 @@ export function CustosView({
             router.refresh();
           }}
         />
+      )}
+
+      {excluindo && (
+        <Modal onFechar={() => !apagando && setExcluindo(null)} fecharComEsc={!apagando}>
+          <TituloModal>Excluir despesa</TituloModal>
+          <DescricaoModal className="mt-2">
+            <strong className="text-ink">{excluindo.categoria}</strong> de{" "}
+            <strong className="text-ink">{formatBRL(excluindo.valor)}</strong> em {formatData(excluindo.data)}. O valor
+            sai do lucro desta tela e do relatório financeiro.
+          </DescricaoModal>
+          {erroExcluir && <MensagemErro className="mt-3">{erroExcluir}</MensagemErro>}
+          <div className="mt-5 flex gap-3">
+            <Botao variante="perigo" onClick={() => void confirmarExclusao()} carregando={apagando} className="flex-1">
+              {apagando ? "Excluindo…" : "Excluir"}
+            </Botao>
+            <Botao onClick={() => setExcluindo(null)} disabled={apagando}>
+              Cancelar
+            </Botao>
+          </div>
+        </Modal>
       )}
     </div>
   );

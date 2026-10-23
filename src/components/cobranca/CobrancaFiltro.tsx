@@ -1,6 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
+import Link from "next/link";
 import { Badge, Card } from "@/components/ui/primitives";
 import { cn } from "@/lib/cn";
 import { useCascata } from "@/lib/useCascata";
@@ -9,6 +10,8 @@ export type CategoriaCobranca = "atrasada" | "avencer" | "arenovar";
 
 export interface LinhaCobranca {
   id: string;
+  /** Pessoa da linha, para o nome levar à ficha. */
+  pessoaId?: string;
   nome: string;
   telefone: string;
   detalhe: string; // "R$ 129,90 · vence 23/06/2026" ou "Mensal · expira em 3d"
@@ -24,6 +27,44 @@ const CHIPS: { key: Filtro; label: string }[] = [
   { key: "avencer", label: "A vencer" },
   { key: "arenovar", label: "A renovar" },
 ];
+
+/**
+ * O que dizer quando o filtro não tem ninguém — e o que apareceria ali, para a
+ * lista vazia não parecer erro de carregamento.
+ */
+const VAZIO: Record<Filtro, string> = {
+  todos: "Nada em aberto: nenhuma cobrança pendente ou atrasada e nenhum plano vencendo nos próximos 15 dias.",
+  atrasada: "Nenhuma cobrança atrasada. Mensalidade vencida sem pagamento aparece aqui, da mais antiga para a mais nova.",
+  avencer: "Nenhuma mensalidade a vencer. Cobrança gerada e ainda no prazo aparece aqui, da mais próxima para a mais distante.",
+  arenovar: "Nenhum plano vence nos próximos 15 dias.",
+};
+
+/** Nome que leva à ficha (quando a linha sabe de quem é). */
+function NomePessoa({ linha }: { linha: LinhaCobranca }) {
+  if (!linha.pessoaId) return <>{linha.nome}</>;
+  return (
+    <Link href={`/matriculados/${linha.pessoaId}`} className="underline-offset-2 hover:text-destaque hover:underline">
+      {linha.nome}
+    </Link>
+  );
+}
+
+/** Abre o WhatsApp do aluno; sem telefone, diz isso em vez de um link quebrado. */
+function AcaoContato({ linha }: { linha: LinhaCobranca }) {
+  const fone = linha.telefone.replace(/\D/g, "");
+  const acao = linha.categoria === "arenovar" ? "Oferecer renovação" : "Cobrar";
+  if (!fone) return <span className="text-xs text-muted">sem telefone</span>;
+  return (
+    <a
+      href={`https://wa.me/55${fone}`}
+      target="_blank"
+      rel="noreferrer"
+      className="text-xs font-medium text-destaque hover:underline"
+    >
+      {acao} →
+    </a>
+  );
+}
 
 function situacao(l: LinhaCobranca): {
   rotulo: string;
@@ -67,10 +108,11 @@ export function CobrancaFiltro({ linhas }: { linhas: LinhaCobranca[] }) {
             <button type="button"
               key={chip.key}
               onClick={() => setFiltro(chip.key)}
+              aria-pressed={ativo}
               className={cn(
                 "flex items-center gap-1.5 rounded-lg border px-2.5 py-1.5 text-xs font-medium transition-colors sm:gap-2 sm:px-3.5 sm:py-2 sm:text-sm",
                 ativo
-                  ? "border-red/60 bg-red-ghost text-ink"
+                  ? "border-brand/60 bg-brand-soft text-ink"
                   : "border-border bg-surface text-muted hover:border-border-strong hover:text-ink",
               )}
             >
@@ -78,7 +120,7 @@ export function CobrancaFiltro({ linhas }: { linhas: LinhaCobranca[] }) {
               <span
                 className={cn(
                   "flex h-4 min-w-4 items-center justify-center rounded-md px-1 text-xs font-semibold sm:h-5 sm:min-w-5 sm:text-xs",
-                  ativo ? "bg-red text-white" : "bg-surface-2 text-faint",
+                  ativo ? "bg-brand text-white" : "bg-surface-2 text-faint",
                 )}
               >
                 {contagem[chip.key]}
@@ -91,36 +133,26 @@ export function CobrancaFiltro({ linhas }: { linhas: LinhaCobranca[] }) {
       {/* tabela */}
       <Card className="overflow-hidden">
         {visiveis.length === 0 ? (
-          <p className="px-5 py-10 text-center text-sm text-faint">
-            Nada nesta categoria.
-          </p>
+          <p className="mx-auto max-w-md px-5 py-10 text-center text-sm text-muted">{VAZIO[filtro]}</p>
         ) : (
           <>
           {/* mobile: cards empilhados, sem scroll horizontal */}
           <div className="divide-y divide-border sm:hidden">
             {visiveis.map((l) => {
               const s = situacao(l);
-              const fone = l.telefone.replace(/\D/g, "");
-              const acao =
-                l.categoria === "arenovar" ? "Oferecer renovação" : "Cobrar";
               return (
                 <div key={l.id} className="flex flex-col gap-2 px-4 py-3">
                   <div className="flex items-start justify-between gap-2">
                     <div className="min-w-0">
-                      <p className="truncate text-sm font-medium text-ink">{l.nome}</p>
+                      <p className="truncate text-sm font-medium text-ink">
+                        <NomePessoa linha={l} />
+                      </p>
                       <p className="text-xs text-muted">{l.detalhe}</p>
                     </div>
                     <Badge tone={s.tone}>{s.rotulo}</Badge>
                   </div>
                   <div className="text-right">
-                    <a
-                      href={`https://wa.me/55${fone}`}
-                      target="_blank"
-                      rel="noreferrer"
-                      className="text-xs font-medium text-destaque hover:underline"
-                    >
-                      {acao} →
-                    </a>
+                    <AcaoContato linha={l} />
                   </div>
                 </div>
               );
@@ -141,28 +173,20 @@ export function CobrancaFiltro({ linhas }: { linhas: LinhaCobranca[] }) {
               <tbody className={cascata}>
                 {visiveis.map((l) => {
                   const s = situacao(l);
-                  const fone = l.telefone.replace(/\D/g, "");
-                  const acao =
-                    l.categoria === "arenovar" ? "Oferecer renovação" : "Cobrar";
                   return (
                     <tr
                       key={l.id}
                       className="border-b border-border last:border-0 transition-colors hover:bg-surface-2"
                     >
-                      <td className="px-4 py-3 font-medium text-ink">{l.nome}</td>
+                      <td className="px-4 py-3 font-medium text-ink">
+                        <NomePessoa linha={l} />
+                      </td>
                       <td className="px-4 py-3 text-muted">{l.detalhe}</td>
                       <td className="px-4 py-3">
                         <Badge tone={s.tone}>{s.rotulo}</Badge>
                       </td>
                       <td className="px-4 py-3 text-right">
-                        <a
-                          href={`https://wa.me/55${fone}`}
-                          target="_blank"
-                          rel="noreferrer"
-                          className="text-xs font-medium text-destaque hover:underline"
-                        >
-                          {acao} →
-                        </a>
+                        <AcaoContato linha={l} />
                       </td>
                     </tr>
                   );
