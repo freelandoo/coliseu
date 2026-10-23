@@ -66,6 +66,8 @@ try {
   commit = process.env.RAILWAY_GIT_COMMIT_SHA?.slice(0, 7) ?? null;
 }
 
+const versaoKit = JSON.parse(readFileSync(path.join(root, "package.json"), "utf8")).version;
+
 console.log("[1/4] Bundle do agente (esbuild)...");
 await build({
   entryPoints: [path.join(root, "src", "agent.ts")],
@@ -75,7 +77,9 @@ await build({
   format: "cjs",
   outfile: path.join(kit, "coliseu-agent.cjs"),
   banner: { js: "// Coliseu Agent (bundle) — gerado por make-kit; não editar na mão." },
-  define: { "process.env.KIT_VERSION": JSON.stringify(commit ?? "dev") },
+  // versão do package + commit quando houver (no build do Railway não há .git
+  // nem RAILWAY_GIT_COMMIT_SHA: antes o log mostrava só "dev")
+  define: { "process.env.KIT_VERSION": JSON.stringify(commit ? `${versaoKit}+${commit}` : versaoKit) },
 });
 
 console.log("[2/4] NSSM...");
