@@ -16,7 +16,8 @@
     "db:seed": "tsx prisma/seed.ts",
     "db:dev-user": "tsx scripts/garantir-desenvolvedor.ts",
     "db:reset": "prisma migrate reset --force",
-    "make-kit": "npm --prefix access-agent run make-kit"
+    "make-kit": "npm --prefix access-agent run make-kit",
+    "e2e": "playwright test"
   },
   "prisma": {
     "seed": "tsx prisma/seed.ts"
@@ -36,6 +37,7 @@
     "web-push": "^3.6.7"
   },
   "devDependencies": {
+    "@playwright/test": "1.63.0",
     "@tailwindcss/postcss": "^4",
     "@types/node": "^20",
     "@types/react": "^19",

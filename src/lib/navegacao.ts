@@ -39,12 +39,19 @@ export interface GrupoNav {
   itens: DestinoNav[];
 }
 
+/**
+ * Ordem do dia do balcão: o que se usa o dia inteiro em cima ("Dia a dia"),
+ * dinheiro e números do admin no meio, a catraca e a conta embaixo. O admin
+ * abre no Painel, que encabeça a lista.
+ */
 export const GRUPOS_NAV: GrupoNav[] = [
   {
-    id: "relacionamento",
-    rotulo: "Relacionamento",
+    id: "dia",
+    rotulo: "Dia a dia",
     itens: [
+      { href: "/painel", rotulo: "Painel", icone: "painel", modulo: "painel" },
       { href: "/atendimento", rotulo: "Atendimento", icone: "chat", modulo: "atendimento" },
+      { href: "/matriculados", rotulo: "Alunos", icone: "pessoas", modulo: "matriculados" },
       { href: "/captacao", rotulo: "Captação", icone: "funil", modulo: "captacao" },
       { href: "/aula-experimental", rotulo: "Aula experimental", icone: "calendario", modulo: "aula-experimental" },
     ],
@@ -53,8 +60,6 @@ export const GRUPOS_NAV: GrupoNav[] = [
     id: "gestao",
     rotulo: "Gestão",
     itens: [
-      { href: "/painel", rotulo: "Painel", icone: "painel", modulo: "painel" },
-      { href: "/matriculados", rotulo: "Alunos", icone: "pessoas", modulo: "matriculados" },
       { href: "/cobranca", rotulo: "Cobrança", icone: "cobranca", modulo: "cobranca" },
       { href: "/custos", rotulo: "Despesas", icone: "despesas", modulo: "custos" },
       { href: "/relatorios", rotulo: "Relatórios", icone: "relatorios", modulo: "relatorios" },

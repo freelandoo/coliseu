@@ -87,7 +87,7 @@ export default async function CobrancaPage() {
   return (
     <>
       <Reveal>
-        <PageHeader step={3} title="Cobrança e Renovação" />
+        <PageHeader title="Cobrança" />
       </Reveal>
 
       <Reveal delay={0.05}>

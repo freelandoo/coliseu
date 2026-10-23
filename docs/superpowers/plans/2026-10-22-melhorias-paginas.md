@@ -60,3 +60,34 @@ agrega no banco (fuso da academia), últimos 6 meses:
 O mês corrente vem `parcial` e o destaque mostra o último mês fechado.
 Produção em 22/10: set = 63 matrículas / R$ 87.651 / 34 vencidas; out (parcial) =
 4 / R$ 2.226 / 1 — a academia ainda opera pelo CloudGym.
+
+## Etapa 1 — Fundação (2026-10-22)
+
+- `(app)/error.tsx` (a tela cai, o menu fica; "Tentar de novo" + código do erro),
+  `(app)/loading.tsx` (esqueleto parado, sem shimmer) e `app/not-found.tsx`.
+- `PageHeader` é o cabeçalho único das telas de trabalho, com slot `acoes`. Saíram
+  os números `step` (havia dois "5" e nenhum 2/4). Perfil usa o padrão. Títulos
+  alinhados ao menu (Cobrança, Despesas, Relatórios, Controle de acesso, Minha conta).
+  Painel mantém a saudação (tela de abertura, de propósito).
+- Menu: "Dia a dia" (Painel, Atendimento, Alunos, Captação, Aula experimental),
+  "Gestão" (Cobrança, Despesas, Relatórios), "Operação", "Conta". URLs iguais.
+- Login: "Cadastrar" só enquanto não há usuário (a API já recusava com 403).
+- `Reveal` virou CSS (`.revela`: 16px/400ms/power3.out), componente de servidor.
+- Playwright 1.63.0 (`npm run e2e`, `e2e/`): login, todas as telas do admin,
+  técnico e recepção barrados onde devem, 404, celular sem rolagem lateral e gaveta
+  do menu. `e2e/medir.mjs` mede JS e tempo por tela.
+
+**Medição** (build de produção local, admin logado, JS descompactado por tela):
+
+| Tela | antes | depois |
+|---|---|---|
+| /atendimento | 1580 KB | 1516 KB |
+| /matriculados | 1512 KB | 1448 KB |
+| /matriculados/renovar | 1497 KB | 1433 KB |
+| /captacao | 1506 KB | 1443 KB |
+| /cobranca | 1491 KB | 1427 KB |
+| /acesso | 1483 KB | 1419 KB |
+| /painel, /aula-experimental, /relatorios | ~1470–1490 KB | igual (ainda usam GSAP em outros componentes) |
+
+844 KB de cada tela é o three.js da malha de fundo/Coliseu 3D — fora do escopo por
+decisão (Q4). Tempo até a tela pronta local ~100–170 ms antes e depois (ruído).

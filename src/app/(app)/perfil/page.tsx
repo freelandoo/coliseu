@@ -1,7 +1,7 @@
 import { prisma } from "@/lib/db";
 import { requireUser, podePapel, type Papel } from "@/lib/auth/rbac";
 import { kitDisponivel, kitInfo } from "@/lib/agent/kit";
-import { Badge, Card } from "@/components/ui/primitives";
+import { Badge, Card, PageHeader } from "@/components/ui/primitives";
 import { Reveal } from "@/components/ui/Reveal";
 import { AlterarSenhaCard } from "@/components/perfil/AlterarSenhaCard";
 import { AgentKitCard } from "@/components/perfil/AgentKitCard";
@@ -35,14 +35,7 @@ export default async function PerfilPage() {
   return (
     <>
       <Reveal>
-        <header className="mb-4">
-          <p className="text-xs font-medium text-destaque">
-            Conta
-          </p>
-          <h1 className="mt-0.5 font-display text-2xl font-semibold text-ink">
-            Perfil
-          </h1>
-        </header>
+        <PageHeader title="Minha conta" />
       </Reveal>
 
       <div className="flex max-w-2xl flex-col gap-4">

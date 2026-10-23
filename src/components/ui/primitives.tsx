@@ -119,36 +119,34 @@ export function Stat({
 }
 
 /* ---------- Cabeçalho de página ---------- */
+/**
+ * Cabeçalho padrão das telas de trabalho. Versão compacta do editorial: a
+ * manchete grande fica só nas telas de abertura (Painel, Aula experimental);
+ * aqui o título não empurra o trabalho. `acoes` fica à direita (quebra para
+ * baixo no celular).
+ */
 export function PageHeader({
-  step,
   title,
   subtitle,
+  acoes,
 }: {
-  step?: number;
   title: string;
   /** Descrição opcional e enxuta; a maioria das telas dispensa. */
   subtitle?: string;
+  acoes?: ReactNode;
 }) {
-  // Versão compacta do cabeçalho editorial: a manchete grande fica só na tela
-  // de referência (Aula experimental); aqui o título não empurra o trabalho.
   return (
-    <header className="mb-5 flex items-start gap-3">
-      {step !== undefined ? (
-        <span
-          aria-hidden
-          className="steel-plate corte-canto mt-0.5 h-8 w-8 shrink-0 text-sm [--corte:7px] sm:h-9 sm:w-9 sm:text-base"
-        >
-          {step}
-        </span>
-      ) : (
+    <header className="mb-5 flex flex-wrap items-start justify-between gap-x-6 gap-y-3">
+      <div className="flex min-w-0 items-start gap-3">
         <span aria-hidden className="mt-1 h-6 w-1.5 shrink-0 bg-brand sm:h-7" />
-      )}
-      <div className="min-w-0">
-        <h1 className="font-manchete linha-revela text-[1.75rem] [--dur-linha:300ms] text-ink sm:text-[2rem]">{title}</h1>
-        {subtitle && (
-          <p className="entrada mt-1.5 max-w-2xl text-sm text-muted [--atraso:120ms]">{subtitle}</p>
-        )}
+        <div className="min-w-0">
+          <h1 className="font-manchete linha-revela text-[1.75rem] [--dur-linha:300ms] text-ink sm:text-[2rem]">{title}</h1>
+          {subtitle && (
+            <p className="entrada mt-1.5 max-w-2xl text-sm text-muted [--atraso:120ms]">{subtitle}</p>
+          )}
+        </div>
       </div>
+      {acoes && <div className="flex shrink-0 flex-wrap items-center gap-2">{acoes}</div>}
     </header>
   );
 }

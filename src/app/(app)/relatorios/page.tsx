@@ -207,7 +207,7 @@ export default async function RelatoriosPage() {
   return (
     <>
       <Reveal>
-        <PageHeader step={5} title="Relatórios e Indicadores" />
+        <PageHeader title="Relatórios" />
       </Reveal>
 
       <Reveal delay={0.05}>

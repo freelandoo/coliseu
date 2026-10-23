@@ -30,7 +30,7 @@ describe("visibilidade do menu", () => {
     expect(hrefs("TECNICO", true)).toContain("/backup");
   });
 
-  it("grupo sem destino some (técnico não vê Relacionamento nem Gestão)", () => {
+  it("grupo sem destino some (técnico não vê Dia a dia nem Gestão)", () => {
     expect(gruposVisiveis("TECNICO", false).map((g) => g.id)).toEqual(["operacao", "conta"]);
   });
 });

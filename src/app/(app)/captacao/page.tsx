@@ -35,10 +35,7 @@ export default async function CaptacaoPage() {
   return (
     <>
       <Reveal>
-        <div className="mb-4 flex flex-wrap items-center justify-between gap-4">
-          <PageHeader step={1} title="Captação" />
-          <ConectarWhatsapp inicial={whatsapp} compacto />
-        </div>
+        <PageHeader title="Captação" acoes={<ConectarWhatsapp inicial={whatsapp} compacto />} />
       </Reveal>
 
       {aulasHoje > 0 && (

@@ -13,7 +13,7 @@ export default async function CustosPage() {
   return (
     <>
       <Reveal>
-        <PageHeader title="Custos e Lucro" />
+        <PageHeader title="Despesas" />
       </Reveal>
 
       <Reveal delay={0.05}>

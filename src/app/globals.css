@@ -304,17 +304,6 @@ th {
   background: var(--color-control);
 }
 
-/* marcador numerado do cabeçalho de página (nome mantido por compatibilidade) */
-.steel-plate {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  background: var(--color-brand);
-  color: #fff;
-  font-family: var(--font-display);
-  font-weight: 600;
-}
-
 /* entrada do diálogo: só opacidade + leve subida, 160ms (Modal.tsx) */
 /* entrada breve de painéis: opacidade + 8px, 220ms.
    CSS, não JS: o conteúdo nunca espera script para aparecer. */
@@ -326,6 +315,19 @@ th {
 }
 .entrada {
   animation: entra-subindo 220ms var(--ease-entrada) both;
+  animation-delay: var(--atraso, 0ms);
+}
+
+/* entrada dos blocos de página (<Reveal>): 16px + 400ms, curva power3.out.
+   Sem keyframe `to`: termina em `transform: none`, sem criar containing block. */
+@keyframes revela-sobe {
+  from {
+    opacity: 0;
+    transform: translateY(var(--revela-y, 16px));
+  }
+}
+.revela {
+  animation: revela-sobe 400ms cubic-bezier(0.215, 0.61, 0.355, 1) both;
   animation-delay: var(--atraso, 0ms);
 }
 

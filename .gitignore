@@ -48,3 +48,7 @@ next-env.d.ts
 
 # artefatos locais da skill de design (taste)
 .taste-skill/
+
+# Playwright
+/test-results/
+/playwright-report/

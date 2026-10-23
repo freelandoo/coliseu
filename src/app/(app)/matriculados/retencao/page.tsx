@@ -49,7 +49,7 @@ export default async function RetencaoPage({
       </Reveal>
 
       <Reveal>
-        <PageHeader title="Retenção e Reativação" />
+        <PageHeader title="Retenção e reativação" />
       </Reveal>
 
       <Reveal delay={0.03}>
