@@ -23,6 +23,13 @@ type Filtro = "todos" | LeadEstagio;
 
 const ORDEM: LeadEstagio[] = ["novo", "qualificado", "interesse", "convertido", "perdido"];
 
+/**
+ * Quantos leads a lista desenha por vez. São mais de mil na base, cada linha
+ * com o atalho de matrícula — desenhar todos travava a tela. A contagem dos
+ * estágios e a busca continuam olhando a base inteira; só o desenho é em lotes.
+ */
+const LOTE = 50;
+
 const soDigitos = (s: string) => s.replace(/\D/g, "");
 
 /** Busca local por nome ou telefone, nos leads que a página já carregou. */
@@ -30,7 +37,9 @@ function casaLead(l: Lead, termo: string): boolean {
   const t = normalizar(termo);
   if (!t) return true;
   const d = soDigitos(termo);
-  if (d.length >= 3 && soDigitos(l.telefone).includes(d)) return true;
+  // Telefone só quando o termo é número: em "Lote 119" o 119 é parte do nome,
+  // e casaria com quase todo celular "(11) 9…".
+  if (d.length >= 3 && !/\p{L}/u.test(termo) && soDigitos(l.telefone).includes(d)) return true;
   return normalizar(l.nome).includes(t);
 }
 
@@ -41,9 +50,20 @@ function casaLead(l: Lead, termo: string): boolean {
  */
 export function LeadsFiltro({ leads, planos }: { leads: Lead[]; planos: Plano[] }) {
   const cascata = useCascata();
-  const [filtro, setFiltro] = useState<Filtro>("todos");
-  const [busca, setBusca] = useState("");
+  const [filtro, setFiltroEstado] = useState<Filtro>("todos");
+  const [busca, setBuscaEstado] = useState("");
+  const [limite, setLimite] = useState(LOTE);
   const termo = busca.trim();
+
+  // Filtro novo, lista nova: volta ao primeiro lote.
+  function setFiltro(f: Filtro) {
+    setFiltroEstado(f);
+    setLimite(LOTE);
+  }
+  function setBusca(b: string) {
+    setBuscaEstado(b);
+    setLimite(LOTE);
+  }
 
   const contagem = useMemo(() => {
     const c = { todos: leads.length } as Record<Filtro, number>;
@@ -51,7 +71,10 @@ export function LeadsFiltro({ leads, planos }: { leads: Lead[]; planos: Plano[] 
     return c;
   }, [leads]);
 
-  const visiveis = leads.filter((l) => (filtro === "todos" || l.estagio === filtro) && casaLead(l, termo));
+  const filtrados = leads.filter((l) => (filtro === "todos" || l.estagio === filtro) && casaLead(l, termo));
+  // Chegam do mais novo para o mais antigo: o primeiro lote é quem entrou por último.
+  const visiveis = filtrados.slice(0, limite);
+  const restantes = filtrados.length - visiveis.length;
 
   const chips: { key: Filtro; label: string }[] = [
     { key: "todos", label: "Todos" },
@@ -125,7 +148,7 @@ export function LeadsFiltro({ leads, planos }: { leads: Lead[]; planos: Plano[] 
 
       {filtrando && leads.length > 0 && (
         <p role="status" className="-mt-2 text-xs text-muted">
-          {visiveis.length} de {leads.length} lead{leads.length === 1 ? "" : "s"}
+          {filtrados.length} de {leads.length} lead{leads.length === 1 ? "" : "s"}
         </p>
       )}
 
@@ -210,6 +233,17 @@ export function LeadsFiltro({ leads, planos }: { leads: Lead[]; planos: Plano[] 
           </>
         )}
       </Card>
+
+      {restantes > 0 && (
+        <div className="flex flex-col items-center gap-1">
+          <Botao onClick={() => setLimite((l) => l + LOTE)}>
+            Mostrar mais {Math.min(LOTE, restantes)}
+          </Botao>
+          <p className="text-xs text-muted">
+            {visiveis.length} de {filtrados.length} na lista · a busca procura em todos
+          </p>
+        </div>
+      )}
     </div>
   );
 }

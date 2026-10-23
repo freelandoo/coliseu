@@ -151,3 +151,33 @@ orquestradores pequenos; cada peça tem um arquivo e um trabalho:
 
 **Medição:** `/atendimento` 1516 KB → 1518 KB de JS (igual; a meta era
 organização). Tempo até a tela pronta local ~480 ms com 3 conversas.
+
+## Etapa 4 — Captação e aula experimental (2026-10-22)
+
+Produção em 22/10: 1.379 leads (1.374 "novo", 5 "com interesse"), 1.769
+conversas (1.754 ligadas a cadastro), 19 aulas experimentais.
+
+- **Lista de leads em lotes de 50** ("Mostrar mais 50"). Antes a Captação
+  desenhava os 1.379 leads duas vezes (cartões do celular + tabela do desktop),
+  cada linha com o atalho de matrícula: ~2.760 linhas na tela. Agora 100
+  (50 + 50). Contagem por estágio e busca continuam olhando a base inteira;
+  mudar filtro ou busca volta ao primeiro lote. Ordem: o mais novo primeiro.
+- **Aviso "aulas hoje"** lê só o dia (`listarAulasExperimentaisEntre(hoje, hoje)`),
+  não a agenda inteira.
+- **Mapa lead → conversa** (`mapaConversaPorPessoaRepo(["lead"])`) lê só as
+  conversas de leads, não as de alunos e ex-alunos.
+- **Busca de leads**: termo com letra não vira busca por telefone. "Lote 119"
+  casava com quase todo celular "(11) 9…" porque os dígitos 119 apareciam no
+  número.
+- `/aula-experimental` continua lendo a agenda inteira: o filtro "Todas" é o
+  histórico, e são 19 linhas (2 KB).
+- Teste: `e2e/captacao.spec.ts` (120 leads de teste: 50 por vez, "Mostrar mais",
+  busca fora do lote, limpar volta ao lote, contagem do estágio na base toda).
+
+**Medição** (consultas contra o banco de produção, da máquina local):
+
+| Consulta / tela | antes | depois |
+|---|---|---|
+| Linhas de lead desenhadas na Captação | ~2.760 | 100 |
+| Mapa lead → conversa | 1.754 linhas, 130 KB, 289 ms | 1.379 linhas, 102 KB, 245 ms |
+| Aulas para o aviso do dia | 19 linhas | só as de hoje |

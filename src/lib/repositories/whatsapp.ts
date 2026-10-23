@@ -13,7 +13,7 @@ import {
   type ConversaResumo,
   type MensagemItem,
 } from "@/lib/types";
-import type { Prisma, WhatsappStatus } from "@prisma/client";
+import type { PessoaFase, Prisma, WhatsappStatus } from "@prisma/client";
 import {
   codificarCursor,
   PAGINA_CONVERSAS,
@@ -322,9 +322,13 @@ export async function buscarConversasRepo(termo: string, limite = 30): Promise<C
  * mandar a recepção para o WhatsApp Web. Uma pessoa pode ter mais de uma
  * conversa (números diferentes); vale a mais recente.
  */
-export async function mapaConversaPorPessoaRepo(): Promise<Map<string, string>> {
+export async function mapaConversaPorPessoaRepo(
+  fases?: PessoaFase[],
+): Promise<Map<string, string>> {
+  // Com fases, só as conversas de quem está nelas: a Captação quer os leads,
+  // não as ~1.700 conversas de alunos e ex-alunos.
   const rows = await prisma.conversa.findMany({
-    where: { personId: { not: null } },
+    where: fases ? { person: { fase: { in: fases } } } : { personId: { not: null } },
     select: { id: true, personId: true },
     orderBy: { ultimaMensagemEm: "asc" },
   });

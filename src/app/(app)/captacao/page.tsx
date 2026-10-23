@@ -3,7 +3,7 @@ import { Reveal } from "@/components/ui/Reveal";
 import { PageHeader } from "@/components/ui/primitives";
 import { ConectarWhatsapp } from "@/components/captacao/ConectarWhatsapp";
 import { LeadsFiltro } from "@/components/captacao/LeadsFiltro";
-import { listarAulasExperimentais, listarLeads, listarPlanos } from "@/lib/store";
+import { listarAulasExperimentaisEntre, listarLeads, listarPlanos } from "@/lib/store";
 import { hojeNaAcademia } from "@/lib/aula-experimental";
 import { statusWhatsappLocal } from "@/lib/whatsapp/status";
 import { requireModulo } from "@/lib/auth/rbac";
@@ -21,16 +21,16 @@ export const dynamic = "force-dynamic";
  */
 export default async function CaptacaoPage() {
   await requireModulo("captacao");
-  const [leads, planos, aulas, whatsapp] = await Promise.all([
-    listarLeads(),
-    listarPlanos(),
-    listarAulasExperimentais(),
-    statusWhatsappLocal(),
-  ]);
-
   // O dia é do relógio da academia, não do servidor (UTC) nem do celular.
   const hoje = hojeNaAcademia();
-  const aulasHoje = aulas.filter((a) => a.data === hoje).length;
+  // Para o aviso basta o dia de hoje — a agenda inteira mora em /aula-experimental.
+  const [leads, planos, aulasDeHoje, whatsapp] = await Promise.all([
+    listarLeads(),
+    listarPlanos(),
+    listarAulasExperimentaisEntre(hoje, hoje),
+    statusWhatsappLocal(),
+  ]);
+  const aulasHoje = aulasDeHoje.length;
 
   return (
     <>

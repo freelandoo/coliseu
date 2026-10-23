@@ -14,7 +14,9 @@ import {
   listarDespesasRepo, criarDespesaRepo, removerDespesaRepo, totalDespesasRepo,
 } from "@/lib/repositories/despesas";
 import { mapaConversaPorPessoaRepo } from "@/lib/repositories/whatsapp";
-import { listarAulasExperimentaisRepo } from "@/lib/repositories/aulas-experimentais";
+import {
+  listarAulasExperimentaisEntreRepo, listarAulasExperimentaisRepo,
+} from "@/lib/repositories/aulas-experimentais";
 import {
   LEAD_ESTAGIO_LABEL, ORIGEM_LABEL,
   type Aluno, type AulaExperimentalItem, type Candidato, type Cobranca, type CobrancaStatus, type Despesa, type Lead,
@@ -59,6 +61,9 @@ export const totalDespesas = (): Promise<number> => totalDespesasRepo();
 /* ---------- aulas experimentais ---------- */
 export const listarAulasExperimentais = (): Promise<AulaExperimentalItem[]> =>
   listarAulasExperimentaisRepo();
+/** Só os dias de `de` a `ate` ("AAAA-MM-DD", inclusive). */
+export const listarAulasExperimentaisEntre = (de: string, ate: string): Promise<AulaExperimentalItem[]> =>
+  listarAulasExperimentaisEntreRepo(de, ate);
 
 /* ---------- derivados ---------- */
 /** Pessoa na fase aluno vista como `Aluno` (datas ausentes caem no cadastro). */
@@ -83,7 +88,7 @@ export async function listarAlunos(): Promise<Aluno[]> {
 export async function listarLeads(): Promise<Lead[]> {
   const [pessoas, conversas] = await Promise.all([
     listarPessoasRepo(["lead"]),
-    mapaConversaPorPessoaRepo(),
+    mapaConversaPorPessoaRepo(["lead"]),
   ]);
   return pessoas
     .map((p) => ({
