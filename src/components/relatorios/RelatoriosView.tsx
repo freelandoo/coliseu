@@ -210,11 +210,11 @@ function LineChart({ serie }: { serie: PontoMensal[] }) {
       <div className="mb-3 flex items-center gap-4 text-xs text-muted">
         <span className="flex items-center gap-1.5">
           <span className="inline-block h-2 w-2 rounded-full bg-brand" />
-          Receita
+          Recebido
         </span>
         <span className="flex items-center gap-1.5">
           <span className="inline-block h-2 w-2 rounded-full bg-warning" />
-          Cancelamentos
+          Matrículas vencidas sem renovar
         </span>
       </div>
 
@@ -353,6 +353,9 @@ function ChartCard({
 /* ---------- view ---------- */
 export function RelatoriosView({ data }: { data: RelatoriosData }) {
   const root = useRef<HTMLDivElement>(null);
+  // O destaque é o último mês fechado: o corrente ainda está acumulando.
+  const mesParcial = data.serie.find((p) => p.parcial);
+  const ultimoFechado = [...data.serie].reverse().find((p) => !p.parcial);
 
   useGSAP(
     () => {
@@ -451,17 +454,23 @@ export function RelatoriosView({ data }: { data: RelatoriosData }) {
               <h3 className="text-base font-semibold text-ink">
                 Evolução da receita
               </h3>
-              <p className="mt-0.5 text-xs text-faint">MRR nos últimos meses</p>
+              <p className="mt-0.5 text-xs text-faint">Recebido por mês (pagamentos confirmados)</p>
             </div>
-            {data.serie.length > 0 && (
-              <span className="font-display text-2xl font-semibold text-destaque tabular-nums">
-                {fmtMoeda(data.serie[data.serie.length - 1].receita)}
+            {ultimoFechado && (
+              <span className="text-right">
+                <span className="block font-display text-2xl font-semibold text-destaque tabular-nums">
+                  {fmtMoeda(ultimoFechado.receita)}
+                </span>
+                <span className="text-xs text-faint">em {ultimoFechado.mes}</span>
               </span>
             )}
           </div>
           <div className="mt-4">
             <LineChart serie={data.serie} />
           </div>
+          {mesParcial && (
+            <p className="mt-2 text-xs text-faint">{mesParcial.mes}: mês em andamento, ainda acumulando.</p>
+          )}
         </Card>
 
         <Card className="p-5">

@@ -5,7 +5,8 @@ import {
   RelatoriosView,
   type RelatoriosData,
 } from "@/components/relatorios/RelatoriosView";
-import { diasSemPresenca, faixaAusencia, serieMensal } from "@/lib/mock-data";
+import { diasSemPresenca, faixaAusencia } from "@/lib/mock-data";
+import { serieMensalRepo } from "@/lib/repositories/relatorios";
 import { pontoDeEvasao, retencaoPorCoorte } from "@/lib/fidelidade";
 import {
   listarAlunos,
@@ -24,12 +25,13 @@ export const dynamic = "force-dynamic";
 
 export default async function RelatoriosPage() {
   await requireModulo("relatorios");
-  const [alunos, cobrancas, leads, planos, despesas] = await Promise.all([
+  const [alunos, cobrancas, leads, planos, despesas, serie] = await Promise.all([
     listarAlunos(),
     listarCobrancas(),
     listarLeads(),
     listarPlanos(),
     totalDespesas(),
+    serieMensalRepo(),
   ]);
   const planoById = new Map(planos.map((p) => [p.id, p]));
 
@@ -197,7 +199,7 @@ export default async function RelatoriosPage() {
       { label: "Despesas", valor: despesas, tone: "danger" },
       { label: "Lucro", valor: lucro, tone: lucro >= 0 ? "ok" : "danger" },
     ],
-    serie: serieMensal(),
+    serie,
     evasaoTempo,
     retencaoCoorte,
   };

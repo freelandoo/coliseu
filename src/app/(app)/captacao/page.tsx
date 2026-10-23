@@ -6,6 +6,7 @@ import { LeadsFiltro } from "@/components/captacao/LeadsFiltro";
 import { listarAulasExperimentais, listarLeads, listarPlanos } from "@/lib/store";
 import { hojeNaAcademia } from "@/lib/aula-experimental";
 import { statusWhatsappLocal } from "@/lib/whatsapp/status";
+import { requireModulo } from "@/lib/auth/rbac";
 
 export const dynamic = "force-dynamic";
 
@@ -19,6 +20,7 @@ export const dynamic = "force-dynamic";
  * tela.
  */
 export default async function CaptacaoPage() {
+  await requireModulo("captacao");
   const [leads, planos, aulas, whatsapp] = await Promise.all([
     listarLeads(),
     listarPlanos(),

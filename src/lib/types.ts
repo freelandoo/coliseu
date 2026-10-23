@@ -64,8 +64,10 @@ export interface NovaDespesa {
 export interface PontoMensal {
   mes: string; // rótulo curto: "jan", "fev"…
   matriculas: number;
-  receita: number; // MRR do mês
-  cancelamentos: number;
+  receita: number; // recebido no mês (Payment.paidAt)
+  cancelamentos: number; // matrículas vencidas sem renovar, pelo mês do vencimento
+  /** Mês corrente: ainda acumulando. */
+  parcial?: boolean;
 }
 
 // Plano (Estágio 2)

@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { usuarioAtual } from "@/lib/auth/session";
-import { podeBackup, podePapel, type Papel } from "@/lib/auth/rbac";
+import { podeBackup, podeModulo, podePapel, type Modulo, type Papel } from "@/lib/auth/rbac";
 
 /**
  * Guard de sessão para rotas /api. Uso:
@@ -22,6 +22,20 @@ export async function exigirAdminApi() {
   if (g.erro || !g.user) return g;
   if (!podePapel(g.user.role as Papel, ["ADMIN"])) {
     return { user: null as null, erro: NextResponse.json({ erro: "apenas ADMIN" }, { status: 403 }) };
+  }
+  return g;
+}
+
+/**
+ * Como exigirSessaoApi, mas exige um dos módulos — o mesmo mapa que guarda as
+ * páginas. Cadastro de pessoa é de quem vê alunos ou captação; o técnico (só
+ * catraca) não lista nem edita ninguém por aqui.
+ */
+export async function exigirModuloApi(...modulos: Modulo[]) {
+  const g = await exigirSessaoApi();
+  if (g.erro || !g.user) return g;
+  if (!modulos.some((m) => podeModulo(g.user.role as Papel, m))) {
+    return { user: null as null, erro: NextResponse.json({ erro: "sem acesso a este módulo" }, { status: 403 }) };
   }
   return g;
 }

@@ -2,18 +2,8 @@ import type {
   Aluno,
   Candidato,
   Lead,
-  PontoMensal,
 } from "./types";
 import { LEAD_ESTAGIO_LABEL, ORIGEM_LABEL } from "./types";
-
-// Data de referência fixa para manter SSR determinístico (sem mismatch de hidratação).
-export const HOJE = new Date("2026-06-28T12:00:00-03:00");
-
-export function isoOffsetDays(days: number): string {
-  const d = new Date(HOJE);
-  d.setDate(d.getDate() + days);
-  return d.toISOString();
-}
 
 // ---------- helpers ----------
 
@@ -24,7 +14,8 @@ export function alunoPorId(
   return existentes.find((a) => a.id === id) as Aluno | undefined;
 }
 
-export function diasEntre(isoA: string, base: Date = HOJE): number {
+/** Dias de `isoA` até `base` (padrão: agora). Positivo = no passado. */
+export function diasEntre(isoA: string, base: Date = new Date()): number {
   const a = new Date(isoA).getTime();
   const ms = base.getTime() - a;
   return Math.round(ms / 86_400_000);
@@ -98,39 +89,6 @@ export function candidatosMatricula(leads: Lead[], alunos: Aluno[]): Candidato[]
   });
 
   return [...doLead, ...doAluno];
-}
-
-/**
- * Série mensal para os relatórios (evolução de matrículas, receita e cancelamentos).
- *
- * MOCK: valores sintéticos e determinísticos (ancorados em HOJE, sem Math.random,
- * para não quebrar a hidratação do SSR). Em PRODUÇÃO, troque APENAS o corpo desta
- * função por uma agregação real — o tipo de retorno (PontoMensal[]) e a assinatura
- * permanecem iguais, então os gráficos não precisam mudar. Ex. (Postgres):
- *
- *   SELECT date_trunc('month', matriculado_em) AS mes,
- *          count(*)                              AS matriculas
- *   FROM alunos GROUP BY 1 ORDER BY 1;
- *   -- receita = MRR acumulado por mês; cancelamentos = count por mês de cancelamento.
- */
-export function serieMensal(qtdeMeses = 6): PontoMensal[] {
-  const matriculas = [2, 3, 2, 4, 3, 5];
-  const receita = [420, 540, 610, 720, 810, 914.2];
-  const cancelamentos = [0, 1, 0, 1, 1, 0];
-
-  const pts: PontoMensal[] = [];
-  for (let i = qtdeMeses - 1; i >= 0; i--) {
-    const d = new Date(HOJE);
-    d.setMonth(d.getMonth() - i);
-    const idx = qtdeMeses - 1 - i;
-    pts.push({
-      mes: d.toLocaleDateString("pt-BR", { month: "short" }).replace(".", ""),
-      matriculas: matriculas[idx] ?? 0,
-      receita: receita[idx] ?? 0,
-      cancelamentos: cancelamentos[idx] ?? 0,
-    });
-  }
-  return pts;
 }
 
 export function formatBRL(valor: number): string {

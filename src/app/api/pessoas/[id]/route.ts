@@ -10,13 +10,13 @@ import { AsaasError, linkPagamentoWhatsApp, matricularNoAsaas } from "@/lib/asaa
 import { cancelarAssinaturasAnteriores } from "@/lib/billing/cobrancas";
 import { prisma } from "@/lib/db";
 import type { Pessoa } from "@/lib/types";
-import { exigirSessaoApi } from "@/lib/auth/api-guard";
+import { exigirModuloApi } from "@/lib/auth/api-guard";
 import { avaliarContaFreelandooSemFalhar } from "@/lib/freelandoo/gatilhos";
 
 type Ctx = { params: Promise<{ id: string }> };
 
 export async function GET(_req: Request, { params }: Ctx) {
-  const g = await exigirSessaoApi();
+  const g = await exigirModuloApi("matriculados", "captacao");
   if (g.erro) return g.erro;
   const { id } = await params;
   const pessoa = await obterPessoa(id);
@@ -27,7 +27,7 @@ export async function GET(_req: Request, { params }: Ctx) {
 }
 
 export async function PATCH(req: Request, { params }: Ctx) {
-  const g = await exigirSessaoApi();
+  const g = await exigirModuloApi("matriculados", "captacao");
   if (g.erro) return g.erro;
   const { id } = await params;
   const body = (await req.json()) as {
@@ -131,7 +131,7 @@ export async function PATCH(req: Request, { params }: Ctx) {
 }
 
 export async function DELETE(_req: Request, { params }: Ctx) {
-  const g = await exigirSessaoApi();
+  const g = await exigirModuloApi("matriculados", "captacao");
   if (g.erro) return g.erro;
   const { id } = await params;
   const ok = await removerPessoa(id);

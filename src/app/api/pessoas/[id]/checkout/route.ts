@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
-import { exigirSessaoApi } from "@/lib/auth/api-guard";
+import { exigirModuloApi } from "@/lib/auth/api-guard";
 import { processarEvento } from "@/lib/billing/processor";
 import { AsaasError, ehIdAsaasReal } from "@/lib/asaas";
 import { baixarNoAsaas } from "@/lib/billing/cobrancas";
@@ -17,7 +17,7 @@ type Metodo = (typeof METODOS)[number];
 
 /** Venda de balcão: confirma o pagamento na própria plataforma (dinheiro/pix/cartão presencial). */
 export async function POST(req: Request, { params }: Ctx) {
-  const g = await exigirSessaoApi();
+  const g = await exigirModuloApi("matriculados");
   if (g.erro) return g.erro;
   const { id } = await params;
 

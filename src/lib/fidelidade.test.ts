@@ -1,5 +1,4 @@
 import { expect, test } from "vitest";
-import { HOJE } from "@/lib/mock-data";
 import type { Aluno } from "@/lib/types";
 import {
   churnEstimado,
@@ -12,7 +11,8 @@ import {
   retencaoPorCoorte,
 } from "@/lib/fidelidade";
 
-const iso = (dias: number) => new Date(HOJE.getTime() + dias * 86_400_000).toISOString();
+// As contas usam o relógio real; as datas do teste são relativas a agora.
+const iso = (dias: number) => new Date(Date.now() + dias * 86_400_000).toISOString();
 
 function aluno(p: Partial<Aluno> & { matric: number; pres: number; status: Aluno["status"] }): Aluno {
   return {

@@ -1,10 +1,10 @@
 import { NextResponse } from "next/server";
-import { exigirSessaoApi } from "@/lib/auth/api-guard";
+import { exigirModuloApi } from "@/lib/auth/api-guard";
 import { simularFaceCheck } from "@/lib/access/simulate";
 
 /** Simulador de face check (teste): avalia a política e registra o giro ALLOWED/DENIED. */
 export async function POST(req: Request) {
-  const g = await exigirSessaoApi();
+  const g = await exigirModuloApi("acesso");
   if (g.erro) return g.erro;
 
   const body = (await req.json()) as { personId?: string };
