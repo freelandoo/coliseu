@@ -61,7 +61,11 @@ export class ControlIdClient {
       await this.login();
       res = await this.raw(path, body, true, timeoutMs);
     }
-    if (!res.ok) throw new Error(`${path} falhou: HTTP ${res.status}`);
+    if (!res.ok) {
+      // o iDFace explica o 400 no corpo ({"error":"..."}): sem isso o log só dizia "HTTP 400"
+      const motivo = (await res.text().catch(() => "")).replace(/\s+/g, " ").trim().slice(0, 200);
+      throw new Error(`${path} falhou: HTTP ${res.status}${motivo ? ` — ${motivo}` : ""}`);
+    }
     const text = await res.text();
     return (text ? JSON.parse(text) : {}) as T;
   }

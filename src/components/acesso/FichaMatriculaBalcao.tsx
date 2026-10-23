@@ -144,7 +144,7 @@ export function FichaMatriculaBalcao({ motivo, onFechar }: { motivo: MotivoFicha
         if (a.tipo !== "face" || a.personId !== personIdRef.current) return;
         const src = srcDaFoto(a.imagem);
         const nova: Foto = !a.ok
-          ? { tipo: "falhou", erro: "A captura não terminou. Peça para olhar para o leitor e tente de novo." }
+          ? { tipo: "falhou", erro: `A captura não terminou${a.erro ? ` (${a.erro})` : ""}. Peça para olhar para o leitor e tente de novo.` }
           : src
             ? { tipo: "capturada", src }
             : { tipo: "falhou", erro: "O leitor cadastrou a face, mas não devolveu a foto." };

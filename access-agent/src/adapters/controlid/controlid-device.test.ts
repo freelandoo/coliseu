@@ -104,14 +104,35 @@ test("re-loga quando a sessão expira (401) e repete a chamada", async () => {
   assert.ok(last.url.includes("session=S2"), "retry usa a nova sessão");
 });
 
-test("upsertUser usa create_or_modify (re-provisionar não pode falhar) e habilita", async () => {
+test("upsertUser: usuário novo é criado (create_objects) e habilitado", async () => {
   const a = newAdapter();
   await a.upsertUser({ externalUserId: "1001", nome: "Fulano", enabled: true });
-  const upsert = calls.find((c) => c.path === "/create_or_modify_objects.fcgi" && c.body.object === "users");
-  assert.ok(upsert, "usa create_or_modify_objects");
-  assert.deepEqual(upsert!.body.values[0], { id: 1001, name: "Fulano", registration: "1001" });
+  const cria = calls.find((c) => c.path === "/create_objects.fcgi" && c.body.object === "users");
+  assert.deepEqual(cria!.body.values[0], { id: 1001, name: "Fulano", registration: "1001" });
+  assert.equal(calls.filter((c) => c.path === "/create_or_modify_objects.fcgi").length, 0, "create_or_modify dá 400 neste iDFace");
   const link = calls.find((c) => c.path === "/create_objects.fcgi" && c.body.object === "user_access_rules");
   assert.deepEqual(link!.body.values[0], { user_id: 1001, access_rule_id: 1 });
+});
+
+test("upsertUser: usuário que já existe só tem o nome atualizado (modify_objects)", async () => {
+  installFetch((path, body) => {
+    if (path === "/login.fcgi") return { json: { session: "S1" } };
+    if (path === "/load_objects.fcgi" && body.object === "users") return { json: { users: [{ id: 1001 }] } };
+    return { json: {} };
+  });
+  await newAdapter().upsertUser({ externalUserId: "1001", nome: "Fulano de Tal", enabled: false });
+  const mod = calls.find((c) => c.path === "/modify_objects.fcgi");
+  assert.deepEqual(mod!.body, { object: "users", values: { name: "Fulano de Tal" }, where: { users: { id: 1001 } } });
+  assert.equal(calls.filter((c) => c.path === "/create_objects.fcgi").length, 0);
+});
+
+test("erro do aparelho traz o motivo do corpo, não só o status", async () => {
+  installFetch((path) => {
+    if (path === "/login.fcgi") return { json: { session: "S1" } };
+    if (path === "/load_objects.fcgi") return { status: 400, text: '{"error":"Invalid field"}' };
+    return { json: {} };
+  });
+  await assert.rejects(newAdapter().upsertUser({ externalUserId: "1", nome: "X", enabled: false }), /HTTP 400 — \{"error":"Invalid field"\}/);
 });
 
 test("primeira execução (sem cursor): bootstrap pula o histórico e não emite eventos", async () => {

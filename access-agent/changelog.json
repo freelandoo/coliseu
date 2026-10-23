@@ -1,5 +1,14 @@
 [
   {
+    "version": "0.9.1",
+    "date": "2026-10-23",
+    "itens": [
+      "Correção do \"Capturar foto\" da ficha de matrícula: o iDFace recusava (HTTP 400) o comando que cria ou atualiza o aluno no aparelho, e a captura falhava com USER_NONEXISTENT (\"usuário não encontrado\"). Agora o agente consulta se o aluno já existe no aparelho: se existe, atualiza só o nome; se não existe, cria.",
+      "Erros do aparelho passam a trazer o motivo que o iDFace devolve, e não só o código HTTP.",
+      "ATUALIZAR no computador do CloudGym: copie o coliseu-agent.cjs do kit novo como coliseu-agent.new.cjs e rode o update.bat (como administrador). O .env continua igual."
+    ]
+  },
+  {
     "version": "0.9.0",
     "date": "2026-10-23",
     "itens": [

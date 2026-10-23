@@ -97,11 +97,27 @@ export class ControlIdDeviceAdapter implements AccessDeviceAdapter {
 
   async upsertUser(input: DeviceUserInput): Promise<DeviceUserResult> {
     const id = Number(input.externalUserId);
-    // create_or_modify: re-provisionar usuário existente NÃO pode falhar por id duplicado.
-    await this.client.post("/create_or_modify_objects.fcgi", {
+    // Consulta antes de gravar: neste iDFace (6.19.5) o create_or_modify_objects
+    // volta HTTP 400 quando o usuário já existe (visto em campo, 23/10), e aí o
+    // ENROLL seguinte falhava com USER_NONEXISTENT. Existe → atualiza só o nome
+    // (não mexe na matrícula que o CloudGym possa ter gravado); não existe → cria.
+    const r = await this.client.post<{ users?: Array<{ id: number }> }>("/load_objects.fcgi", {
       object: "users",
-      values: [{ id, name: input.nome, registration: input.externalUserId }],
+      fields: ["id"],
+      where: [{ object: "users", field: "id", operator: "=", value: id }],
     });
+    if (r.users?.length) {
+      await this.client.post("/modify_objects.fcgi", {
+        object: "users",
+        values: { name: input.nome },
+        where: { users: { id } },
+      });
+    } else {
+      await this.client.post("/create_objects.fcgi", {
+        object: "users",
+        values: [{ id, name: input.nome, registration: input.externalUserId }],
+      });
+    }
     if (input.enabled) await this.enableUser(input.externalUserId);
     return { externalUserId: input.externalUserId };
   }
