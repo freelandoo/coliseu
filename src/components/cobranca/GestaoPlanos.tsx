@@ -63,7 +63,14 @@ export function GestaoPlanos({ planos }: { planos: PlanoComContagem[] }) {
   const [mesclando, setMesclando] = useState(false);
   const [selecionados, setSelecionados] = useState<Set<string>>(new Set());
   const [modalMescla, setModalMescla] = useState(false);
+  // Exclusão: mesmo modo de seleção, só para planos sem aluno.
+  const [excluindo, setExcluindo] = useState(false);
+  const [enviandoExclusao, setEnviandoExclusao] = useState(false);
   const [aviso, setAviso] = useState("");
+  const [erroExclusao, setErroExclusao] = useState("");
+  const selecionando = mesclando || excluindo;
+  /** No modo excluir, plano com aluno não pode ser marcado (precisa mesclar antes). */
+  const podeMarcar = (p: PlanoComContagem) => (excluindo ? p.alunos === 0 : !p.mesclado);
 
   function alternar(id: string) {
     setSelecionados((atual) => {
@@ -76,6 +83,45 @@ export function GestaoPlanos({ planos }: { planos: PlanoComContagem[] }) {
   function sairDaMescla() {
     setMesclando(false);
     setSelecionados(new Set());
+  }
+  function sairDaExclusao() {
+    setExcluindo(false);
+    setSelecionados(new Set());
+    setErroExclusao("");
+  }
+
+  async function excluirSelecionados() {
+    const alvo = planos.filter((p) => selecionados.has(p.id));
+    if (alvo.length === 0 || enviandoExclusao) return;
+    const nomes = alvo.map((p) => p.nome).join(", ");
+    if (!confirm(`Excluir ${alvo.length} plano(s)? ${nomes}
+
+Plano que já teve aluno some das listas, mas o histórico fica guardado. Não dá para desfazer pela tela.`)) return;
+    setEnviandoExclusao(true);
+    setErroExclusao("");
+    try {
+      const r = await fetch("/api/planos/excluir", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ planoIds: alvo.map((p) => p.id) }),
+      });
+      const d = (await r.json().catch(() => null)) as
+        | { excluidos?: { nome: string }[]; recusados?: { nome: string; motivo: string }[]; erro?: string }
+        | null;
+      if (!r.ok || !d) {
+        setErroExclusao(d?.erro ?? "Não foi possível excluir.");
+        return;
+      }
+      const partes = [`${d.excluidos?.length ?? 0} plano(s) excluído(s).`];
+      if (d.recusados?.length) partes.push(`Não excluídos: ${d.recusados.map((x) => `${x.nome} (${x.motivo})`).join("; ")}.`);
+      setAviso(partes.join(" "));
+      sairDaExclusao();
+      router.refresh();
+    } catch {
+      setErroExclusao("Sem conexão para excluir. Confira a lista antes de tentar de novo.");
+    } finally {
+      setEnviandoExclusao(false);
+    }
   }
 
   const contagem = useMemo(
@@ -120,10 +166,16 @@ export function GestaoPlanos({ planos }: { planos: PlanoComContagem[] }) {
         </h2>
         <div className="flex gap-2">
           <button type="button"
-            onClick={() => (mesclando ? sairDaMescla() : setMesclando(true))}
+            onClick={() => (mesclando ? sairDaMescla() : (sairDaExclusao(), setMesclando(true)))}
             className={classeBotao({ variante: "secundario" })}
           >
             {mesclando ? "Cancelar mescla" : "Mesclar planos"}
+          </button>
+          <button type="button"
+            onClick={() => (excluindo ? sairDaExclusao() : (sairDaMescla(), setExcluindo(true)))}
+            className={classeBotao({ variante: excluindo ? "secundario" : "perigo-contorno" })}
+          >
+            {excluindo ? "Cancelar exclusão" : "Excluir planos"}
           </button>
           <button type="button"
             onClick={() => setModalNovo(true)}
@@ -135,6 +187,26 @@ export function GestaoPlanos({ planos }: { planos: PlanoComContagem[] }) {
       </div>
 
       {aviso && <p className="text-sm text-ok">{aviso}</p>}
+
+      {excluindo && (
+        <div className="flex flex-col gap-2 rounded-lg border border-danger/40 bg-danger-soft px-4 py-3 text-sm">
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <span className="text-ink">
+              {selecionados.size === 0
+                ? "Marque os planos sem aluno para excluir (pode incluir arquivados). Plano com aluno: mescle antes."
+                : `${selecionados.size} plano(s) selecionado(s)`}
+            </span>
+            <button type="button"
+              onClick={() => void excluirSelecionados()}
+              disabled={selecionados.size === 0 || enviandoExclusao}
+              className={classeBotao({ variante: "perigo", tamanho: "sm" })}
+            >
+              {enviandoExclusao ? "Excluindo…" : `Excluir ${selecionados.size > 0 ? selecionados.size : ""}`}
+            </button>
+          </div>
+          {erroExclusao && <MensagemErro>{erroExclusao}</MensagemErro>}
+        </div>
+      )}
 
       {mesclando && (
         <div className="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-brand/40 bg-brand-soft px-4 py-3 text-sm">
@@ -202,13 +274,15 @@ export function GestaoPlanos({ planos }: { planos: PlanoComContagem[] }) {
               return (
                 <div key={p.id} className="flex flex-col gap-2 px-4 py-3">
                   <div className="flex items-start justify-between gap-2">
-                    {mesclando && !p.mesclado && (
+                    {selecionando && (mesclando ? !p.mesclado : true) && (
                       <input
                         type="checkbox"
                         checked={selecionados.has(p.id)}
                         onChange={() => alternar(p.id)}
+                        disabled={!podeMarcar(p)}
+                        title={!podeMarcar(p) ? "Tem aluno — mescle com outro plano antes de excluir" : undefined}
                         aria-label={`Selecionar ${p.nome}`}
-                        className="mt-1 accent-brand"
+                        className="mt-1 accent-brand disabled:opacity-40"
                       />
                     )}
                     <div className="min-w-0 flex-1">
@@ -266,7 +340,7 @@ export function GestaoPlanos({ planos }: { planos: PlanoComContagem[] }) {
             <table className="w-full min-w-[680px] border-collapse text-sm">
               <thead>
                 <tr className="border-b border-border text-left">
-                  {mesclando && <Th className="w-10"> </Th>}
+                  {selecionando && <Th className="w-10"> </Th>}
                   <Th coluna="nome" atual={coluna} direcao={direcao} onOrdenar={ordenarPor}>
                     Plano
                   </Th>
@@ -296,15 +370,17 @@ export function GestaoPlanos({ planos }: { planos: PlanoComContagem[] }) {
                       key={p.id}
                       className="border-b border-border last:border-0 transition-colors hover:bg-surface-2"
                     >
-                      {mesclando && (
+                      {selecionando && (
                         <td className="px-4 py-3">
-                          {!p.mesclado && (
+                          {(mesclando ? !p.mesclado : true) && (
                             <input
                               type="checkbox"
                               checked={selecionados.has(p.id)}
                               onChange={() => alternar(p.id)}
+                              disabled={!podeMarcar(p)}
+                              title={!podeMarcar(p) ? "Tem aluno — mescle com outro plano antes de excluir" : undefined}
                               aria-label={`Selecionar ${p.nome}`}
-                              className="accent-brand"
+                              className="accent-brand disabled:opacity-40"
                             />
                           )}
                         </td>

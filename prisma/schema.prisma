@@ -361,6 +361,10 @@ model Plan {
   mescladoEmId String?
   mesclados    Plan[]  @relation("PlanoMesclado")
 
+  /// Excluído na tela de Planos mas com matrículas antigas: some de todas as
+  /// listas; a linha fica para o histórico (sem matrícula nenhuma, é apagado).
+  excluidoEm DateTime?
+
   @@index([unitId, ativo])
 }
 

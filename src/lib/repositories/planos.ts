@@ -4,7 +4,8 @@ import type { NovoPlano, Plano } from "@/lib/types";
 import { unitIdAtual } from "@/lib/repositories/unit";
 
 export async function listarPlanosRepo(): Promise<Plano[]> {
-  const rows = await prisma.plan.findMany({ orderBy: { valorMensal: "desc" } });
+  // excluído na tela de Planos some de toda lista (a linha só fica pelo histórico)
+  const rows = await prisma.plan.findMany({ where: { excluidoEm: null }, orderBy: { valorMensal: "desc" } });
   return rows.map(toPlano);
 }
 
@@ -108,4 +109,58 @@ export async function mesclarPlanosRepo(
     matriculasMovidas: r.movidas,
     arquivados: planos.filter((p) => p.id !== input.destinoId).map((p) => p.nome),
   };
+}
+
+/** Matrícula nesses status = o plano ainda tem aluno e não pode ser excluído. */
+const STATUS_COM_ALUNO = ["DRAFT", "PENDING_PAYMENT", "ACTIVE", "SUSPENDED"] as const;
+
+export interface ResultadoExclusao {
+  /** apagado = sumiu do banco; escondido = tinha matrícula antiga, só saiu das listas */
+  excluidos: { id: string; nome: string; modo: "apagado" | "escondido" }[];
+  recusados: { id: string; nome: string; motivo: string }[];
+}
+
+/**
+ * Exclui planos sem aluno (tela Planos → Excluir). Plano com matrícula em
+ * andamento é recusado — mescle antes. Sem nenhuma referência, a linha é
+ * apagada; com histórico (matrículas encerradas, vendas, mesclados, política
+ * de acesso), ela fica arquivada com `excluidoEm` e some das listas, para o
+ * histórico e os relatórios não quebrarem.
+ */
+export async function excluirPlanosRepo(planoIds: string[]): Promise<ResultadoExclusao> {
+  const ids = [...new Set(planoIds)];
+  const planos = await prisma.plan.findMany({
+    where: { id: { in: ids }, excluidoEm: null },
+    select: {
+      id: true, nome: true,
+      _count: { select: { memberships: true, historicos: true, accessPolicies: true, mesclados: true } },
+    },
+  });
+  const comAluno = await prisma.membership.groupBy({
+    by: ["planId"],
+    where: { planId: { in: ids }, status: { in: [...STATUS_COM_ALUNO] } },
+    _count: { _all: true },
+  });
+  const alunosPorPlano = new Map(comAluno.map((c) => [c.planId, c._count._all]));
+  // vendas guardam planId sem chave estrangeira: contam como histórico também
+  const vendas = await prisma.vendaPlanoDia.groupBy({ by: ["planId"], where: { planId: { in: ids } }, _count: { _all: true } });
+  const vendasPorPlano = new Map(vendas.map((v) => [v.planId, v._count._all]));
+
+  const r: ResultadoExclusao = { excluidos: [], recusados: [] };
+  for (const p of planos) {
+    const alunos = alunosPorPlano.get(p.id) ?? 0;
+    if (alunos > 0) {
+      r.recusados.push({ id: p.id, nome: p.nome, motivo: `tem ${alunos} aluno(s) — mescle com outro plano antes` });
+      continue;
+    }
+    const c = p._count;
+    if (c.memberships + c.historicos + c.accessPolicies + c.mesclados + (vendasPorPlano.get(p.id) ?? 0) === 0) {
+      await prisma.plan.delete({ where: { id: p.id } });
+      r.excluidos.push({ id: p.id, nome: p.nome, modo: "apagado" });
+    } else {
+      await prisma.plan.update({ where: { id: p.id }, data: { excluidoEm: new Date(), ativo: false } });
+      r.excluidos.push({ id: p.id, nome: p.nome, modo: "escondido" });
+    }
+  }
+  return r;
 }
