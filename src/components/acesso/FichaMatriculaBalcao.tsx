@@ -4,7 +4,7 @@ import { useEffect, useId, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Modal, TituloModal, DescricaoModal } from "@/components/ui/Modal";
 import { Botao } from "@/components/ui/Botao";
-import { MensagemErro } from "@/components/ui/Campo";
+import { MensagemErro, classeCampo } from "@/components/ui/Campo";
 import { CamposCadastro } from "@/components/clientes/CamposCadastro";
 import { CheckoutBalcao } from "@/components/matricula/CheckoutBalcao";
 import { ResultadoMatricula } from "@/components/matricula/ResultadoMatricula";
@@ -42,6 +42,8 @@ type Operacao =
   | { tipo: "falhou"; erro: string }
   | { tipo: "desconhecido" };
 
+type PlanoPopular = Plano & { alunosAtivos: number };
+
 /** Captura que não volta nesse tempo (agente fora, ninguém na frente do leitor) vira erro. */
 const ESPERA_FOTO_MS = 100_000;
 
@@ -74,7 +76,7 @@ export function FichaMatriculaBalcao({ motivo, onFechar }: { motivo: MotivoFicha
 
   // a hora em que a ficha abriu, fixa (não muda a cada nova renderização)
   const [hora] = useState(horaDaTentativa);
-  const [planos, setPlanos] = useState<Plano[] | null>(null);
+  const [planos, setPlanos] = useState<PlanoPopular[] | null>(null);
   const [planoId, setPlanoId] = useState("");
   const [carregandoFicha, setCarregandoFicha] = useState(renovar);
   const [erroCarga, setErroCarga] = useState("");
@@ -103,8 +105,9 @@ export function FichaMatriculaBalcao({ motivo, onFechar }: { motivo: MotivoFicha
     let ativo = true;
     (async () => {
       try {
-        const r = await fetch("/api/planos", { cache: "no-store" });
-        const lista = ((await r.json()) as Plano[]).filter((p) => p.ativo !== false && !p.mesclado);
+        // já vem do mais escolhido para o menos: o primeiro é o padrão
+        const r = await fetch("/api/planos/populares", { cache: "no-store" });
+        const lista = (await r.json()) as PlanoPopular[];
         if (!ativo) return;
         setPlanos(lista);
         setPlanoId((atual) => atual || lista[0]?.id || "");
@@ -291,124 +294,140 @@ export function FichaMatriculaBalcao({ motivo, onFechar }: { motivo: MotivoFicha
   }
 
   const fichaPronta = !carregandoFicha && !erroCarga;
+  const plano = planos?.find((p) => p.id === planoId);
+  const registrando = op.tipo === "registrando";
 
   return (
-    <Modal onFechar={onFechar} fecharComEsc={!ocupado} className="max-w-4xl overflow-hidden p-0 sm:p-0">
-      {/* Cabeçalho de documento: marca, tipo da ficha e o porquê de ter aberto. */}
-      <header className="bg-ink px-5 py-4 text-white sm:px-7">
-        <div className="flex flex-wrap items-baseline justify-between gap-2">
-          <span className="font-display text-lg font-semibold tracking-[0.32em]">COLISEU</span>
-          <span className="text-xs uppercase tracking-[0.18em] text-white/70">
-            Ficha de {renovar ? "renovação" : "matrícula"} · {new Date().toLocaleDateString("pt-BR")}
-          </span>
-        </div>
+    // Largo e da altura da tela: cabeçalho e botões sempre à vista, só o meio rola.
+    // `!` no fim: o Modal base traz max-w-md e padding próprios, e o cn só concatena.
+    <Modal
+      onFechar={onFechar}
+      fecharComEsc={!ocupado}
+      className="flex max-h-[calc(100dvh-2rem)] max-w-[min(72rem,100%)]! flex-col overflow-hidden p-0!"
+    >
+      <header className="flex flex-wrap items-center justify-between gap-x-6 gap-y-1 bg-ink px-5 py-3 text-white sm:px-7">
+        <span className="font-display text-lg font-semibold tracking-[0.32em]">COLISEU</span>
+        <span className="text-xs uppercase tracking-[0.18em] text-white/70">
+          Ficha de {renovar ? "renovação" : "matrícula"} · {new Date().toLocaleDateString("pt-BR")}
+        </span>
       </header>
-      <div className="h-1 bg-brand" aria-hidden />
+      <div className="h-1 shrink-0 bg-brand" aria-hidden />
 
-      <div className="px-5 pt-5 sm:px-7">
-        <TituloModal className="font-display text-2xl">
-          {renovar ? `${motivo.nome} sem matrícula ativa` : "Alguém quer entrar"}
-        </TituloModal>
-        <DescricaoModal>
-          {renovar
-            ? `Reconhecido no leitor às ${hora}, mas sem matrícula ativa. Renove aqui mesmo.`
-            : `Um rosto não reconhecido tentou passar às ${hora}. Matricule agora, com foto.`}
-        </DescricaoModal>
-      </div>
-
-      <div className="grid gap-6 px-5 py-5 sm:grid-cols-[200px_minmax(0,1fr)] sm:px-7">
-        {/* Foto 3x4 — capturada pelo próprio leitor da catraca */}
-        <div className="flex flex-col gap-3">
-          <MolduraFoto foto={foto} nome={form.nome} />
-          <Botao
-            variante={foto.tipo === "capturada" ? "secundario" : "contorno"}
-            onClick={() => void capturar()}
-            carregando={foto.tipo === "pedindo"}
-            disabled={!fichaPronta || foto.tipo === "aguardando" || op.tipo === "registrando"}
-            bloco
-          >
-            {foto.tipo === "capturada" ? "Capturar de novo" : foto.tipo === "aguardando" ? "Olhando para o leitor…" : "Capturar foto"}
-          </Botao>
-          <p className="text-xs text-muted" aria-live="polite">
-            {foto.tipo === "aguardando"
-              ? "Peça para a pessoa ficar de frente para o leitor. Ele conta 3 segundos e tira a foto."
-              : foto.tipo === "falhou"
-                ? foto.erro
-                : foto.tipo === "capturada"
-                  ? "Face cadastrada no leitor. A catraca libera quando o pagamento for confirmado."
-                  : "A foto é tirada pelo leitor da catraca e já cadastra a face."}
-          </p>
-          <label htmlFor={consentId} className="flex items-start gap-2 text-xs text-muted">
-            <input
-              id={consentId}
-              type="checkbox"
-              checked={consentiu}
-              onChange={(e) => setConsentiu(e.target.checked)}
-              className="mt-0.5 h-4 w-4 accent-[var(--color-brand)]"
-            />
-            <span>A pessoa autoriza o uso da imagem do rosto para o acesso à academia (LGPD).</span>
-          </label>
+      <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain">
+        <div className="px-5 pt-4 sm:px-7">
+          <TituloModal className="font-display text-2xl">
+            {renovar ? `${motivo.nome} sem matrícula ativa` : "Alguém quer entrar"}
+          </TituloModal>
+          <DescricaoModal>
+            {renovar
+              ? `Reconhecido no leitor às ${hora}, mas sem matrícula ativa. Renove aqui mesmo.`
+              : `Um rosto não reconhecido tentou passar às ${hora}. Matricule agora, com foto.`}
+          </DescricaoModal>
         </div>
 
-        {/* Cadastro e plano */}
-        <div className="flex min-w-0 flex-col gap-5">
-          {carregandoFicha && <p className="text-sm text-muted">Carregando a ficha de {motivo.tipo === "sem-matricula" ? motivo.nome : ""}…</p>}
-          {erroCarga && <MensagemErro>{erroCarga}</MensagemErro>}
-          {fichaPronta && (
-            <>
+        <div className="grid gap-6 px-5 py-5 sm:px-7 md:grid-cols-[180px_minmax(0,1fr)] lg:grid-cols-[180px_minmax(0,1fr)_260px]">
+          {/* Foto 3x4 — capturada pelo próprio leitor da catraca */}
+          <div className="flex flex-col gap-3">
+            <MolduraFoto foto={foto} nome={form.nome} />
+            <Botao
+              variante={foto.tipo === "capturada" ? "secundario" : "contorno"}
+              onClick={() => void capturar()}
+              carregando={foto.tipo === "pedindo"}
+              disabled={!fichaPronta || foto.tipo === "aguardando" || registrando}
+              bloco
+            >
+              {foto.tipo === "capturada" ? "Capturar de novo" : foto.tipo === "aguardando" ? "Olhando para o leitor…" : "Capturar foto"}
+            </Botao>
+            <p className="text-xs text-muted" aria-live="polite">
+              {foto.tipo === "aguardando"
+                ? "Peça para a pessoa ficar de frente para o leitor. Ele conta 3 segundos e tira a foto."
+                : foto.tipo === "falhou"
+                  ? foto.erro
+                  : foto.tipo === "capturada"
+                    ? "Face cadastrada no leitor. A catraca libera quando o pagamento for confirmado."
+                    : "A foto é tirada pelo leitor da catraca e já cadastra a face."}
+            </p>
+            <label htmlFor={consentId} className="flex items-start gap-2 text-xs text-muted">
+              <input
+                id={consentId}
+                type="checkbox"
+                checked={consentiu}
+                onChange={(e) => setConsentiu(e.target.checked)}
+                className="mt-0.5 h-4 w-4 shrink-0 accent-[var(--color-brand)]"
+              />
+              <span>A pessoa autoriza o uso da imagem do rosto para o acesso à academia (LGPD).</span>
+            </label>
+          </div>
+
+          {/* Cadastro */}
+          <div className="min-w-0">
+            {carregandoFicha && <p className="text-sm text-muted">Carregando a ficha de {motivo.tipo === "sem-matricula" ? motivo.nome : ""}…</p>}
+            {erroCarga && <MensagemErro>{erroCarga}</MensagemErro>}
+            {fichaPronta && (
               <CamposCadastro
                 form={form}
                 setCampo={setCampo}
                 erros={erros}
                 exigeCpf
                 mostrarOrigem={false}
-                desabilitado={op.tipo === "registrando"}
+                desabilitado={registrando}
               />
+            )}
+          </div>
 
-              <fieldset className="flex flex-col gap-2">
-                <legend className="mb-2 text-sm font-semibold text-ink">Plano *</legend>
-                {planos === null && <p className="text-sm text-muted">Carregando planos…</p>}
-                {planos?.length === 0 && (
-                  <p className="text-sm text-muted">Nenhum plano ativo — um administrador precisa cadastrar em Cobrança → Planos.</p>
-                )}
-                <div className="grid gap-2 sm:grid-cols-2">
-                  {planos?.map((p) => {
-                    const escolhido = p.id === planoId;
-                    return (
-                      <button
-                        type="button"
-                        key={p.id}
-                        onClick={() => setPlanoId(p.id)}
-                        aria-pressed={escolhido}
-                        disabled={op.tipo === "registrando"}
-                        className={cn(
-                          "rounded-lg border px-4 py-2.5 text-left transition-[background-color,border-color,transform] duration-150 ease-padrao active:scale-[0.98]",
-                          escolhido ? "border-brand bg-brand-soft" : "border-border-strong bg-surface hover:border-control",
-                        )}
-                      >
-                        <span className="block text-sm font-semibold text-ink">{p.nome}</span>
-                        <span className={cn("block text-sm tabular-nums", escolhido ? "font-semibold text-destaque" : "text-muted")}>
-                          {formatBRL(p.valorMensal)}/mês
-                        </span>
-                      </button>
-                    );
-                  })}
+          {/* Plano e resumo — ao lado no desktop, embaixo nas telas menores */}
+          <div className="flex flex-col gap-4 md:col-span-2 lg:col-span-1">
+            <label className="flex flex-col gap-1.5">
+              <span className="text-sm font-semibold text-ink">Plano *</span>
+              <select
+                value={planoId}
+                onChange={(e) => setPlanoId(e.target.value)}
+                disabled={!planos?.length || registrando}
+                className={classeCampo}
+              >
+                {planos === null && <option value="">Carregando planos…</option>}
+                {planos?.length === 0 && <option value="">Nenhum plano ativo</option>}
+                {planos?.map((p) => (
+                  <option key={p.id} value={p.id}>
+                    {p.nome} — {formatBRL(p.valorMensal)}/mês
+                  </option>
+                ))}
+              </select>
+              <span className="text-xs text-faint">Os mais escolhidos pelos alunos aparecem primeiro.</span>
+            </label>
+
+            {plano && (
+              <dl className="flex flex-col gap-2 rounded-xl border border-border bg-surface-2 p-4 text-sm">
+                <div className="flex items-baseline justify-between gap-3">
+                  <dt className="text-muted">Mensalidade</dt>
+                  <dd className="font-display text-xl font-semibold tabular-nums text-ink">{formatBRL(plano.valorMensal)}</dd>
                 </div>
-              </fieldset>
+                <div className="flex items-baseline justify-between gap-3">
+                  <dt className="text-muted">Vigência</dt>
+                  <dd className="text-ink">{plano.duracaoDias} dias</dd>
+                </div>
+                <div className="flex items-baseline justify-between gap-3">
+                  <dt className="text-muted">Alunos neste plano</dt>
+                  <dd className="tabular-nums text-ink">{plano.alunosAtivos}</dd>
+                </div>
+              </dl>
+            )}
+            {planos?.length === 0 && (
+              <p className="text-xs text-muted">Um administrador precisa cadastrar um plano em Cobrança → Planos.</p>
+            )}
 
-              {op.tipo === "falhou" && <MensagemErro>A matrícula não foi registrada: {op.erro}</MensagemErro>}
-              {op.tipo === "desconhecido" && (
-                <MensagemErro>
-                  Sem confirmação do servidor. A matrícula e a cobrança podem ter sido criadas — confira em Matrículas
-                  antes de tentar de novo.
-                </MensagemErro>
-              )}
-            </>
-          )}
+            {op.tipo === "falhou" && <MensagemErro>A matrícula não foi registrada: {op.erro}</MensagemErro>}
+            {op.tipo === "desconhecido" && (
+              <MensagemErro>
+                Sem confirmação do servidor. A matrícula e a cobrança podem ter sido criadas — confira em Matrículas antes
+                de tentar de novo.
+              </MensagemErro>
+            )}
+          </div>
         </div>
       </div>
 
-      <footer className="flex flex-wrap items-center justify-between gap-3 border-t border-border bg-surface-2 px-5 py-4 sm:px-7">
+      <footer className="flex shrink-0 flex-wrap items-center justify-between gap-3 border-t border-border bg-surface-2 px-5 py-3 sm:px-7">
         <p className="text-xs text-muted">Ao matricular: registra a matrícula e gera a cobrança (link, WhatsApp ou balcão).</p>
         <div className="flex gap-2">
           <Botao variante="discreto" onClick={onFechar} disabled={ocupado}>
@@ -418,10 +437,10 @@ export function FichaMatriculaBalcao({ motivo, onFechar }: { motivo: MotivoFicha
             variante="primario"
             tamanho="lg"
             onClick={() => void matricular()}
-            carregando={op.tipo === "registrando"}
+            carregando={registrando}
             disabled={!fichaPronta || !planos?.length || op.tipo === "desconhecido" || foto.tipo === "pedindo"}
           >
-            {op.tipo === "registrando" ? "Registrando…" : renovar ? "Renovar matrícula" : "Matricular"}
+            {registrando ? "Registrando…" : renovar ? "Renovar matrícula" : "Matricular"}
           </Botao>
         </div>
       </footer>
