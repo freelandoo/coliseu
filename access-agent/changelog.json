@@ -1,5 +1,13 @@
 [
   {
+    "version": "0.6.2",
+    "date": "2026-10-23",
+    "itens": [
+      "Correção do \"Liberar catraca\": o iDFace mostrava \"Visitante\" e registrava a liberação, mas a catraca não destravava porque o usuário Visitante não estava em nenhum grupo — a permissão da catraca vem do Grupo 1, o mesmo dos funcionários que o CloudGym usa para liberar. O agente agora coloca o Visitante no Grupo 1 sozinho.",
+      "ATUALIZAR na recepção: copie o coliseu-agent.cjs do kit novo como coliseu-agent.new.cjs e rode o update.bat (como administrador). O .env continua igual."
+    ]
+  },
+  {
     "version": "0.6.1",
     "date": "2026-10-23",
     "itens": [

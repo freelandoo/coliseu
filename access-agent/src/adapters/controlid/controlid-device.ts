@@ -28,6 +28,8 @@ export interface ControlIdAdapterOptions extends ControlIdClientOptions {
   openAction?: OpenAction;
   /** id do usuário reservado da liberação no aparelho. Default 999999999. */
   openUserId?: number;
+  /** grupo do aparelho que dá ao usuário reservado a regra de acesso do portal. Default 1. */
+  openGroupId?: number;
   /** sentido liberado na ação catra: clockwise | anticlockwise | both. Default both. */
   catraAllow?: string;
   /** nº máximo de access_logs puxados por ciclo. Default 100. */
@@ -53,6 +55,7 @@ export class ControlIdDeviceAdapter implements AccessDeviceAdapter {
   private readonly doorId: number;
   private readonly openAction: OpenAction;
   private readonly openUserId: number;
+  private readonly openGroupId: number;
   /** Usuário reservado já garantido no aparelho nesta execução. */
   private usuarioLiberacaoPronto = false;
   private readonly catraAllow: string;
@@ -67,6 +70,7 @@ export class ControlIdDeviceAdapter implements AccessDeviceAdapter {
     this.doorId = opts.doorId ?? 1;
     this.openAction = opts.openAction ?? "autorizacao";
     this.openUserId = opts.openUserId ?? OPEN_USER_ID_PADRAO;
+    this.openGroupId = opts.openGroupId ?? 1;
     this.catraAllow = opts.catraAllow ?? "both";
     this.logPageSize = opts.logPageSize ?? 100;
     // A liberação gera um "Acesso concedido" do usuário reservado: não é giro de aluno.
@@ -273,6 +277,19 @@ export class ControlIdDeviceAdapter implements AccessDeviceAdapter {
           await this.client.post("/create_objects.fcgi", {
             object: "users",
             values: [{ id: this.openUserId, name: OPEN_USER_NOME, registration: String(this.openUserId) }],
+          });
+        }
+        // Sem grupo o aparelho mostra "Visitante" e registra a entrada, mas não
+        // destrava: a regra de acesso do portal vem do grupo (os funcionários que
+        // o CloudGym usa para liberar estão no Grupo 1 — visto em campo, 23/10).
+        const g = await this.client.post<{ user_groups?: unknown[] }>("/load_objects.fcgi", {
+          object: "user_groups",
+          where: [{ object: "user_groups", field: "user_id", operator: "=", value: this.openUserId }],
+        });
+        if (!g.user_groups?.length) {
+          await this.client.post("/create_objects.fcgi", {
+            object: "user_groups",
+            values: [{ user_id: this.openUserId, group_id: this.openGroupId }],
           });
         }
         this.usuarioLiberacaoPronto = true;

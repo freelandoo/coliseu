@@ -71,6 +71,8 @@ test("liberar (padrão): entrada autorizada do usuário reservado Visitante, cri
   const criar = calls.filter((c) => c.path === "/create_objects.fcgi" && c.body.object === "users");
   assert.equal(criar.length, 1, "garante o usuário só na primeira liberação");
   assert.deepEqual(criar[0].body.values[0], { id: OPEN_USER_ID_PADRAO, name: "Visitante", registration: String(OPEN_USER_ID_PADRAO) });
+  const grupo = calls.filter((c) => c.path === "/create_objects.fcgi" && c.body.object === "user_groups");
+  assert.deepEqual(grupo.map((c) => c.body.values[0]), [{ user_id: OPEN_USER_ID_PADRAO, group_id: 1 }], "Visitante entra no Grupo 1 (regra do portal)");
   const aut = calls.filter((c) => c.path === "/remote_user_authorization.fcgi");
   assert.equal(aut.length, 2);
   assert.deepEqual(aut[0].body, { event: 7, user_id: OPEN_USER_ID_PADRAO, user_name: "Visitante", user_image: false, portal_id: 1, actions: [] });
@@ -81,6 +83,7 @@ test("liberar: Visitante já existe no aparelho → não recria; erro ao garanti
   installFetch((path, body) => {
     if (path === "/login.fcgi") return { json: { session: "S1" } };
     if (path === "/load_objects.fcgi" && body.object === "users") return { json: { users: [{ id: OPEN_USER_ID_PADRAO }] } };
+    if (path === "/load_objects.fcgi" && body.object === "user_groups") return { json: { user_groups: [{ user_id: OPEN_USER_ID_PADRAO, group_id: 1 }] } };
     return { json: {} };
   });
   await newAdapter().openTurnstile({ direction: "ENTRY" });
