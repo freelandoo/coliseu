@@ -10,6 +10,7 @@ import type {
 } from "../types.js";
 import { ControlIdClient, type ControlIdClientOptions } from "./client.js";
 import { mapAccessLog, type ControlIdAccessLog, type MapOptions } from "./mapping.js";
+import { liberarPeloCloudGym, type LiberarCloudGymOptions } from "../cloudgym/liberar-cloudgym.js";
 
 export interface ControlIdAdapterOptions extends ControlIdClientOptions {
   /** access_rule vinculada ao habilitar um usuário (link=enable / unlink=disable). Default 1. */
@@ -22,10 +23,15 @@ export interface ControlIdAdapterOptions extends ControlIdClientOptions {
    *   remote_user_authorization (event 7, user_id 0, portal 1) com a ação sec_box
    *   EMBUTIDA. É o único jeito que gira a catraca da academia: a mesma sec_box
    *   mandada solta por execute_actions bate o relé e o braço não solta.
+   * - "cloudgym": ponte até o corte — aperta o "Liberar Acesso" da janela do CloudGym
+   *   neste PC (o comando dele gira; o nosso, idêntico no fio, não). Exige o agente na
+   *   sessão do usuário (instalar-no-pc-do-cloudgym.bat), não como serviço.
    * - "auto": tenta catra → sec_box → door e fica com a primeira que o aparelho aceitar.
    * - "catra" | "sec_box" | "door": só essa ação.
    */
   openAction?: OpenAction;
+  /** modo "cloudgym": como apertar o botão do CloudGym. */
+  cloudGym?: LiberarCloudGymOptions;
   /** SecBox ligado à catraca (doors_state lista dois; o da catraca é o 65793). */
   secBoxId?: string;
   /** sentido liberado na ação catra: clockwise | anticlockwise | both. Default both. */
@@ -41,7 +47,7 @@ export interface ControlIdAdapterOptions extends ControlIdClientOptions {
  * AccessDeviceAdapter do FakeDeviceAdapter — o loop do agente não muda.
  */
 type AcaoExecute = "catra" | "sec_box" | "door";
-export type OpenAction = "autorizacao" | "auto" | AcaoExecute;
+export type OpenAction = "autorizacao" | "cloudgym" | "auto" | AcaoExecute;
 
 /** Texto da tela do iDFace na liberação — o mesmo do CloudGym. */
 const MENSAGEM_LIBERACAO = "Acesso liberado ";
@@ -52,6 +58,7 @@ export class ControlIdDeviceAdapter implements AccessDeviceAdapter {
   private readonly doorId: number;
   private readonly openAction: OpenAction;
   private readonly secBoxId: string;
+  private readonly cloudGym: LiberarCloudGymOptions;
   private readonly catraAllow: string;
   /** Ação que funcionou no modo auto — as próximas liberações vão direto nela. */
   private acaoQueFunciona: AcaoExecute | null = null;
@@ -65,6 +72,7 @@ export class ControlIdDeviceAdapter implements AccessDeviceAdapter {
     this.openAction = opts.openAction ?? "autorizacao";
     // string: ids de SecBox passam de 2^53 (ex.: 122641794705223193) e perderiam dígitos.
     this.secBoxId = opts.secBoxId ?? "65793";
+    this.cloudGym = opts.cloudGym ?? {};
     this.catraAllow = opts.catraAllow ?? "both";
     this.logPageSize = opts.logPageSize ?? 100;
     this.mapOptions = opts.mapOptions ?? {};
@@ -225,6 +233,7 @@ export class ControlIdDeviceAdapter implements AccessDeviceAdapter {
 
   async openTurnstile(_direction: AccessDirection): Promise<void> {
     if (this.openAction === "autorizacao") return this.liberarPorAutorizacao();
+    if (this.openAction === "cloudgym") return liberarPeloCloudGym(this.cloudGym);
     const ordem: AcaoExecute[] =
       this.openAction !== "auto"
         ? [this.openAction]

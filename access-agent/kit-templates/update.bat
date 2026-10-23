@@ -26,6 +26,8 @@ ren "%~dp0coliseu-agent.new.cjs" coliseu-agent.cjs
 
 echo [3/3] Iniciando servico...
 "%~dp0nssm.exe" start ColiseuAgent
+rem modo computador do CloudGym (sem servico): derruba o node; o rodar-agente.bat sobe a versao nova em 10s
+powershell -NoProfile -Command "Get-CimInstance Win32_Process | Where-Object { $_.Name -eq 'node.exe' -and $_.CommandLine -like '*coliseu-agent.cjs*' } | ForEach-Object { Stop-Process -Id $_.ProcessId -Force }" >nul 2>&1
 timeout /t 6 /nobreak >nul
 powershell -NoProfile -Command "Get-Content '%~dp0logs\agent.log' -Tail 15" 2>nul
 echo.

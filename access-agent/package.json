@@ -1,12 +1,12 @@
 {
   "name": "coliseu-access-agent",
-  "version": "0.7.0",
+  "version": "0.8.0",
   "private": true,
   "type": "module",
   "scripts": {
     "start": "tsx src/agent.ts",
     "typecheck": "tsc --noEmit",
-    "test": "node --import tsx --test src/adapters/controlid/controlid-device.test.ts src/env-check.test.ts",
+    "test": "node --import tsx --test src/adapters/controlid/controlid-device.test.ts src/env-check.test.ts src/adapters/cloudgym/liberar-cloudgym.test.ts",
     "make-kit": "node scripts/make-kit.mjs"
   },
   "devDependencies": {

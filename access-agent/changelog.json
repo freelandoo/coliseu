@@ -1,5 +1,15 @@
 [
   {
+    "version": "0.8.0",
+    "date": "2026-10-23",
+    "itens": [
+      "Ponte até o corte do CloudGym: novo modo IDFACE_OPEN_ACTION=cloudgym. O botão \"Liberar catraca\" do Coliseu aperta o \"Liberar Acesso\" da janela do CloudGym no computador dele. O teste lado a lado mostrou que o nosso comando chega ao iDFace igual ao do CloudGym, mas só a liberação do CloudGym gira a catraca.",
+      "Novo instalar-no-pc-do-cloudgym.bat: instala o agente nesse computador na inicialização do Windows (roda escondido, sem janela, volta sozinho se cair) e já configura o modo cloudgym. remover-do-pc-do-cloudgym.bat desfaz.",
+      "O agente se identifica como Freelandoo-Coliseu-Agent nos pedidos ao iDFace e ao CRM.",
+      "INSTALAR: no computador do CloudGym, rode instalar-no-pc-do-cloudgym.bat como administrador; no outro computador, rode uninstall.bat. Só pode haver um agente por catraca."
+    ]
+  },
+  {
     "version": "0.7.0",
     "date": "2026-10-23",
     "itens": [

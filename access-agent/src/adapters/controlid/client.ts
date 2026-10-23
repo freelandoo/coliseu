@@ -1,3 +1,6 @@
+/** Identificação do agente nos pedidos ao aparelho (aparece em capturas de rede). */
+const USER_AGENT = `Freelandoo-Coliseu-Agent/${process.env.KIT_VERSION ?? "dev"}`;
+
 // Cliente HTTP para a API REST (.fcgi) da linha de Acesso Control iD (iDFace).
 // Fluxo confirmado na doc oficial:
 //   POST /login.fcgi {login,password} -> { session }
@@ -37,7 +40,7 @@ export class ControlIdClient {
     try {
       return await fetch(url, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: { "Content-Type": "application/json", "User-Agent": USER_AGENT },
         body: JSON.stringify(body ?? {}),
         signal: ctrl.signal,
       });

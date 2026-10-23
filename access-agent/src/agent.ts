@@ -35,6 +35,10 @@ if (ADAPTER === "controlid") {
     doorId: process.env.IDFACE_DOOR_ID ? Number(process.env.IDFACE_DOOR_ID) : undefined,
     openAction: (process.env.IDFACE_OPEN_ACTION as OpenAction | undefined) || undefined,
     secBoxId: process.env.IDFACE_SECBOX_ID || undefined,
+    cloudGym: {
+      modo: (process.env.CLOUDGYM_CLICK_MODE as "clique" | "post" | undefined) || undefined,
+      titulo: process.env.CLOUDGYM_JANELA || undefined,
+    },
     catraAllow: process.env.IDFACE_CATRA_ALLOW || undefined,
   });
   firmwareTag = "controlid-idface";

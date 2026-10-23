@@ -2,7 +2,7 @@ const BASE = process.env.BACKEND_URL ?? "http://localhost:3000";
 const TOKEN = process.env.AGENT_TOKEN ?? "";
 
 function headers() {
-  const h: Record<string, string> = { "Content-Type": "application/json" };
+  const h: Record<string, string> = { "Content-Type": "application/json", "User-Agent": `Freelandoo-Coliseu-Agent/${process.env.KIT_VERSION ?? "dev"}` };
   if (TOKEN) h["x-agent-token"] = TOKEN;
   return h;
 }

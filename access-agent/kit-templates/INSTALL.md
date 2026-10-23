@@ -25,6 +25,18 @@ por conta própria; os giros sincronizam quando a conexão volta.
 
 Pronto. Pode fechar o AnyDesk — o serviço fica rodando sozinho.
 
+## Computador do CloudGym (ponte até o corte)
+
+Enquanto o CloudGym estiver em uso, o agente roda **no computador do CloudGym** e o botão
+"Liberar catraca" do Coliseu aperta o "Liberar Acesso" da janela do CloudGym.
+
+1. Copie a pasta do kit para `C:\coliseu-agent\` nesse computador e preencha o `.env`.
+2. **Botão direito em `instalar-no-pc-do-cloudgym.bat` → "Executar como administrador".**
+   Ele configura `IDFACE_OPEN_ACTION=cloudgym`, coloca o agente na inicialização do Windows
+   (roda escondido, sem janela) e já inicia.
+3. **No outro computador**, rode `uninstall.bat` (admin): só pode haver um agente por catraca.
+4. Deixe o CloudGym aberto. Para remover: `remover-do-pc-do-cloudgym.bat` (admin).
+
 ## Dia a dia
 
 | Quero… | Faço… |
