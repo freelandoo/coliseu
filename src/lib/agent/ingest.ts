@@ -1,6 +1,7 @@
 import { prisma } from "@/lib/db";
 import type { DeviceCommand } from "@prisma/client";
 import { ABRIR_VALIDADE_MS } from "@/lib/repositories/access";
+import { avisarRecepcao } from "@/lib/access/avisos-recepcao";
 // Só enfileiram (banco): a catraca nunca alcança rede nem o envio de WhatsApp
 // — ver lib/freelandoo/envio-automatico.test.ts.
 import { avaliarContaFreelandooSemFalhar } from "@/lib/freelandoo/gatilhos";
@@ -148,6 +149,8 @@ export async function ackComando(input: {
       try { await recalcularAcessoDePessoa(cmd.personId); } catch (e) {
         console.error("[ack] recalcular pós-ENROLL falhou:", e);
       }
+      // A tela que pediu a captura (modal da recepção) mostra a foto na hora.
+      avisarRecepcao({ tipo: "face", personId: cmd.personId, ok: true, imagem: input.userImage });
       // Foto do cadastro vai para a Freelandoo (Q7): fica na tarefa só até o
       // envio. Antes descartada; o Coliseu guarda apenas a URL que volta.
       if (input.userImage) {
@@ -163,6 +166,7 @@ export async function ackComando(input: {
         where: { personId: cmd.personId, type: tipo, status: "IN_PROGRESS" },
         data: { status: "FAILED" },
       });
+      avisarRecepcao({ tipo: "face", personId: cmd.personId, ok: false, erro: input.error ?? "captura não concluída" });
     }
   }
 }
@@ -174,11 +178,38 @@ export async function ackComando(input: {
  */
 export const MOTIVOS_ABERTURA_REMOTA = ["Interface WEB", "Abertura via API", "Botoeira"];
 
+/**
+ * Acesso negado ao vivo → modal na recepção. Rosto desconhecido abre "nova
+ * matrícula"; aluno reconhecido sem matrícula ativa abre "renovar". Negado com
+ * matrícula ativa (ex.: face ainda não habilitada) não é caso de matrícula.
+ */
+async function avisarNegadoNaRecepcao(e: {
+  deviceId: string; personId: string | null; reason?: string; quando: string;
+}): Promise<void> {
+  if (!e.personId) {
+    if (e.reason === "Não identificado") {
+      avisarRecepcao({ tipo: "nao-identificado", deviceId: e.deviceId, quando: e.quando });
+    }
+    return;
+  }
+  const person = await prisma.person.findUnique({
+    where: { id: e.personId },
+    select: { nome: true, memberships: { where: { status: "ACTIVE" }, select: { id: true }, take: 1 } },
+  });
+  if (!person || person.memberships.length > 0) return;
+  avisarRecepcao({ tipo: "sem-matricula", deviceId: e.deviceId, personId: e.personId, nome: person.nome, quando: e.quando });
+}
+
 export async function ingestarEvento(input: {
   deviceId: string; deviceEventId: string; externalUserId?: string; personId?: string;
   deviceTime: string; direction: "ENTRY" | "EXIT";
   decision: "ALLOWED" | "DENIED"; reason?: string; physicallyPassed: boolean;
   mode: "ONLINE" | "OFFLINE" | "CONTINGENCY"; cursor?: string;
+  /**
+   * O giro aconteceu agora (agente ≥ 0.9.0 compara com o relógio do aparelho).
+   * Só giro ao vivo avisa a recepção — histórico atrasado não pode abrir modal.
+   */
+  aoVivo?: boolean;
 }): Promise<{ created: boolean }> {
   const passou = input.physicallyPassed && !MOTIVOS_ABERTURA_REMOTA.includes(input.reason ?? "");
   // Resolve a pessoa: personId explícito (ex.: simulador) tem prioridade; senão pelo mapping.
@@ -207,6 +238,14 @@ export async function ingestarEvento(input: {
       return { created: false };
     }
     throw e;
+  }
+
+  if (input.aoVivo === true && input.decision === "DENIED") {
+    try {
+      await avisarNegadoNaRecepcao({ deviceId: input.deviceId, personId, reason: input.reason, quando: input.deviceTime });
+    } catch (e) {
+      console.error("[ingest] aviso à recepção falhou:", e);
+    }
   }
 
   // Presença real: só giro autorizado e concluído atualiza ultimaPresenca — e só

@@ -361,6 +361,16 @@ th {
   }
 }
 
+/* Foto capturada pelo leitor entrando na moldura: o blur funde "vazio" e
+   "foto" numa transição só, em vez de duas imagens trocando. */
+@keyframes foto-entra {
+  from {
+    opacity: 0;
+    transform: scale(0.97);
+    filter: blur(4px);
+  }
+}
+
 /* ---------- Camada de movimento ----------
    Tudo em CSS (fora da thread principal), só transform/opacity/clip-path.
    O que depende da rolagem fica sob `no-preference` + `@supports`: sem

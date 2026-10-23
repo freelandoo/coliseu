@@ -49,6 +49,9 @@ export interface ControlIdAdapterOptions extends ControlIdClientOptions {
 type AcaoExecute = "catra" | "sec_box" | "door";
 export type OpenAction = "autorizacao" | "cloudgym" | "auto" | AcaoExecute;
 
+/** Giro até este tanto atrás (relógio do aparelho) conta como "ao vivo" para a recepção. */
+const JANELA_AO_VIVO_S = 120;
+
 /** Texto da tela do iDFace na liberação — o mesmo do CloudGym. */
 const MENSAGEM_LIBERACAO = "Acesso liberado ";
 
@@ -63,6 +66,8 @@ export class ControlIdDeviceAdapter implements AccessDeviceAdapter {
   /** Ação que funcionou no modo auto — as próximas liberações vão direto nela. */
   private acaoQueFunciona: AcaoExecute | null = null;
   private readonly logPageSize: number;
+  /** Diferença relógio do aparelho − relógio do PC, em segundos. */
+  private relogio: { diferencaS: number; medidoEm: number } | null = null;
   private readonly mapOptions: MapOptions;
 
   constructor(opts: ControlIdAdapterOptions) {
@@ -215,13 +220,39 @@ export class ControlIdDeviceAdapter implements AccessDeviceAdapter {
       .sort((a, b) => a.id - b.id)
       .slice(0, this.logPageSize);
 
+    const agoraNoAparelho = await this.agoraNoAparelho();
     const events = logs
       .map((l) => mapAccessLog(l, this.mapOptions))
-      .filter((e): e is NonNullable<typeof e> => e !== null);
+      .filter((e): e is NonNullable<typeof e> => e !== null)
+      .map((e) => ({
+        ...e,
+        aoVivo: agoraNoAparelho !== null && agoraNoAparelho - Date.parse(e.deviceTime) / 1000 <= JANELA_AO_VIVO_S,
+      }));
 
     // Cursor avança pelo maior id VISTO (mesmo de logs não mapeados) para não reprocessar.
     const maxId = logs.reduce((m, l) => Math.max(m, l.id), lastId);
     return { events, cursor: maxId > lastId ? String(maxId) : cursor };
+  }
+
+  /**
+   * Relógio do aparelho agora (s), pela diferença medida no system_information —
+   * o iDFace grava os logs no relógio dele (que pode estar adiantado/atrasado e
+   * em outro fuso), então "ao vivo" se mede contra ele, não contra o do PC.
+   * Remede a cada 10 min; sem conseguir medir, devolve null (nada é ao vivo).
+   */
+  private async agoraNoAparelho(): Promise<number | null> {
+    const agora = Date.now();
+    if (this.relogio === null || agora - this.relogio.medidoEm > 10 * 60_000) {
+      try {
+        const info = await this.client.post<{ time?: number }>("/system_information.fcgi", {});
+        if (typeof info.time === "number") {
+          this.relogio = { diferencaS: info.time - agora / 1000, medidoEm: agora };
+        }
+      } catch {
+        /* sem medida nova: segue com a anterior, se houver */
+      }
+    }
+    return this.relogio ? agora / 1000 + this.relogio.diferencaS : null;
   }
 
   private acaoCatraca(tipo: AcaoExecute) {

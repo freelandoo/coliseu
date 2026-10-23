@@ -1,5 +1,13 @@
 [
   {
+    "version": "0.9.0",
+    "date": "2026-10-23",
+    "itens": [
+      "Ficha de matrícula automática: o agente marca quais giros aconteceram AGORA (pelo relógio do próprio iDFace). Quando alguém tenta entrar e não passa — rosto desconhecido ou aluno sem matrícula ativa — o CRM abre sozinho a ficha de matrícula na tela da recepção. Giros antigos que chegam atrasados (sincronização de histórico) não abrem nada.",
+      "ATUALIZAR no computador do CloudGym: copie o coliseu-agent.cjs do kit novo como coliseu-agent.new.cjs e rode o update.bat (como administrador). O .env continua igual."
+    ]
+  },
+  {
     "version": "0.8.0",
     "date": "2026-10-23",
     "itens": [

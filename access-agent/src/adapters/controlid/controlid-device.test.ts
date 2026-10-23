@@ -258,3 +258,31 @@ test("abertura remota (Interface WEB, API, botoeira) não conta como giro", () =
     assert.equal(r?.physicallyPassed, false, `event ${event} não é passagem`);
   }
 });
+
+test("pullAccessEvents marca ao vivo pelo relógio do APARELHO (histórico atrasado não)", async () => {
+  // aparelho 9 min atrasado e em outro "fuso": o que vale é a hora dele
+  const agoraAparelho = Math.floor(Date.now() / 1000) - 9 * 60 - 3 * 3600;
+  installFetch((path) => {
+    if (path === "/login.fcgi") return { json: { session: "S1" } };
+    if (path === "/system_information.fcgi") return { json: { time: agoraAparelho } };
+    if (path === "/load_objects.fcgi") {
+      return { json: { access_logs: [
+        { id: 11, time: agoraAparelho - 86_400, event: EVENT.NOT_IDENTIFIED }, // ontem
+        { id: 12, time: agoraAparelho - 5, event: EVENT.NOT_IDENTIFIED },      // agora
+      ] } };
+    }
+    return { json: {} };
+  });
+  const { events } = await newAdapter().pullAccessEvents("10");
+  assert.deepEqual(events.map((e) => e.aoVivo), [false, true]);
+});
+
+test("pullAccessEvents sem conseguir ler o relógio do aparelho: nada é ao vivo", async () => {
+  installFetch((path) => {
+    if (path === "/login.fcgi") return { json: { session: "S1" } };
+    if (path === "/load_objects.fcgi") return { json: { access_logs: [{ id: 12, time: Math.floor(Date.now() / 1000), event: EVENT.NOT_IDENTIFIED }] } };
+    return { json: {} };
+  });
+  const { events } = await newAdapter().pullAccessEvents("10");
+  assert.equal(events[0].aoVivo, false);
+});

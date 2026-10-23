@@ -10,9 +10,15 @@ import { enfileirarUpsertUser } from "@/lib/repositories/access";
  */
 export async function provisionarAcessoDePessoa(
   personId: string,
+  /**
+   * Lead também (captura de face no modal da recepção, antes de matricular):
+   * entra no aparelho desabilitado, igual ao aluno — só o pagamento habilita.
+   */
+  opts: { permitirLead?: boolean } = {},
 ): Promise<{ mappingsCriados: number; comandos: number }> {
   const person = await prisma.person.findUnique({ where: { id: personId } });
-  if (!person || person.fase !== "aluno") return { mappingsCriados: 0, comandos: 0 };
+  const fasePermitida = person?.fase === "aluno" || (opts.permitirLead === true && person?.fase === "lead");
+  if (!person || !fasePermitida) return { mappingsCriados: 0, comandos: 0 };
 
   const devices = await prisma.accessDevice.findMany({ where: { unitId: person.unitId } });
   if (devices.length === 0) return { mappingsCriados: 0, comandos: 0 };

@@ -10,11 +10,13 @@ export async function POST(req: Request) {
   if (!g.user || !podePapel(g.user.role as Papel, ["RECEPCAO", "ADMIN"])) {
     return NextResponse.json({ erro: "sem permissão" }, { status: 403 });
   }
-  const body = (await req.json()) as { personId?: string; deviceId?: string };
+  const body = (await req.json()) as { personId?: string; deviceId?: string; permitirLead?: boolean };
   if (!body.personId || !body.deviceId) {
     return NextResponse.json({ erro: "personId e deviceId são obrigatórios" }, { status: 400 });
   }
-  const r = await iniciarCadastroFace({ personId: body.personId, deviceId: body.deviceId });
+  const r = await iniciarCadastroFace({
+    personId: body.personId, deviceId: body.deviceId, permitirLead: body.permitirLead === true,
+  });
   if (!r.ok) return NextResponse.json({ erro: r.erro }, { status: 422 });
   await registrarAudit({
     actorType: "USER", actorId: g.user.id, action: "START_ENROLLMENT",

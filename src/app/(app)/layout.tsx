@@ -4,7 +4,8 @@ import { PresencaHeartbeat } from "@/components/PresencaHeartbeat";
 import { InstallPrompt } from "@/components/pwa/InstallPrompt";
 import { TrocaSenhaObrigatoria } from "@/components/perfil/TrocaSenhaObrigatoria";
 import { podeModulo } from "@/lib/auth/modulos";
-import { requireUser, type Papel } from "@/lib/auth/rbac";
+import { AvisosCatraca } from "@/components/acesso/AvisosCatraca";
+import { podePapel, requireUser, type Papel } from "@/lib/auth/rbac";
 
 export default async function AppLayout({ children }: { children: ReactNode }) {
   const user = await requireUser();
@@ -42,6 +43,9 @@ export default async function AppLayout({ children }: { children: ReactNode }) {
           mensagens — e fica depois da troca de senha obrigatória, que quem não
           passou dela ainda não começou a trabalhar. */}
       <PresencaHeartbeat />
+      {/* Quem tenta entrar e não passa na catraca abre a ficha de matrícula em
+          qualquer tela de quem atende o balcão. */}
+      {podePapel(user.role as Papel, ["ADMIN", "RECEPCAO"]) && <AvisosCatraca />}
     </>
   );
 }

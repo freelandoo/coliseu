@@ -102,6 +102,7 @@ async function pushUmEvento(ev: AccessEventRecord): Promise<void> {
     physicallyPassed: ev.physicallyPassed,
     mode: ev.mode,
     cursor: ev.cursor,
+    aoVivo: ev.aoVivo,
   });
 }
 

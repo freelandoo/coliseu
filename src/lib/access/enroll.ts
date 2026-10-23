@@ -17,13 +17,16 @@ export type IniciarCadastroFace =
  */
 export async function iniciarCadastroFace(input: {
   personId: string; deviceId: string;
+  /** Modal da recepção: captura a face de quem ainda vai ser matriculado. */
+  permitirLead?: boolean;
 }): Promise<IniciarCadastroFace> {
   const person = await prisma.person.findUnique({ where: { id: input.personId } });
   if (!person) return { ok: false, erro: "pessoa não encontrada" };
-  if (person.fase !== "aluno") return { ok: false, erro: "apenas alunos têm cadastro de face" };
+  const leadPermitido = input.permitirLead === true && person.fase === "lead";
+  if (person.fase !== "aluno" && !leadPermitido) return { ok: false, erro: "apenas alunos têm cadastro de face" };
 
   // Garante o vínculo com as catracas (idempotente) antes de pedir a captura.
-  await provisionarAcessoDePessoa(person.id);
+  await provisionarAcessoDePessoa(person.id, { permitirLead: leadPermitido });
 
   const mapping = await prisma.deviceUserMapping.findUnique({
     where: { deviceId_personId: { deviceId: input.deviceId, personId: person.id } },

@@ -32,6 +32,8 @@ export interface AccessEventRecord {
   physicallyPassed: boolean;
   mode: "ONLINE" | "OFFLINE" | "CONTINGENCY";
   cursor?: string;
+  /** Aconteceu agora (pelo relógio do aparelho), não é histórico atrasado. */
+  aoVivo?: boolean;
 }
 
 export interface AccessEventBatch {
