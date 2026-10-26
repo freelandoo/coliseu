@@ -10,6 +10,13 @@ import { Botao } from "@/components/ui/Botao";
 import { MensagemErro } from "@/components/ui/Campo";
 import { CamposCadastro } from "@/components/clientes/CamposCadastro";
 import { ResultadoMatricula } from "@/components/matricula/ResultadoMatricula";
+import {
+  ESCOLHA_PADRAO,
+  FormaCobrancaCampo,
+  descreverForma,
+  formaDaEscolha,
+  type EscolhaCobranca,
+} from "@/components/matricula/FormaCobrancaCampo";
 import { CheckoutBalcao } from "@/components/matricula/CheckoutBalcao";
 import {
   FORM_VAZIO,
@@ -103,6 +110,7 @@ function ModalCadastro({
   const [form, setForm] = useState<FormCadastro>(FORM_VAZIO);
   const [erros, setErros] = useState<ErrosCadastro>({});
   const [planoId, setPlanoId] = useState(planos[0]?.id ?? "");
+  const [cobranca, setCobranca] = useState<EscolhaCobranca>(ESCOLHA_PADRAO);
   const [fase, setFase] = useState<Fase>("formulario");
   const [enviando, setEnviando] = useState(false);
   const [erroApi, setErroApi] = useState("");
@@ -205,6 +213,7 @@ function ModalCadastro({
       nova: existente || idConfirmado ? undefined : novaPessoaDoForm(form),
       alteracoes: existente || idConfirmado ? alteracoesCadastro(base, form) : {},
       planoId: plano.id,
+      formaCobranca: formaDaEscolha(cobranca, plano),
     });
     emVoo.current = false;
     setEnviando(false);
@@ -258,7 +267,7 @@ function ModalCadastro({
         personId={desfecho.personId}
         nome={desfecho.nome}
         planoNome={desfecho.plano.nome}
-        valor={desfecho.plano.valorMensal}
+        valor={desfecho.dados.valorParcela ?? desfecho.plano.valorMensal}
         onPago={() => {
           setBalcao(false);
           fechar();
@@ -291,10 +300,12 @@ function ModalCadastro({
             titulo="Matrícula registrada"
             nome={desfecho.nome}
             planoNome={desfecho.plano.nome}
-            valor={desfecho.plano.valorMensal}
+            valor={desfecho.dados.valorParcela ?? desfecho.plano.valorMensal}
             linkPagamento={desfecho.dados.linkPagamento}
             waLink={desfecho.dados.waLink}
             email={desfecho.email}
+            parcelas={desfecho.dados.parcelas}
+            carneUrl={desfecho.dados.parcelas ? `/api/pessoas/${desfecho.personId}/carne` : undefined}
             onBalcao={() => setBalcao(true)}
             onConcluir={fechar}
           />
@@ -372,7 +383,10 @@ function ModalCadastro({
                         <button
                           key={p.id}
                           type="button"
-                          onClick={() => setPlanoId(p.id)}
+                          onClick={() => {
+                            setPlanoId(p.id);
+                            setCobranca((c) => ({ ...c, parcelas: null }));
+                          }}
                           aria-pressed={selecionado}
                           className={cn(
                             "rounded-lg border px-4 py-2.5 text-left transition-colors",
@@ -390,6 +404,11 @@ function ModalCadastro({
                     })}
                   </div>
                 </fieldset>
+              )}
+              {matricula && !semPlano && plano && (
+                <div className="mt-5">
+                  <FormaCobrancaCampo plano={plano} escolha={cobranca} onChange={setCobranca} disabled={travado} />
+                </div>
               )}
 
               {erroApi && <MensagemErro className="mt-4">{erroApi}</MensagemErro>}
@@ -421,6 +440,7 @@ function ModalCadastro({
                 <Linha rotulo="Contato" valor={[form.telefone.trim(), form.email.trim()].filter(Boolean).join(" · ")} />
                 <Linha rotulo="Plano" valor={`${plano.nome} · ${formatBRL(plano.valorMensal)}/mês`} />
                 <Linha rotulo="Vigência" valor={`${plano.duracaoDias} dias a partir de hoje`} />
+                <Linha rotulo="Cobrança" valor={descreverForma(formaDaEscolha(cobranca, plano), plano)} />
                 <Linha rotulo="Situação ao confirmar" valor="Matrícula registrada · pagamento pendente" />
               </dl>
               <p className="mt-3 text-xs text-muted">

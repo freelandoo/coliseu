@@ -22,6 +22,8 @@ export function ResultadoMatricula({
   linkPagamento,
   waLink,
   email,
+  parcelas,
+  carneUrl,
   onBalcao,
   onConcluir,
 }: {
@@ -32,6 +34,10 @@ export function ResultadoMatricula({
   linkPagamento?: string;
   waLink?: string;
   email?: string;
+  /** Boleto parcelado: `valor` é a 1ª parcela e o link é o 1º boleto. */
+  parcelas?: number;
+  /** Carnê em PDF com todos os boletos (para imprimir e entregar). */
+  carneUrl?: string;
   /** Receber agora no balcão (checkout existente). */
   onBalcao?: () => void;
   onConcluir: () => void;
@@ -63,7 +69,7 @@ export function ResultadoMatricula({
         <div>
           <h2 className="text-base font-semibold text-ink">{titulo}</h2>
           <p className="text-sm text-muted">
-            {nome} · {planoNome} · {formatBRL(valor)}
+            {nome} · {planoNome} · {parcelas ? `${parcelas}× de ${formatBRL(valor)} no boleto` : formatBRL(valor)}
           </p>
         </div>
       </div>
@@ -71,7 +77,9 @@ export function ResultadoMatricula({
       <ul className="mt-4 flex flex-col gap-1.5 rounded-lg border border-border bg-surface-2 p-3 text-sm">
         <Situacao tom="ok">Matrícula registrada no sistema</Situacao>
         <Situacao tom="pendente">Pagamento pendente — ainda não confirmado</Situacao>
-        {linkPagamento ? (
+        {linkPagamento && parcelas ? (
+          <Situacao tom="ok">{parcelas} boletos gerados, um por mês (o link abre o 1º)</Situacao>
+        ) : linkPagamento ? (
           <Situacao tom="ok">Cobrança disponível (link de pagamento gerado)</Situacao>
         ) : (
           <Situacao tom="neutro">O servidor não devolveu link de pagamento</Situacao>
@@ -102,6 +110,11 @@ export function ResultadoMatricula({
               </a>
             )}
           </div>
+          {carneUrl && (
+            <a href={carneUrl} target="_blank" rel="noreferrer" className="text-sm font-medium text-ink underline-offset-2 hover:underline">
+              Baixar carnê com todos os boletos (PDF)
+            </a>
+          )}
           {copiado === "erro" && <p className="text-xs text-danger">Não deu para copiar. Selecione o link: {linkPagamento}</p>}
           <p className="text-xs text-faint">Abrir o WhatsApp ou o e-mail não confirma que a mensagem foi enviada.</p>
         </div>

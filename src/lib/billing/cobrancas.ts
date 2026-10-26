@@ -3,6 +3,7 @@ import {
   asaasConfigurado,
   cancelarAssinaturaAsaas,
   cancelarCobrancaAsaas,
+  cancelarParcelamentoAsaas,
   criarCobrancaAvulsa,
   criarOuLocalizarCliente,
   ehIdAsaasReal,
@@ -43,6 +44,8 @@ export async function garantirClienteAsaas(personId: string): Promise<string> {
 /**
  * Renovação/troca de plano: a assinatura nova já foi criada — as anteriores
  * param de cobrar. Sem isso o aluno pagaria duas mensalidades por mês.
+ * Boleto parcelado conta como assinatura: as parcelas em aberto caem, as
+ * pagas ficam.
  */
 export async function cancelarAssinaturasAnteriores(personId: string, manterAsaasId?: string): Promise<number> {
   const antigas = await prisma.billingSubscription.findMany({
@@ -53,7 +56,8 @@ export async function cancelarAssinaturasAnteriores(personId: string, manterAsaa
     },
   });
   for (const s of antigas) {
-    await cancelarAssinaturaAsaas(s.asaasSubscriptionId);
+    if (s.cycle === "INSTALLMENT") await cancelarParcelamentoAsaas(s.asaasSubscriptionId);
+    else await cancelarAssinaturaAsaas(s.asaasSubscriptionId);
     await prisma.billingSubscription.update({ where: { id: s.id }, data: { status: "CANCELED" } });
     // Mensalidade ainda não vencida da assinatura antiga deixa de existir
     // (o Asaas as remove junto; aqui não espera o webhook).
@@ -158,7 +162,7 @@ export interface PagamentoDaPessoa {
 
 export async function listarPagamentosDaPessoa(personId: string): Promise<{
   pagamentos: PagamentoDaPessoa[];
-  assinatura: { valor: number; status: string; asaasId: string } | null;
+  assinatura: { valor: number; status: string; asaasId: string; parcelado: boolean } | null;
 }> {
   const [pagamentos, assinatura] = await Promise.all([
     prisma.payment.findMany({
@@ -185,7 +189,12 @@ export async function listarPagamentosDaPessoa(personId: string): Promise<{
       recorrente: Boolean(p.subscriptionId),
     })),
     assinatura: assinatura
-      ? { valor: assinatura.value, status: assinatura.status, asaasId: assinatura.asaasSubscriptionId }
+      ? {
+          valor: assinatura.value,
+          status: assinatura.status,
+          asaasId: assinatura.asaasSubscriptionId,
+          parcelado: assinatura.cycle === "INSTALLMENT",
+        }
       : null,
   };
 }

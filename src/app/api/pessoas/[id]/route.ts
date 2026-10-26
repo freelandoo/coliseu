@@ -6,7 +6,8 @@ import {
   planoPorId,
   removerPessoa,
 } from "@/lib/store";
-import { AsaasError, linkPagamentoWhatsApp, matricularNoAsaas } from "@/lib/asaas";
+import { AsaasError, linkPagamentoWhatsApp, linkParcelamentoWhatsApp, matricularNoAsaas } from "@/lib/asaas";
+import { lerFormaCobranca, valorTotalDoPlano } from "@/lib/billing/parcelamento";
 import { cancelarAssinaturasAnteriores } from "@/lib/billing/cobrancas";
 import { prisma } from "@/lib/db";
 import type { Pessoa } from "@/lib/types";
@@ -33,15 +34,24 @@ export async function PATCH(req: Request, { params }: Ctx) {
   const body = (await req.json()) as {
     acao?: "matricular";
     planoId?: string;
+    /** Assinatura mensal (padrão) ou boleto parcelado. */
+    formaCobranca?: unknown;
   } & Partial<Pessoa>;
 
   // Ação especial: matricular (lead → aluno) + assinatura no Asaas
   if (body.acao === "matricular") {
-    const { acao, planoId, ...campos } = body;
+    const { acao, planoId, formaCobranca, ...campos } = body;
     void acao;
     if (!planoId) {
       return NextResponse.json({ erro: "planoId é obrigatório" }, { status: 400 });
     }
+    // Forma inválida não grava nada — nem os campos do cadastro.
+    const planoPedido = await planoPorId(planoId);
+    if (!planoPedido) {
+      return NextResponse.json({ erro: "Pessoa ou plano não encontrado" }, { status: 404 });
+    }
+    const forma = lerFormaCobranca(formaCobranca, planoPedido);
+    if (!forma.ok) return NextResponse.json({ erro: forma.erro }, { status: 400 });
     // aplica campos de cadastro preenchidos no fluxo antes de matricular
     if (Object.keys(campos).length > 0) await atualizarPessoa(id, campos);
     // Lead que chegou sozinho (WhatsApp) não tem quem cadastrou: o vendedor
@@ -81,6 +91,10 @@ export async function PATCH(req: Request, { params }: Ctx) {
         valorMensal: plano.valorMensal,
         personId: pessoaAtual.id,
         customerId: clienteAtual?.asaasCustomerId,
+        parcelamento:
+          forma.forma.tipo === "boleto_parcelado"
+            ? { parcelas: forma.forma.parcelas, valorTotal: valorTotalDoPlano(plano) }
+            : undefined,
       });
     } catch (e) {
       console.error("[asaas] falha ao matricular:", e);
@@ -107,18 +121,18 @@ export async function PATCH(req: Request, { params }: Ctx) {
       console.error("[asaas] falha ao cancelar assinatura anterior:", e);
     }
 
-    const waLink = pessoaAtual.telefone
-      ? linkPagamentoWhatsApp(
-          pessoaAtual.telefone,
-          pessoaAtual.nome,
-          asaas.linkPagamento,
-        )
-      : undefined;
+    const parcelas = forma.forma.tipo === "boleto_parcelado" ? forma.forma.parcelas : null;
+    const waLink = !pessoaAtual.telefone
+      ? undefined
+      : parcelas
+        ? linkParcelamentoWhatsApp(pessoaAtual.telefone, pessoaAtual.nome, asaas.linkPagamento, parcelas)
+        : linkPagamentoWhatsApp(pessoaAtual.telefone, pessoaAtual.nome, asaas.linkPagamento);
 
     return NextResponse.json({
       ...pessoa,
       linkPagamento: asaas.linkPagamento,
       waLink,
+      ...(parcelas && { parcelas, valorParcela: asaas.valorCobranca }),
     });
   }
 

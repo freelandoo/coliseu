@@ -164,7 +164,7 @@ export async function matricularPessoaRepo(
     }),
     prisma.cobranca.create({
       data: {
-        personId: id, tipo: "matricula", valor: plano.valorMensal,
+        personId: id, tipo: "matricula", valor: asaas?.valorCobranca ?? plano.valorMensal,
         vencimento: venc, status: "pendente",
         asaasId: asaas?.cobrancaId ?? null,
         assinaturaId: asaas?.assinaturaId ?? null,
@@ -182,13 +182,14 @@ export async function matricularPessoaRepo(
       asaasCustomerId: asaas.customerId, personId: id, externalReference: id,
     });
     const bs = await upsertBillingSubscriptionRepo({
-      asaasSubscriptionId: asaas.assinaturaId, customerId: bc.id, value: plano.valorMensal,
-      externalReference: membership?.id ?? null,
+      asaasSubscriptionId: asaas.assinaturaId, customerId: bc.id, value: asaas.valorCobranca ?? plano.valorMensal,
+      cycle: asaas.ciclo, externalReference: membership?.id ?? null,
     });
     // statusUpdatedAt no passado: o webhook do Asaas (que pode chegar antes
     // desta linha) sempre prevalece sobre a criação local.
     await upsertPaymentRepo({
-      asaasPaymentId: asaas.cobrancaId, subscriptionId: bs.id, personId: id, value: plano.valorMensal,
+      asaasPaymentId: asaas.cobrancaId, subscriptionId: bs.id, personId: id,
+      value: asaas.valorCobranca ?? plano.valorMensal,
       dueDate: venc, status: "PENDING", invoiceUrl: asaas.linkPagamento,
       statusUpdatedAt: new Date(0),
     });

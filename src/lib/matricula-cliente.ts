@@ -19,6 +19,7 @@
 import { lerResultado, sinalDeTempo, temId, type Resultado } from "@/lib/operacao";
 import type { AlteracoesCadastro } from "@/lib/cadastro";
 import type { NovaPessoa } from "@/lib/types";
+import type { FormaCobranca } from "@/lib/billing/parcelamento";
 
 type Buscar = (url: string, init: RequestInit) => Promise<Response>;
 
@@ -27,6 +28,9 @@ export interface MatriculaRegistrada {
   linkPagamento?: string;
   waLink?: string;
   status?: string;
+  /** Boleto parcelado: quantos boletos e o valor de cada um. */
+  parcelas?: number;
+  valorParcela?: number;
 }
 
 function ehMatricula(v: unknown): v is MatriculaRegistrada {
@@ -65,6 +69,8 @@ export async function executarMatricula(
     nova?: NovaPessoa;
     alteracoes: AlteracoesCadastro;
     planoId: string;
+    /** Sem isso, assinatura mensal (o padrão do servidor). */
+    formaCobranca?: FormaCobranca;
   },
   buscar: Buscar = fetch,
 ): Promise<DesfechoMatricula> {
@@ -85,7 +91,12 @@ export async function executarMatricula(
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
       // Só o que a pessoa mudou vai junto — o resto da ficha fica como está.
-      body: JSON.stringify({ acao: "matricular", planoId: entrada.planoId, ...entrada.alteracoes }),
+      body: JSON.stringify({
+        acao: "matricular",
+        planoId: entrada.planoId,
+        ...(entrada.formaCobranca && { formaCobranca: entrada.formaCobranca }),
+        ...entrada.alteracoes,
+      }),
       signal: sinalDeTempo(),
     }),
     ehMatricula,

@@ -8,9 +8,10 @@
 // @/lib/billing/cobrancas; este arquivo também é importado pelo navegador
 // (linkPagamentoWhatsApp), então não pode alcançar o Prisma.
 //
-// Forma de pagamento: toda cobrança nasce UNDEFINED — o link da fatura
-// oferece PIX, boleto e cartão e o aluno escolhe. A forma usada volta no
-// webhook (payment.billingType).
+// Forma de pagamento: a assinatura mensal nasce UNDEFINED — o link da
+// fatura oferece PIX, boleto e cartão e o aluno escolhe. A forma usada volta
+// no webhook (payment.billingType). A exceção é o boleto parcelado: o plano
+// inteiro vira N boletos de uma vez (um por mês, com carnê em PDF).
 // ============================================================
 
 export type AsaasBillingType = "UNDEFINED" | "PIX" | "BOLETO" | "CREDIT_CARD";
@@ -28,6 +29,7 @@ export interface AsaasCharge {
   id: string;
   customer: string;
   subscription?: string | null;
+  installment?: string | null;
   value: number;
   dueDate: string; // YYYY-MM-DD
   billingType: AsaasBillingType;
@@ -51,7 +53,12 @@ export interface AsaasSubscription {
 /** Resultado consolidado de uma matrícula no Asaas (mock ou real). */
 export interface AsaasMatricula {
   customerId: string;
+  /** Id da assinatura ou do parcelamento — ver `ciclo`. */
   assinaturaId: string;
+  /** MONTHLY = assinatura recorrente; INSTALLMENT = boleto parcelado. */
+  ciclo: "MONTHLY" | "INSTALLMENT";
+  /** Valor da 1ª cobrança quando difere da mensalidade (parcela do boleto). */
+  valorCobranca?: number;
   cobrancaId: string; // id da 1ª cobrança da assinatura (vira Cobranca.asaasId)
   linkPagamento: string; // invoiceUrl da 1ª cobrança
 }
@@ -65,6 +72,8 @@ export interface AsaasPaymentLike {
   paymentDate?: string | null;
   invoiceUrl?: string | null;
   subscription?: string | null;
+  /** Parcelamento a que a cobrança pertence (boleto parcelado). */
+  installment?: string | null;
   customer?: string | null;
   billingType?: string | null;
   description?: string | null;
@@ -97,10 +106,10 @@ export function asaasConfigurado(): boolean {
  */
 export function ehIdAsaasReal(id: string | null | undefined): id is string {
   if (!id) return false;
-  return !/^(pay|cus|sub)_(mock|seed)_|^balcao_|^pay_\d{3}$/.test(id);
+  return !/^(pay|cus|sub|ins)_(mock|seed)_|^balcao_|^pay_\d{3}$/.test(id);
 }
 
-async function asaas<T>(metodo: "GET" | "POST" | "DELETE", caminho: string, corpo?: unknown): Promise<T> {
+async function chamar(metodo: "GET" | "POST" | "DELETE", caminho: string, corpo?: unknown): Promise<Response> {
   const res = await fetch(`${ASAAS_BASE}${caminho}`, {
     method: metodo,
     headers: {
@@ -109,14 +118,23 @@ async function asaas<T>(metodo: "GET" | "POST" | "DELETE", caminho: string, corp
     },
     body: corpo === undefined ? undefined : JSON.stringify(corpo),
   });
-  const texto = await res.text();
-  const json = texto ? (JSON.parse(texto) as unknown) : {};
   if (!res.ok) {
-    const erros = (json as { errors?: { description?: string }[] }).errors;
-    const msg = erros?.map((e) => e.description).filter(Boolean).join("; ");
+    const texto = await res.text();
+    let msg = "";
+    try {
+      const erros = (JSON.parse(texto) as { errors?: { description?: string }[] }).errors;
+      msg = erros?.map((e) => e.description).filter(Boolean).join("; ") ?? "";
+    } catch {
+      // corpo não é JSON: fica só o status
+    }
     throw new AsaasError(res.status, `Asaas ${metodo} ${caminho.split("?")[0]}: ${msg || res.status}`);
   }
-  return json as T;
+  return res;
+}
+
+async function asaas<T>(metodo: "GET" | "POST" | "DELETE", caminho: string, corpo?: unknown): Promise<T> {
+  const texto = await (await chamar(metodo, caminho, corpo)).text();
+  return (texto ? JSON.parse(texto) : {}) as T;
 }
 
 function amanha(): string {
@@ -224,6 +242,62 @@ export async function criarCobrancaAvulsa(input: {
   return asaas<AsaasCharge>("POST", "/payments", { billingType: "UNDEFINED", ...input });
 }
 
+/**
+ * Boleto parcelado (POST /payments com installmentCount): o valor total vira
+ * N boletos mensais, o 1º vencendo amanhã. O Asaas divide os centavos e
+ * avisa o aluno antes de cada vencimento. Devolve a 1ª parcela.
+ */
+export async function criarParcelamento(input: {
+  customer: string;
+  valorTotal: number;
+  parcelas: number;
+  description: string;
+  externalReference?: string;
+}): Promise<AsaasCharge & { installment: string }> {
+  const dueDate = amanha();
+  if (!asaasConfigurado()) {
+    const id = `pay_mock_${Date.now()}`;
+    return {
+      id,
+      customer: input.customer,
+      installment: `ins_mock_${Date.now()}`,
+      value: Math.round((input.valorTotal / input.parcelas) * 100) / 100,
+      dueDate,
+      billingType: "BOLETO",
+      invoiceUrl: `https://asaas.com/c/${id}`,
+      status: "PENDING",
+      description: `Parcela 1 de ${input.parcelas}. ${input.description}`,
+    };
+  }
+  const c = await asaas<AsaasCharge>("POST", "/payments", {
+    customer: input.customer,
+    billingType: "BOLETO",
+    dueDate,
+    installmentCount: input.parcelas,
+    totalValue: input.valorTotal,
+    description: input.description,
+    externalReference: input.externalReference,
+  });
+  if (!c.installment) throw new AsaasError(502, "Asaas não devolveu o parcelamento");
+  return c as AsaasCharge & { installment: string };
+}
+
+/** Cancela as parcelas ainda em aberto (as pagas ficam). Equivale a cancelar a assinatura. */
+export async function cancelarParcelamentoAsaas(installmentId: string): Promise<void> {
+  if (!asaasConfigurado() || !ehIdAsaasReal(installmentId)) return;
+  try {
+    await asaas("DELETE", `/installments/${installmentId}/payments`);
+  } catch (e) {
+    if (!(e instanceof AsaasError && e.status === 404)) throw e;
+  }
+}
+
+/** Carnê em PDF com todos os boletos do parcelamento (para imprimir no balcão). */
+export async function carneDoParcelamento(installmentId: string): Promise<ArrayBuffer | null> {
+  if (!asaasConfigurado() || !ehIdAsaasReal(installmentId)) return null;
+  return (await chamar("GET", `/installments/${installmentId}/paymentBook`)).arrayBuffer();
+}
+
 /** Remove uma cobrança ainda não paga. */
 export async function cancelarCobrancaAsaas(paymentId: string): Promise<void> {
   if (!asaasConfigurado() || !ehIdAsaasReal(paymentId)) return;
@@ -282,6 +356,22 @@ export function linkPagamentoWhatsApp(
   return `https://wa.me/55${fone}?text=${texto}`;
 }
 
+/** Mensagem do boleto parcelado: manda o 1º boleto; os outros o Asaas avisa. */
+export function linkParcelamentoWhatsApp(
+  telefone: string,
+  nome: string,
+  invoiceUrl: string,
+  parcelas: number,
+): string {
+  const fone = telefone.replace(/\D/g, "");
+  const texto = encodeURIComponent(
+    `Olá ${nome}! Sua matrícula na Coliseu Team foi parcelada em ${parcelas} boletos 💪\n` +
+      `O 1º boleto está aqui:\n${invoiceUrl}\n` +
+      `Os próximos chegam por e-mail/SMS antes de cada vencimento, um por mês.`,
+  );
+  return `https://wa.me/55${fone}?text=${texto}`;
+}
+
 /** Orquestra a matrícula no Asaas: cliente → assinatura → 1ª cobrança/link. */
 export async function matricularNoAsaas(input: {
   id: string;
@@ -296,12 +386,18 @@ export async function matricularNoAsaas(input: {
   personId?: string;
   /** Cliente já conhecido (BillingCustomer) — evita duplicar no Asaas. */
   customerId?: string;
+  /** Boleto parcelado no lugar da assinatura mensal. */
+  parcelamento?: { parcelas: number; valorTotal: number };
 }): Promise<AsaasMatricula> {
   if (!asaasConfigurado()) {
     const cobrancaId = `pay_mock_${input.codigo.toLowerCase()}_${Date.now()}`;
     return {
       customerId: `cus_mock_${input.id}`,
-      assinaturaId: `sub_mock_${input.id}_${Date.now()}`,
+      assinaturaId: `${input.parcelamento ? "ins" : "sub"}_mock_${input.id}_${Date.now()}`,
+      ciclo: input.parcelamento ? "INSTALLMENT" : "MONTHLY",
+      valorCobranca: input.parcelamento
+        ? Math.round((input.parcelamento.valorTotal / input.parcelamento.parcelas) * 100) / 100
+        : undefined,
       cobrancaId,
       linkPagamento: `https://asaas.com/c/${cobrancaId}`,
     };
@@ -319,6 +415,23 @@ export async function matricularNoAsaas(input: {
             externalReference: input.personId,
           })
         ).id;
+  if (input.parcelamento) {
+    const p = await criarParcelamento({
+      customer: customerId,
+      valorTotal: input.parcelamento.valorTotal,
+      parcelas: input.parcelamento.parcelas,
+      description: `Plano ${input.planoNome} — Coliseu Team`,
+      externalReference: input.membershipId,
+    });
+    return {
+      customerId,
+      assinaturaId: p.installment,
+      ciclo: "INSTALLMENT",
+      valorCobranca: p.value,
+      cobrancaId: p.id,
+      linkPagamento: p.invoiceUrl,
+    };
+  }
   const assinatura = await criarAssinatura({
     customer: customerId,
     value: input.valorMensal,
@@ -329,6 +442,7 @@ export async function matricularNoAsaas(input: {
   return {
     customerId,
     assinaturaId: assinatura.id,
+    ciclo: "MONTHLY",
     cobrancaId: cobranca.id,
     linkPagamento: cobranca.invoiceUrl,
   };

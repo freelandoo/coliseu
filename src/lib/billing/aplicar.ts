@@ -80,10 +80,12 @@ export async function aplicarPagamento(
     });
 
     // Vínculos: assinatura local → cliente → pessoa; ou cliente direto; ou a
-    // Cobranca que a tela criou com o mesmo id.
-    const sub = p.subscription
+    // Cobranca que a tela criou com o mesmo id. Boleto parcelado mora na
+    // mesma tabela da assinatura (cycle INSTALLMENT), pelo id do parcelamento.
+    const contrato = p.subscription ?? p.installment;
+    const sub = contrato
       ? await tx.billingSubscription.findUnique({
-          where: { asaasSubscriptionId: p.subscription },
+          where: { asaasSubscriptionId: contrato },
           select: { id: true, customer: { select: { personId: true } } },
         })
       : null;
@@ -173,7 +175,7 @@ export async function aplicarPagamento(
             vencimento: dueDate ?? eventAt,
             status: cobrancaStatusDe(status),
             asaasId: p.id,
-            assinaturaId: p.subscription ?? null,
+            assinaturaId: contrato ?? null,
             linkPagamento: p.invoiceUrl ?? null,
           },
         });

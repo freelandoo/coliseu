@@ -7,6 +7,13 @@ import { Botao } from "@/components/ui/Botao";
 import { Campo, MensagemErro, classeCampo } from "@/components/ui/Campo";
 import { CheckoutBalcao, type MetodoBalcao } from "@/components/matricula/CheckoutBalcao";
 import { ResultadoMatricula } from "@/components/matricula/ResultadoMatricula";
+import {
+  ESCOLHA_PADRAO,
+  FormaCobrancaCampo,
+  descreverForma,
+  formaDaEscolha,
+  type EscolhaCobranca,
+} from "@/components/matricula/FormaCobrancaCampo";
 import { executarMatricula, type MatriculaRegistrada } from "@/lib/matricula-cliente";
 import type { Pessoa, Plano } from "@/lib/types";
 
@@ -78,13 +85,19 @@ export function RenovarModal({
   const opcoes = (planos ?? []).filter((p) => p.id !== planoAtual.id);
   const [planoNovoId, setPlanoNovoId] = useState("");
   const plano = alterando ? opcoes.find((p) => p.id === planoNovoId) : planoAtual;
+  const [cobranca, setCobranca] = useState<EscolhaCobranca>(ESCOLHA_PADRAO);
   const acao = alterando ? "alteração de plano" : "renovação";
 
   async function confirmar() {
     if (emVoo.current || !plano) return;
     emVoo.current = true;
     setFase({ tipo: "processando" });
-    const d = await executarMatricula({ pessoaId: pessoa.id, alteracoes: {}, planoId: plano.id });
+    const d = await executarMatricula({
+      pessoaId: pessoa.id,
+      alteracoes: {},
+      planoId: plano.id,
+      formaCobranca: formaDaEscolha(cobranca, plano),
+    });
     emVoo.current = false;
     if (d.tipo === "registrada") setFase({ tipo: "registrada", dados: d.dados });
     else if (d.tipo === "falha-matricula" || d.tipo === "falha-cadastro") {
@@ -98,7 +111,7 @@ export function RenovarModal({
         personId={pessoa.id}
         nome={pessoa.nome}
         planoNome={plano.nome}
-        valor={plano.valorMensal}
+        valor={fase.dados.valorParcela ?? plano.valorMensal}
         onPago={(metodo) => setFase({ tipo: "pago", metodo })}
         onFechar={() => setFase({ tipo: "registrada", dados: fase.dados })}
       />
@@ -121,7 +134,10 @@ export function RenovarModal({
                 <select
                   {...a}
                   value={planoNovoId}
-                  onChange={(e) => setPlanoNovoId(e.target.value)}
+                  onChange={(e) => {
+                    setPlanoNovoId(e.target.value);
+                    setCobranca((c) => ({ ...c, parcelas: null }));
+                  }}
                   disabled={processando}
                   className={classeCampo}
                 >
@@ -146,7 +162,7 @@ export function RenovarModal({
             ) : (
               <Linha rotulo="Plano" valor={planoAtual.nome} />
             )}
-            <Linha rotulo="Valor" valor={plano ? `${formatBRL(plano.valorMensal)}/mês` : "—"} />
+            <Linha rotulo="Cobrança" valor={plano ? descreverForma(formaDaEscolha(cobranca, plano), plano) : "—"} />
             <Linha rotulo="Vigência" valor={plano ? `${plano.duracaoDias} dias a partir da confirmação` : "—"} />
             <Linha
               rotulo="Vencimento atual"
@@ -157,14 +173,19 @@ export function RenovarModal({
               valor={`${alterando ? "Plano alterado" : "Renovação registrada"} · pagamento pendente`}
             />
           </dl>
+          {plano && (
+            <div className="mt-4">
+              <FormaCobrancaCampo plano={plano} escolha={cobranca} onChange={setCobranca} disabled={processando} />
+            </div>
+          )}
           {!alterando && planoAtual.ativo === false && (
             <p className="mt-3 rounded-lg border border-warning/30 bg-warning-soft px-3 py-2 text-xs text-ink">
               Este plano está arquivado (não é oferecido em matrículas novas). A renovação mantém o plano atual do aluno.
             </p>
           )}
           <p className="mt-3 text-xs text-muted">
-            Ao confirmar, uma nova cobrança é gerada pelo caminho de sempre (Asaas) e as assinaturas anteriores deste
-            aluno são canceladas para não cobrar em dobro.
+            Ao confirmar, uma nova cobrança é gerada no Asaas e as assinaturas e boletos em aberto anteriores deste
+            aluno são cancelados para não cobrar em dobro.
             {alterando && " Até o pagamento do novo plano, a catraca trata o aluno como matrícula aguardando pagamento."}
           </p>
           {faltando.length > 0 && (
@@ -218,10 +239,12 @@ export function RenovarModal({
             titulo={alterando ? "Plano alterado" : "Renovação registrada"}
             nome={pessoa.nome}
             planoNome={plano.nome}
-            valor={plano.valorMensal}
+            valor={fase.dados.valorParcela ?? plano.valorMensal}
             linkPagamento={fase.dados.linkPagamento}
             waLink={fase.dados.waLink}
             email={pessoa.email}
+            parcelas={fase.dados.parcelas}
+            carneUrl={fase.dados.parcelas ? `/api/pessoas/${pessoa.id}/carne` : undefined}
             onBalcao={() => setFase({ tipo: "balcao", dados: fase.dados })}
             onConcluir={onFechar}
           />

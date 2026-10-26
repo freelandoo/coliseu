@@ -18,7 +18,7 @@ type Pagamento = {
   descricao: string | null;
   recorrente: boolean;
 };
-type Assinatura = { valor: number; status: string; asaasId: string } | null;
+type Assinatura = { valor: number; status: string; asaasId: string; parcelado: boolean } | null;
 
 const STATUS: Record<Pagamento["status"], { rotulo: string; tom: "ok" | "warn" | "danger" | "neutral" }> = {
   PAID: { rotulo: "Pago", tom: "ok" },
@@ -133,7 +133,9 @@ export function PagamentosDoAluno({
   async function cancelarAssinatura() {
     if (
       !confirm(
-        "Cancelar a assinatura? O Asaas para de gerar as próximas mensalidades. " +
+        (assinatura?.parcelado
+          ? "Cancelar o parcelamento? Os boletos ainda não pagos são cancelados no Asaas. "
+          : "Cancelar a assinatura? O Asaas para de gerar as próximas mensalidades. ") +
           "O aluno continua com o que já pagou até o vencimento do plano.",
       )
     )
@@ -165,7 +167,30 @@ export function PagamentosDoAluno({
       </div>
 
       <div className="mb-4 flex flex-wrap items-center gap-2 text-sm">
-        {assinatura ? (
+        {assinatura?.parcelado ? (
+          <>
+            <Badge tone="ok">Boleto parcelado</Badge>
+            <span className="text-muted">{formatBRL(assinatura.valor)} por parcela · um boleto por mês</span>
+            <a
+              href={`/api/pessoas/${personId}/carne`}
+              target="_blank"
+              rel="noreferrer"
+              className="text-xs font-medium text-ink underline-offset-2 hover:underline"
+            >
+              Baixar carnê (PDF)
+            </a>
+            {podeGerir && (
+              <button
+                type="button"
+                onClick={cancelarAssinatura}
+                disabled={ocupado}
+                className="ml-auto text-xs font-medium text-destaque transition-colors hover:underline disabled:opacity-60"
+              >
+                Cancelar parcelamento
+              </button>
+            )}
+          </>
+        ) : assinatura ? (
           <>
             <Badge tone="ok">Assinatura ativa</Badge>
             <span className="text-muted">{formatBRL(assinatura.valor)}/mês · aluno escolhe PIX, boleto ou cartão</span>

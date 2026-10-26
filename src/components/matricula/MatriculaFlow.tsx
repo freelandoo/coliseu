@@ -10,6 +10,13 @@ import { Botao, classeBotao } from "@/components/ui/Botao";
 import { MensagemErro, classeCampo } from "@/components/ui/Campo";
 import { CheckoutBalcao, type MetodoBalcao } from "@/components/matricula/CheckoutBalcao";
 import { ResultadoMatricula } from "@/components/matricula/ResultadoMatricula";
+import {
+  ESCOLHA_PADRAO,
+  FormaCobrancaCampo,
+  descreverForma,
+  formaDaEscolha,
+  type EscolhaCobranca,
+} from "@/components/matricula/FormaCobrancaCampo";
 import { CamposCadastro } from "@/components/clientes/CamposCadastro";
 import {
   FORM_VAZIO,
@@ -94,6 +101,7 @@ export function MatriculaFlow({
   const planoInicial = (c: Candidato | null) =>
     c?.planoAtualId && planos.some((p) => p.id === c.planoAtualId) ? c.planoAtualId : (planos[0]?.id ?? "");
   const [planoId, setPlanoId] = useState(() => planoInicial(preSelecionado));
+  const [cobranca, setCobranca] = useState<EscolhaCobranca>(ESCOLHA_PADRAO);
   const [op, setOp] = useState<Operacao>({ tipo: "editando" });
   const emVoo = useRef(false);
 
@@ -156,6 +164,7 @@ export function MatriculaFlow({
     setErros({});
     setOp({ tipo: "editando" });
     setPlanoId(planoInicial(c));
+    setCobranca(ESCOLHA_PADRAO);
   }
 
   function trocarPessoa() {
@@ -189,6 +198,7 @@ export function MatriculaFlow({
       pessoaId: alvo.refId,
       alteracoes: alteracoesCadastro(base, form),
       planoId: planoEscolhido.id,
+      formaCobranca: formaDaEscolha(cobranca, planoEscolhido),
     });
     emVoo.current = false;
 
@@ -199,7 +209,7 @@ export function MatriculaFlow({
         codigo: alvo.codigo ?? "",
         nome: form.nome.trim(),
         planoNome: planoEscolhido.nome,
-        valor: planoEscolhido.valorMensal,
+        valor: d.dados.valorParcela ?? planoEscolhido.valorMensal,
         linkPagamento: d.dados.linkPagamento,
         waLink: d.dados.waLink,
         email: form.email.trim() || undefined,
@@ -326,7 +336,10 @@ export function MatriculaFlow({
                         <button
                           type="button"
                           key={p.id}
-                          onClick={() => setPlanoId(p.id)}
+                          onClick={() => {
+                            setPlanoId(p.id);
+                            setCobranca((c) => ({ ...c, parcelas: null }));
+                          }}
                           aria-pressed={escolhido}
                           className={cn(
                             "rounded-lg border px-4 py-2.5 text-left transition-colors",
@@ -347,6 +360,8 @@ export function MatriculaFlow({
                     })}
                   </fieldset>
 
+                  {plano && <FormaCobrancaCampo plano={plano} escolha={cobranca} onChange={setCobranca} />}
+
                   {op.tipo === "falhou" && <MensagemErro>A matrícula não foi registrada: {op.erro}</MensagemErro>}
 
                   <Botao variante="primario" tamanho="lg" onClick={revisar} disabled={!plano}>
@@ -364,11 +379,12 @@ export function MatriculaFlow({
                     <Linha rotulo="Tipo" valor={sel.origem === "renovacao" ? "Renovação" : "Matrícula de lead"} />
                     <Linha rotulo="Plano" valor={`${plano.nome} · ${formatBRL(plano.valorMensal)}/mês`} />
                     <Linha rotulo="Vigência" valor={`${plano.duracaoDias} dias a partir da confirmação`} />
+                    <Linha rotulo="Cobrança" valor={descreverForma(formaDaEscolha(cobranca, plano), plano)} />
                   </dl>
                   <p className="text-xs text-muted">
                     Ao confirmar: as alterações do cadastro são salvas, a matrícula é registrada com pagamento pendente e
-                    a cobrança é gerada pelo caminho de sempre (Asaas). Assinaturas anteriores desta pessoa são canceladas
-                    para não cobrar em dobro.
+                    a cobrança é gerada no Asaas. Assinaturas e boletos em aberto de cobranças anteriores desta pessoa
+                    são cancelados para não cobrar em dobro.
                   </p>
                   {op.tipo === "desconhecido" && (
                     <MensagemErro>
@@ -461,6 +477,8 @@ export function MatriculaFlow({
             linkPagamento={resultado.dados.linkPagamento}
             waLink={resultado.dados.waLink}
             email={resultado.m.email}
+            parcelas={resultado.dados.parcelas}
+            carneUrl={resultado.dados.parcelas ? `/api/pessoas/${resultado.m.personId}/carne` : undefined}
             onBalcao={() => {
               const m = resultado.m;
               setResultado(null);
