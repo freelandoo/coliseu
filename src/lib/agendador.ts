@@ -1,4 +1,5 @@
 import { expirarMatriculasVencidas, modoExpiracao } from "@/lib/billing/expiracao";
+import { modoEspelho, rodarEspelho } from "@/lib/cloudgym/espelho";
 import { freelandooConfigurado } from "@/lib/freelandoo/cliente";
 import { processarFila } from "@/lib/freelandoo/fila";
 import { sincronizarFreelandoo } from "@/lib/freelandoo/sincronizar";
@@ -8,7 +9,8 @@ import { sincronizarFreelandoo } from "@/lib/freelandoo/sincronizar";
  * - vencimento de matrícula, de hora em hora (idempotente — rodar de novo não
  *   vence ninguém duas vezes);
  * - fila da Freelandoo, a cada minuto, e a sincronização das contas, a cada
- *   10 min. Sem FREELANDOO_API_URL/FREELANDOO_PARTNER_KEY as duas não fazem nada.
+ *   10 min. Sem FREELANDOO_API_URL/FREELANDOO_PARTNER_KEY as duas não fazem nada;
+ * - espelho no CloudGym, a cada 10 min, até o corte (CLOUDGYM_ESPELHO).
  *
  * Este módulo alcança o envio de WhatsApp (boas-vindas da Freelandoo); só o
  * `instrumentation.ts` o importa — ver `envio-automatico.test.ts`.
@@ -51,6 +53,14 @@ const rodarSyncFreelandoo = semSobreposicao("sync Freelandoo", async () => {
   }
 });
 
+const rodarEspelhoCloudgym = semSobreposicao("espelho CloudGym", async () => {
+  if (modoEspelho() === "desligado") return;
+  const r = await rodarEspelho();
+  if (r.feitos || r.erros || r.cancelados) {
+    console.log(`[agendador] espelho CloudGym: ${r.feitos} lançado(s), ${r.erros} erro(s), ${r.cancelados} cancelado(s)`);
+  }
+});
+
 async function rodarExpiracao() {
   if (modoExpiracao() === "desligada") return;
   try {
@@ -78,4 +88,6 @@ export function iniciarAgendador(): void {
   setInterval(rodarFilaFreelandoo, UM_MINUTO).unref?.();
   setTimeout(rodarSyncFreelandoo, 90_000).unref?.();
   setInterval(rodarSyncFreelandoo, DEZ_MINUTOS).unref?.();
+  setTimeout(rodarEspelhoCloudgym, 105_000).unref?.();
+  setInterval(rodarEspelhoCloudgym, DEZ_MINUTOS).unref?.();
 }

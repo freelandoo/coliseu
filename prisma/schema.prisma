@@ -1228,3 +1228,23 @@ model LeadLegado {
 
   @@index([unitId, cadastradoEm])
 }
+
+/// Espelho Coliseu → CloudGym (até o corte, 26/01/2027): o que já foi lançado
+/// lá, para não lançar duas vezes. `tipo` = pessoa | plano | contrato |
+/// pagamento | cancelamento; `localId` = id do registro do Coliseu (para
+/// contrato, a matrícula); `cloudgymId` = id do outro lado.
+model EspelhoCloudgym {
+  id           String   @id @default(cuid())
+  tipo         String
+  localId      String
+  cloudgymId   Int?
+  /// feito | erro | ignorado
+  estado       String
+  detalhe      String?
+  tentativas   Int      @default(0)
+  criadoEm     DateTime @default(now())
+  atualizadoEm DateTime @updatedAt
+
+  @@unique([tipo, localId])
+  @@index([estado])
+}
