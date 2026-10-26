@@ -43,12 +43,15 @@ type Edicao = { form: FormCadastro; vendedor: string; base: FormCadastro; vended
 export function FichaCliente({
   pessoa,
   plano,
+  planos = [],
   podeGerirAcesso = false,
   acesso,
   retorno = { href: "/matriculados", rotulo: "Alunos", origem: "alunos" },
 }: {
   pessoa: Pessoa;
   plano?: Plano;
+  /** Planos ativos — as opções de "Alterar plano". */
+  planos?: Plano[];
   /** Só ADMIN cria/edita acesso ao sistema. */
   podeGerirAcesso?: boolean;
   /** Acesso já existente desta pessoa, quando ela é colaboradora. */
@@ -65,7 +68,7 @@ export function FichaCliente({
   const [erroSalvar, setErroSalvar] = useState("");
   const [estagioSalvando, setEstagioSalvando] = useState(false);
   const [erroEstagio, setErroEstagio] = useState("");
-  const [renovando, setRenovando] = useState(false);
+  const [renovando, setRenovando] = useState<"renovar" | "alterar" | null>(null);
   const emVoo = useRef(false);
 
   const s = situacaoDe(pessoa);
@@ -180,11 +183,18 @@ export function FichaCliente({
                 Iniciar matrícula →
               </Link>
             ) : (
-              plano &&
-              pessoa.status !== "pendente" && (
-                <Botao variante="contorno" onClick={() => setRenovando(true)}>
-                  Revisar renovação
-                </Botao>
+              plano && (
+                <>
+                  {/* Vale também com pagamento pendente: é como se corrige um plano escolhido errado. */}
+                  <Botao variante="contorno" onClick={() => setRenovando("alterar")}>
+                    Alterar plano
+                  </Botao>
+                  {pessoa.status !== "pendente" && (
+                    <Botao variante="contorno" onClick={() => setRenovando("renovar")}>
+                      Revisar renovação
+                    </Botao>
+                  )}
+                </>
               )
             )}
           </div>
@@ -332,8 +342,9 @@ export function FichaCliente({
         <RenovarModal
           pessoa={pessoa}
           plano={plano}
+          planos={renovando === "alterar" ? planos : undefined}
           onFechar={() => {
-            setRenovando(false);
+            setRenovando(null);
             router.refresh();
           }}
         />

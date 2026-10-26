@@ -1,7 +1,7 @@
 import { notFound } from "next/navigation";
 import { Reveal } from "@/components/ui/Reveal";
 import { FichaCliente } from "@/components/clientes/FichaCliente";
-import { obterPessoa, planoPorId } from "@/lib/store";
+import { listarPlanos, obterPessoa, planoPorId } from "@/lib/store";
 import { prisma } from "@/lib/db";
 import { requireUser, podePapel, type Papel } from "@/lib/auth/rbac";
 import type { AcessoDaPessoa } from "@/components/clientes/AcessoDoCadastro";
@@ -27,8 +27,9 @@ export default async function MatriculadoPage({
   if (!pessoa) notFound();
 
   const isAdmin = podePapel(user.role as Papel, ["ADMIN"]);
-  const [plano, acesso] = await Promise.all([
+  const [plano, planos, acesso] = await Promise.all([
     pessoa.planoId ? planoPorId(pessoa.planoId) : Promise.resolve(undefined),
+    listarPlanos(),
     isAdmin
       ? prisma.user.findUnique({
           where: { personId: id },
@@ -42,6 +43,7 @@ export default async function MatriculadoPage({
       <FichaCliente
         pessoa={pessoa}
         plano={plano}
+        planos={planos.filter((p) => p.ativo !== false)}
         podeGerirAcesso={isAdmin}
         acesso={(acesso as AcessoDaPessoa | null) ?? undefined}
         retorno={retornoDaFicha(umValor(busca.de), umValor(busca.c), user.role as Papel, umValor(busca.faixa))}
