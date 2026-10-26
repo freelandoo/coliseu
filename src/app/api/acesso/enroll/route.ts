@@ -3,6 +3,7 @@ import { exigirSessaoApi } from "@/lib/auth/api-guard";
 import { podePapel, type Papel } from "@/lib/auth/rbac";
 import { iniciarCadastroFace } from "@/lib/access/enroll";
 import { registrarAudit } from "@/lib/access/audit";
+import { prisma } from "@/lib/db";
 
 export async function POST(req: Request) {
   const g = await exigirSessaoApi();
@@ -11,8 +12,17 @@ export async function POST(req: Request) {
     return NextResponse.json({ erro: "sem permissão" }, { status: 403 });
   }
   const body = (await req.json()) as { personId?: string; deviceId?: string; permitirLead?: boolean };
-  if (!body.personId || !body.deviceId) {
-    return NextResponse.json({ erro: "personId e deviceId são obrigatórios" }, { status: 400 });
+  if (!body.personId) {
+    return NextResponse.json({ erro: "personId é obrigatório" }, { status: 400 });
+  }
+  // Sem leitor escolhido (botão "Cadastrar facial" da ficha): o que está online
+  // — a academia tem um só; com mais de um, o que deu sinal por último.
+  if (!body.deviceId) {
+    const leitor =
+      (await prisma.accessDevice.findFirst({ where: { status: "ONLINE" }, orderBy: { lastHeartbeatAt: "desc" } })) ??
+      (await prisma.accessDevice.findFirst({ orderBy: { lastHeartbeatAt: { sort: "desc", nulls: "last" } } }));
+    if (!leitor) return NextResponse.json({ erro: "Nenhuma catraca cadastrada" }, { status: 422 });
+    body.deviceId = leitor.id;
   }
   const r = await iniciarCadastroFace({
     personId: body.personId, deviceId: body.deviceId, permitirLead: body.permitirLead === true,

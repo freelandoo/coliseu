@@ -1,10 +1,10 @@
 "use client";
 
-import Link from "next/link";
 import { useCallback, useEffect, useState } from "react";
 import { Badge, Card } from "@/components/ui/primitives";
 import { classeBotao } from "@/components/ui/Botao";
 import { MensagemErro } from "@/components/ui/Campo";
+import { CadastrarFacial } from "@/components/clientes/CadastrarFacial";
 
 type Diagnostico = {
   liberado: boolean;
@@ -23,7 +23,7 @@ const COMANDO: Record<string, string> = {
 };
 
 /** "Por que não passa na catraca?" + botão que reenvia o aluno ao aparelho. */
-export function CatracaDoAluno({ personId }: { personId: string }) {
+export function CatracaDoAluno({ personId, nome }: { personId: string; nome: string }) {
   const [d, setD] = useState<Diagnostico | null>(null);
   const [erro, setErro] = useState("");
   const [corrigindo, setCorrigindo] = useState(false);
@@ -109,11 +109,9 @@ export function CatracaDoAluno({ personId }: { personId: string }) {
         ))}
       </ul>
 
-      {semFace && (
-        <Link href="/acesso" className="mt-3 inline-block text-xs font-medium text-destaque hover:underline">
-          Cadastrar a face na tela Acesso →
-        </Link>
-      )}
+      <div className="mt-3">
+        <CadastrarFacial personId={personId} nome={nome} temFace={!semFace} tamanho="sm" />
+      </div>
 
       {d.comandos.length > 0 && (
         <div className="mt-4">
