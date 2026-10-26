@@ -31,6 +31,8 @@ export interface MatriculaRegistrada {
   /** Boleto parcelado: quantos boletos e o valor de cada um. */
   parcelas?: number;
   valorParcela?: number;
+  /** Plano de R$ 0: matrícula ativa na hora, sem cobrança nem link. */
+  gratuito?: boolean;
 }
 
 function ehMatricula(v: unknown): v is MatriculaRegistrada {

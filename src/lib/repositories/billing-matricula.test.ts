@@ -62,3 +62,15 @@ test("boleto parcelado: parcelas do webhook ligam ao aluno e a renovação cance
   expect((await prisma.payment.findUnique({ where: { asaasPaymentId: `pay_bp2_${k}` } }))?.status).toBe("CANCELED");
   expect((await prisma.payment.findUnique({ where: { asaasPaymentId: `pay_bp_${k}` } }))?.status).toBe("PAID");
 });
+
+test("plano gratuito (R$ 0): matrícula ativa na hora, sem cobrança pendente", async () => {
+  const unit = await prisma.unit.findFirstOrThrow();
+  const plano = await prisma.plan.create({ data: { nome: `FREE PASS ${k}`, valorMensal: 0, duracaoDias: 30, unitId: unit.id } });
+  const p = await criarPessoaRepo({ nome: "Free Pass Teste", origem: "balcao", telefone: "(11) 90000-0002" });
+  await matricularPessoaRepo(p.id, plano.id);
+  const m = await prisma.membership.findFirst({ where: { personId: p.id }, orderBy: { matriculadoEm: "desc" } });
+  expect(m?.status).toBe("ACTIVE");
+  expect(await prisma.cobranca.count({ where: { personId: p.id } })).toBe(0);
+  await prisma.person.delete({ where: { id: p.id } });
+  await prisma.plan.delete({ where: { id: plano.id } });
+});

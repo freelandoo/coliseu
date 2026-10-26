@@ -8,6 +8,11 @@ export type FormaCobranca =
   | { tipo: "assinatura" }
   | { tipo: "boleto_parcelado"; parcelas: number };
 
+/** Plano de R$ 0 (cortesia, "FREE PASS"): não gera cobrança nem assinatura. */
+export function ehPlanoGratuito(plano: { valorMensal: number }): boolean {
+  return !(plano.valorMensal > 0);
+}
+
 /** Meses de vigência do plano (30 dias = 1, 90 = 3, 365 = 12). */
 export function mesesDoPlano(duracaoDias: number): number {
   return Math.max(1, Math.round(duracaoDias / 30));
@@ -19,8 +24,8 @@ export function valorTotalDoPlano(plano: { valorMensal: number; duracaoDias: num
 }
 
 /** Boleto parcelado só faz sentido em plano de mais de um mês. */
-export function aceitaParcelamento(plano: { duracaoDias: number }): boolean {
-  return mesesDoPlano(plano.duracaoDias) > 1;
+export function aceitaParcelamento(plano: { duracaoDias: number; valorMensal?: number }): boolean {
+  return mesesDoPlano(plano.duracaoDias) > 1 && !(plano.valorMensal !== undefined && plano.valorMensal <= 0);
 }
 
 /** Parcelas possíveis: de 1 até um boleto por mês de vigência. */

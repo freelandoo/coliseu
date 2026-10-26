@@ -30,6 +30,7 @@ export function formaDaEscolha(e: EscolhaCobranca, plano: Plano): FormaCobranca 
 
 /** Texto curto da forma, para a revisão e o resultado. */
 export function descreverForma(f: FormaCobranca, plano: Plano): string {
+  if (!(plano.valorMensal > 0)) return "Plano gratuito · sem cobrança (matrícula já ativa)";
   if (f.tipo === "assinatura") return `Assinatura mensal · ${formatBRL(plano.valorMensal)}/mês (PIX, boleto ou cartão)`;
   const total = valorTotalDoPlano(plano);
   return `Boleto parcelado · ${f.parcelas}× de ${formatBRL(total / f.parcelas)} (total ${formatBRL(total)})`;

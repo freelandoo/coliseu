@@ -24,6 +24,7 @@ export function ResultadoMatricula({
   email,
   parcelas,
   carneUrl,
+  gratuito,
   onBalcao,
   onConcluir,
 }: {
@@ -38,6 +39,8 @@ export function ResultadoMatricula({
   parcelas?: number;
   /** Carnê em PDF com todos os boletos (para imprimir e entregar). */
   carneUrl?: string;
+  /** Plano de R$ 0: já ativa, nada a cobrar. */
+  gratuito?: boolean;
   /** Receber agora no balcão (checkout existente). */
   onBalcao?: () => void;
   onConcluir: () => void;
@@ -76,8 +79,12 @@ export function ResultadoMatricula({
 
       <ul className="mt-4 flex flex-col gap-1.5 rounded-lg border border-border bg-surface-2 p-3 text-sm">
         <Situacao tom="ok">Matrícula registrada no sistema</Situacao>
-        <Situacao tom="pendente">Pagamento pendente — ainda não confirmado</Situacao>
-        {linkPagamento && parcelas ? (
+        {gratuito ? (
+          <Situacao tom="ok">Plano gratuito — matrícula já ativa, sem cobrança</Situacao>
+        ) : (
+          <Situacao tom="pendente">Pagamento pendente — ainda não confirmado</Situacao>
+        )}
+        {gratuito ? null : linkPagamento && parcelas ? (
           <Situacao tom="ok">{parcelas} boletos gerados, um por mês (o link abre o 1º)</Situacao>
         ) : linkPagamento ? (
           <Situacao tom="ok">Cobrança disponível (link de pagamento gerado)</Situacao>
@@ -85,10 +92,12 @@ export function ResultadoMatricula({
           <Situacao tom="neutro">O servidor não devolveu link de pagamento</Situacao>
         )}
       </ul>
-      <p className="mt-2 text-xs text-muted">
-        Quando o pagamento for confirmado (pelo Asaas ou no balcão), a matrícula passa a ativa. A liberação na catraca
-        segue o controle de acesso.
-      </p>
+      {!gratuito && (
+        <p className="mt-2 text-xs text-muted">
+          Quando o pagamento for confirmado (pelo Asaas ou no balcão), a matrícula passa a ativa. A liberação na catraca
+          segue o controle de acesso.
+        </p>
+      )}
 
       {(linkPagamento || waLink || mailto) && (
         <div className="mt-4 flex flex-col gap-2">
@@ -121,7 +130,7 @@ export function ResultadoMatricula({
       )}
 
       <div className="mt-5 flex flex-col gap-2">
-        {onBalcao && (
+        {onBalcao && !gratuito && (
           <Botao variante="contorno" bloco onClick={onBalcao}>
             Receber agora no balcão →
           </Botao>

@@ -170,7 +170,9 @@ export function RenovarModal({
             />
             <Linha
               rotulo="Situação ao confirmar"
-              valor={`${alterando ? "Plano alterado" : "Renovação registrada"} · pagamento pendente`}
+              valor={`${alterando ? "Plano alterado" : "Renovação registrada"} · ${
+                plano && !(plano.valorMensal > 0) ? "ativa na hora (plano gratuito)" : "pagamento pendente"
+              }`}
             />
           </dl>
           {plano && (
@@ -244,6 +246,7 @@ export function RenovarModal({
             waLink={fase.dados.waLink}
             email={pessoa.email}
             parcelas={fase.dados.parcelas}
+            gratuito={fase.dados.gratuito}
             carneUrl={fase.dados.parcelas ? `/api/pessoas/${pessoa.id}/carne` : undefined}
             onBalcao={() => setFase({ tipo: "balcao", dados: fase.dados })}
             onConcluir={onFechar}

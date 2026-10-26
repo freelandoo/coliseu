@@ -42,3 +42,12 @@ describe("parcelamento", () => {
     expect(lerFormaCobranca({ tipo: "pix" }, anual).ok).toBe(false);
   });
 });
+
+describe("plano gratuito", () => {
+  it("R$ 0 não cobra nem parcela", async () => {
+    const { ehPlanoGratuito } = await import("@/lib/billing/parcelamento");
+    expect(ehPlanoGratuito({ valorMensal: 0 })).toBe(true);
+    expect(ehPlanoGratuito({ valorMensal: 79.9 })).toBe(false);
+    expect(aceitaParcelamento({ duracaoDias: 365, valorMensal: 0 })).toBe(false);
+  });
+});

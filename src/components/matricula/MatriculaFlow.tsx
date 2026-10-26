@@ -214,7 +214,8 @@ export function MatriculaFlow({
         waLink: d.dados.waLink,
         email: form.email.trim() || undefined,
       };
-      setMatriculados((prev) => [m, ...prev.filter((x) => x.personId !== m.personId)]);
+      // Plano gratuito já nasce ativo: não entra em "Aguardando pagamento".
+      setMatriculados((prev) => [...(d.dados.gratuito ? [] : [m]), ...prev.filter((x) => x.personId !== m.personId)]);
       setCandidatos((prev) => prev.filter((c) => c.refId !== alvo.refId));
       setResultado({ m, dados: d.dados });
       setSel(null);
@@ -478,6 +479,7 @@ export function MatriculaFlow({
             waLink={resultado.dados.waLink}
             email={resultado.m.email}
             parcelas={resultado.dados.parcelas}
+            gratuito={resultado.dados.gratuito}
             carneUrl={resultado.dados.parcelas ? `/api/pessoas/${resultado.m.personId}/carne` : undefined}
             onBalcao={() => {
               const m = resultado.m;

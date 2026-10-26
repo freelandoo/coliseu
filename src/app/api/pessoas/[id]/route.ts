@@ -7,7 +7,7 @@ import {
   removerPessoa,
 } from "@/lib/store";
 import { AsaasError, linkPagamentoWhatsApp, linkParcelamentoWhatsApp, matricularNoAsaas } from "@/lib/asaas";
-import { lerFormaCobranca, valorTotalDoPlano } from "@/lib/billing/parcelamento";
+import { ehPlanoGratuito, lerFormaCobranca, valorTotalDoPlano } from "@/lib/billing/parcelamento";
 import { cancelarAssinaturasAnteriores } from "@/lib/billing/cobrancas";
 import { prisma } from "@/lib/db";
 import type { Pessoa } from "@/lib/types";
@@ -77,6 +77,19 @@ export async function PATCH(req: Request, { params }: Ctx) {
       where: { personId: pessoaAtual.id },
       select: { asaasCustomerId: true },
     });
+
+    // Plano gratuito: nada a cobrar — matrícula ativa, sem Asaas.
+    if (ehPlanoGratuito(plano)) {
+      const pessoa = await matricularPessoa(id, planoId, undefined, g.user?.id);
+      if (!pessoa) return NextResponse.json({ erro: "Pessoa não encontrada" }, { status: 404 });
+      await avaliarContaFreelandooSemFalhar(id);
+      try {
+        await cancelarAssinaturasAnteriores(id);
+      } catch (e) {
+        console.error("[asaas] falha ao cancelar assinatura anterior:", e);
+      }
+      return NextResponse.json({ ...pessoa, gratuito: true });
+    }
 
     let asaas;
     try {

@@ -305,6 +305,7 @@ function ModalCadastro({
             waLink={desfecho.dados.waLink}
             email={desfecho.email}
             parcelas={desfecho.dados.parcelas}
+            gratuito={desfecho.dados.gratuito}
             carneUrl={desfecho.dados.parcelas ? `/api/pessoas/${desfecho.personId}/carne` : undefined}
             onBalcao={() => setBalcao(true)}
             onConcluir={fechar}

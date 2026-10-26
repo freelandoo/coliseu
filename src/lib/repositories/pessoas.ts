@@ -4,6 +4,7 @@ import type { LeadEstagio, NovaPessoa, Pessoa, PessoaFase } from "@/lib/types";
 import type { AsaasMatricula } from "@/lib/asaas";
 import { upsertBillingCustomerRepo, upsertBillingSubscriptionRepo, upsertPaymentRepo } from "@/lib/repositories/billing";
 import { unitIdAtual } from "@/lib/repositories/unit";
+import { ehPlanoGratuito } from "@/lib/billing/parcelamento";
 
 const withMemberships = {
   memberships: {
@@ -137,7 +138,11 @@ export async function removerPessoaRepo(id: string): Promise<boolean> {
   return true;
 }
 
-/** Transição lead → aluno: cria Membership + cobrança pendente. */
+/**
+ * Transição lead → aluno: cria Membership + cobrança pendente. Plano gratuito
+ * (R$ 0, ex.: "FREE PASS") não tem o que cobrar: a matrícula nasce ativa e sem
+ * cobrança — o Asaas recusa assinatura de valor zero.
+ */
 export async function matricularPessoaRepo(
   id: string,
   planoId: string,
@@ -152,25 +157,30 @@ export async function matricularPessoaRepo(
   const agora = new Date();
   const venc = new Date(agora);
   venc.setDate(venc.getDate() + plano.duracaoDias);
+  const gratuito = ehPlanoGratuito(plano);
 
   await prisma.$transaction([
     prisma.person.update({ where: { id }, data: { fase: "aluno", estagio: null } }),
     prisma.membership.create({
       data: {
-        personId: id, planId: planoId, status: "PENDING_PAYMENT",
+        personId: id, planId: planoId, status: gratuito ? "ACTIVE" : "PENDING_PAYMENT",
         matriculadoEm: agora, vencimentoPlano: venc, ultimaPresenca: agora,
         matriculadoPorId: matriculadoPorId ?? null,
       },
     }),
-    prisma.cobranca.create({
-      data: {
-        personId: id, tipo: "matricula", valor: asaas?.valorCobranca ?? plano.valorMensal,
-        vencimento: venc, status: "pendente",
-        asaasId: asaas?.cobrancaId ?? null,
-        assinaturaId: asaas?.assinaturaId ?? null,
-        linkPagamento: asaas?.linkPagamento ?? null,
-      },
-    }),
+    ...(gratuito
+      ? []
+      : [
+          prisma.cobranca.create({
+            data: {
+              personId: id, tipo: "matricula", valor: asaas?.valorCobranca ?? plano.valorMensal,
+              vencimento: venc, status: "pendente",
+              asaasId: asaas?.cobrancaId ?? null,
+              assinaturaId: asaas?.assinaturaId ?? null,
+              linkPagamento: asaas?.linkPagamento ?? null,
+            },
+          }),
+        ]),
   ]);
 
   if (asaas) {
@@ -203,6 +213,15 @@ export async function matricularPessoaRepo(
     await provisionarAcessoDePessoa(id);
   } catch (e) {
     console.error("[matricula] provisionamento de acesso falhou:", e);
+  }
+  // Sem pagamento para disparar a liberação, o gratuito libera já.
+  if (gratuito) {
+    try {
+      const { recalcularAcessoDePessoa } = await import("@/lib/access/outbox");
+      await recalcularAcessoDePessoa(id);
+    } catch (e) {
+      console.error("[matricula] liberação do plano gratuito falhou:", e);
+    }
   }
 
   return obterPessoaRepo(id);
