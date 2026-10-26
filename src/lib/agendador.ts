@@ -1,5 +1,6 @@
 import { expirarMatriculasVencidas, modoExpiracao } from "@/lib/billing/expiracao";
 import { modoEspelho, rodarEspelho } from "@/lib/cloudgym/espelho";
+import { enviarLembretesAula, lembreteLigado } from "@/lib/aula-experimental-lembrete";
 import { freelandooConfigurado } from "@/lib/freelandoo/cliente";
 import { processarFila } from "@/lib/freelandoo/fila";
 import { sincronizarFreelandoo } from "@/lib/freelandoo/sincronizar";
@@ -10,7 +11,9 @@ import { sincronizarFreelandoo } from "@/lib/freelandoo/sincronizar";
  *   vence ninguém duas vezes);
  * - fila da Freelandoo, a cada minuto, e a sincronização das contas, a cada
  *   10 min. Sem FREELANDOO_API_URL/FREELANDOO_PARTNER_KEY as duas não fazem nada;
- * - espelho no CloudGym, a cada 10 min, até o corte (CLOUDGYM_ESPELHO).
+ * - espelho no CloudGym, a cada 10 min, até o corte (CLOUDGYM_ESPELHO);
+ * - lembrete de aula experimental na véspera, a cada 10 min das 9h às 20h
+ *   (segunda exceção ao "nada sai sozinho" — ver aula-experimental-lembrete).
  *
  * Este módulo alcança o envio de WhatsApp (boas-vindas da Freelandoo); só o
  * `instrumentation.ts` o importa — ver `envio-automatico.test.ts`.
@@ -61,6 +64,12 @@ const rodarEspelhoCloudgym = semSobreposicao("espelho CloudGym", async () => {
   }
 });
 
+const rodarLembretesAula = semSobreposicao("lembrete de aula", async () => {
+  if (!lembreteLigado()) return;
+  const r = await enviarLembretesAula();
+  if (r.enviados || r.falhas) console.log(`[agendador] lembretes de aula: ${r.enviados} enviado(s), ${r.falhas} falha(s)`);
+});
+
 async function rodarExpiracao() {
   if (modoExpiracao() === "desligada") return;
   try {
@@ -90,4 +99,6 @@ export function iniciarAgendador(): void {
   setInterval(rodarSyncFreelandoo, DEZ_MINUTOS).unref?.();
   setTimeout(rodarEspelhoCloudgym, 105_000).unref?.();
   setInterval(rodarEspelhoCloudgym, DEZ_MINUTOS).unref?.();
+  setTimeout(rodarLembretesAula, 120_000).unref?.();
+  setInterval(rodarLembretesAula, DEZ_MINUTOS).unref?.();
 }

@@ -4,6 +4,8 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { AgendaDoDia } from "@/components/aula-experimental/AgendaDoDia";
 import { CalendarioAulas, type MesAncora } from "@/components/aula-experimental/CalendarioAulas";
 import { ListaAulas, type FiltroAulas } from "@/components/aula-experimental/ListaAulas";
+import { HistoricoAulas } from "@/components/aula-experimental/HistoricoAulas";
+import type { AgendanteAula } from "@/components/aula-experimental/AgendarAulaBalcao";
 import { ListaAbas, PainelAba, useIdAbas, useParametroUrl, type AbaDef } from "@/components/ui/Abas";
 import { BarraFerramentas, CartaoIndicador, PainelAngular } from "@/components/ui/editorial";
 import {
@@ -16,7 +18,7 @@ import {
 } from "@/lib/aula-experimental";
 import { mesDaData, mesDeslocado } from "@/lib/calendario";
 import { VISOES_AGENDA, type VisaoAgenda } from "@/lib/navegacao";
-import type { AulaExperimentalItem } from "@/lib/types";
+import type { AulaExperimentalItem, AulaLegadoItem } from "@/lib/types";
 
 /** Janela do terceiro indicador: hoje e os 6 dias seguintes. */
 const DIAS_ADIANTE = 7;
@@ -36,11 +38,17 @@ const MINUTO = 60_000;
  */
 export function AgendaAulaExperimental({
   aulas,
+  legado,
+  agendante,
   hoje,
   diaInicial = hoje,
   horaInicial,
 }: {
   aulas: AulaExperimentalItem[];
+  /** Planilha antiga (jun–out/2026), só para a aba Histórico. */
+  legado: AulaLegadoItem[];
+  /** Quem está logado — aparece no "Agendar aula". */
+  agendante: AgendanteAula;
   /** Hoje no fuso da academia, calculado no servidor. */
   hoje: string;
   /** Dia que o calendário abre selecionado (`?dia=`, vindo da central). */
@@ -128,6 +136,7 @@ export function AgendaAulaExperimental({
           </span>
         ) : undefined,
     },
+    { chave: "historico", rotulo: "Histórico" },
   ];
 
   return (
@@ -168,6 +177,7 @@ export function AgendaAulaExperimental({
             hoje={hoje}
             horaAgora={horaAgora}
             modalidade={modalidade}
+            agendante={agendante}
           />
         </div>
 
@@ -209,8 +219,10 @@ export function AgendaAulaExperimental({
                 onAndarMes={andarMes}
                 onHoje={voltarParaHoje}
               />
-            ) : (
+            ) : visao === "lista" ? (
               <ListaAulas aulas={visiveis} hoje={hoje} filtro={filtro} setFiltro={setFiltro} />
+            ) : (
+              <HistoricoAulas aulas={visiveis} legado={legado} hoje={hoje} />
             )}
           </PainelAba>
         </PainelAngular>

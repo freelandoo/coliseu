@@ -1,7 +1,8 @@
 import { prisma } from "@/lib/db";
 import { unitIdAtual } from "@/lib/repositories/unit";
 import { chaveTelefone, formatarTelefone } from "@/lib/whatsapp/telefone";
-import type { AulaExperimentalItem } from "@/lib/types";
+import type { AulaExperimentalItem, AulaLegadoItem } from "@/lib/types";
+import { primeiroNomeChave, situacaoAnterior, type SituacaoAnterior } from "@/lib/aula-experimental";
 
 type Linha = {
   id: string;
@@ -15,7 +16,12 @@ type Linha = {
   agendadoPor: { nome: string } | null;
   observacao: string | null;
   criadoEm: Date;
+  cpf: string | null;
+  presenca: string | null;
+  lembreteEnviadoEm: Date | null;
 };
+
+const presencaDe = (v: string | null): "veio" | "faltou" | null => (v === "veio" || v === "faltou" ? v : null);
 
 function toItem(a: Linha): AulaExperimentalItem {
   return {
@@ -30,6 +36,9 @@ function toItem(a: Linha): AulaExperimentalItem {
     agendadoPor: a.agendadoPor?.nome ?? null,
     observacao: a.observacao,
     criadoEm: a.criadoEm.toISOString(),
+    cpf: a.cpf,
+    presenca: presencaDe(a.presenca),
+    lembreteEnviadoEm: a.lembreteEnviadoEm?.toISOString() ?? null,
   };
 }
 
@@ -44,6 +53,9 @@ const SELECT = {
   personId: true,
   observacao: true,
   criadoEm: true,
+  cpf: true,
+  presenca: true,
+  lembreteEnviadoEm: true,
   agendadoPor: { select: { nome: true } },
 } as const;
 
@@ -90,6 +102,8 @@ export async function criarAulaExperimentalRepo(input: {
   hora: number;
   agendadoPorId: string;
   observacao?: string | null;
+  /** Só dígitos. */
+  cpf?: string | null;
 }): Promise<AulaExperimentalItem> {
   const aula = await prisma.aulaExperimental.create({
     data: {
@@ -103,6 +117,7 @@ export async function criarAulaExperimentalRepo(input: {
       hora: input.hora,
       agendadoPorId: input.agendadoPorId,
       observacao: input.observacao ?? null,
+      cpf: input.cpf ?? null,
     },
     select: SELECT,
   });
@@ -156,4 +171,124 @@ export async function salvarObservacaoAulaRepo(
     select: SELECT,
   });
   return toItem(aula);
+}
+
+export interface AulaAnterior {
+  origem: "sistema" | "planilha";
+  nome: string;
+  data: string | null;
+  hora: number | null;
+  modalidade: string | null;
+  situacao: SituacaoAnterior;
+  /** Como casou: CPF igual, ou telefone + primeiro nome. */
+  porque: "cpf" | "telefone";
+}
+
+/**
+ * Aulas anteriores da mesma pessoa, no sistema e na planilha antiga. Casa por
+ * CPF (só o sistema tem) ou por telefone (8 últimos dígitos) + primeiro nome.
+ * `ignorarId`: a própria aula, quando se confere uma que já existe.
+ */
+export async function aulasAnterioresRepo(
+  q: { cpf?: string | null; telefone?: string | null; nome?: string | null },
+  hoje: string,
+): Promise<AulaAnterior[]> {
+  const cpf = (q.cpf ?? "").replace(/\D/g, "");
+  const chave = chaveTelefone(q.telefone);
+  const nomeChave = primeiroNomeChave(q.nome ?? "");
+  const porTelefone = Boolean(chave && nomeChave);
+  if (cpf.length !== 11 && !porTelefone) return [];
+
+  const [sistema, planilha] = await Promise.all([
+    prisma.aulaExperimental.findMany({
+      where: {
+        OR: [
+          ...(cpf.length === 11 ? [{ cpf }] : []),
+          ...(porTelefone ? [{ telefone: { endsWith: chave } }] : []),
+        ],
+      },
+      select: { nome: true, data: true, hora: true, modalidade: true, presenca: true, cpf: true, telefone: true },
+      orderBy: [{ data: "desc" }, { hora: "desc" }],
+    }),
+    porTelefone
+      ? prisma.aulaExperimentalLegado.findMany({
+          where: { telefone: { endsWith: chave } },
+          select: { nome: true, dataAula: true, hora: true, modalidade: true, presenca: true },
+          orderBy: { dataAula: "desc" },
+        })
+      : Promise.resolve([]),
+  ]);
+
+  const out: AulaAnterior[] = [];
+  for (const a of sistema) {
+    const pelCpf = cpf.length === 11 && a.cpf === cpf;
+    // Telefone igual com outro primeiro nome é outra pessoa (mãe e filho).
+    if (!pelCpf && primeiroNomeChave(a.nome) !== nomeChave) continue;
+    const situacao = situacaoAnterior({ data: a.data, presenca: a.presenca }, hoje);
+    if (situacao) {
+      out.push({ origem: "sistema", nome: a.nome, data: a.data, hora: a.hora, modalidade: a.modalidade, situacao, porque: pelCpf ? "cpf" : "telefone" });
+    }
+  }
+  for (const a of planilha) {
+    if (primeiroNomeChave(a.nome) !== nomeChave) continue;
+    const situacao = situacaoAnterior({ data: a.dataAula, presenca: a.presenca }, hoje);
+    if (situacao) {
+      out.push({ origem: "planilha", nome: a.nome, data: a.dataAula, hora: a.hora, modalidade: a.modalidade, situacao, porque: "telefone" });
+    }
+  }
+  return out;
+}
+
+/** A pessoa já fez aula experimental (e por isso não pode marcar outra)? */
+export function jaFez(anteriores: AulaAnterior[]): AulaAnterior | null {
+  return anteriores.find((a) => a.situacao === "fez") ?? null;
+}
+
+/** Veio / faltou, marcado pela recepção depois do horário. `null` desfaz. */
+export async function marcarPresencaRepo(
+  id: string,
+  presenca: "veio" | "faltou" | null,
+): Promise<AulaExperimentalItem | null> {
+  const existe = await prisma.aulaExperimental.findUnique({ where: { id }, select: { id: true } });
+  if (!existe) return null;
+  return toItem(await prisma.aulaExperimental.update({ where: { id }, data: { presenca }, select: SELECT }));
+}
+
+/** Planilha antiga inteira, da aula (ou visita) mais recente para a mais antiga. */
+export async function listarLegadoRepo(): Promise<AulaLegadoItem[]> {
+  const linhas = await prisma.aulaExperimentalLegado.findMany({
+    orderBy: [{ dataAula: { sort: "desc", nulls: "last" } }, { dataVisita: { sort: "desc", nulls: "last" } }],
+  });
+  return linhas.map((l) => ({
+    id: l.id,
+    nome: l.nome,
+    telefone: formatarTelefone(l.telefone),
+    modalidade: l.modalidade,
+    dataVisita: l.dataVisita,
+    dataAula: l.dataAula,
+    hora: l.hora,
+    presenca: presencaDe(l.presenca),
+    statusOriginal: l.statusOriginal,
+    atendente: l.atendente,
+    comoConheceu: l.comoConheceu,
+    andamento: l.andamento,
+  }));
+}
+
+/** Cadastro com este CPF (comparando só dígitos — o cadastro pode ter pontuação). */
+export async function pessoaPorCpfRepo(cpf: string): Promise<{ id: string; nome: string; fase: string } | null> {
+  const [p] = await prisma.$queryRaw<{ id: string; nome: string; fase: string }[]>`
+    SELECT id, nome, fase::text AS fase FROM "Person"
+    WHERE regexp_replace(coalesce(cpf, ''), '[^0-9]', '', 'g') = ${cpf}
+    ORDER BY (fase = 'exaluno'), "criadoEm" DESC
+    LIMIT 1`;
+  return p ?? null;
+}
+
+/** Cadastro sem CPF ganha o informado na aula (nunca sobrescreve um CPF que já existe). */
+export async function guardarCpfNaPessoaRepo(personId: string, cpf: string): Promise<void> {
+  await prisma.person.updateMany({
+    where: { id: personId, OR: [{ cpf: null }, { cpf: "" }] },
+    data: { cpf: `${cpf.slice(0, 3)}.${cpf.slice(3, 6)}.${cpf.slice(6, 9)}-${cpf.slice(9)}` },
+  });
 }

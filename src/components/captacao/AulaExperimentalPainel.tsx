@@ -15,7 +15,8 @@ import {
 import { lerResultado, sinalDeTempo } from "@/lib/operacao";
 import type { AulaExperimentalItem, MensagemItem } from "@/lib/types";
 import { Botao } from "@/components/ui/Botao";
-import { MensagemErro } from "@/components/ui/Campo";
+import { MensagemErro, classeCampo } from "@/components/ui/Campo";
+import { cpfValido, normalizarCpf } from "@/lib/cpf";
 
 const DIAS_SEMANA = ["D", "S", "T", "Q", "Q", "S", "S"];
 const NOMES_SEMANA = ["domingo", "segunda", "terça", "quarta", "quinta", "sexta", "sábado"];
@@ -80,6 +81,24 @@ export function AulaExperimentalPainel({
   const [hora, setHora] = useState<number | null>(null);
   const [enviando, setEnviando] = useState(false);
   const [desfecho, setDesfecho] = useState<Desfecho | null>(null);
+  // CPF: uma aula experimental por pessoa (conferido aqui e de novo no servidor).
+  const [cpf, setCpf] = useState("");
+  const [jaFez, setJaFez] = useState<string | null>(null);
+  const cpfOk = cpfValido(normalizarCpf(cpf));
+
+  async function conferirCpf(valor: string) {
+    const c = normalizarCpf(valor);
+    setJaFez(null);
+    if (!cpfValido(c)) return;
+    try {
+      const q = new URLSearchParams({ cpf: c, telefone: telefone.replace(/\D/g, ""), nome });
+      const r = await fetch(`/api/aulas-experimentais?${q}`, { cache: "no-store" });
+      const d = (await r.json()) as { jaFez: string | null };
+      if (normalizarCpf(valor) === c) setJaFez(d.jaFez);
+    } catch {
+      // o servidor confere ao enviar
+    }
+  }
   const emVoo = useRef(false);
   // "Hoje" do relógio da academia, não do aparelho.
   const hoje = hojeNaAcademia();
@@ -89,7 +108,7 @@ export function AulaExperimentalPainel({
   const travado = enviando || desfecho?.tipo === "agendada" || desfecho?.tipo === "parcial" || desfecho?.tipo === "desconhecido";
 
   async function confirmar() {
-    if (!modalidade || !data || hora === null || emVoo.current || travado) return;
+    if (!modalidade || !data || hora === null || !cpfOk || jaFez || emVoo.current || travado) return;
     emVoo.current = true;
     setEnviando(true);
     setDesfecho(null);
@@ -97,7 +116,7 @@ export function AulaExperimentalPainel({
       fetch(`/api/whatsapp/conversas/${conversaId}/aula-experimental`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ modalidade, data, hora }),
+        body: JSON.stringify({ modalidade, data, hora, cpf }),
         signal: sinalDeTempo(),
       }),
       ehAgendamento,
@@ -307,6 +326,28 @@ export function AulaExperimentalPainel({
                     <dd className="font-medium text-ink">{formatarHora(hora)}</dd>
                   </div>
                 </dl>
+                <label className="flex flex-col gap-1 text-xs font-semibold text-muted">
+                  CPF da pessoa (obrigatório — uma aula experimental por pessoa)
+                  <input
+                    inputMode="numeric"
+                    autoComplete="off"
+                    value={cpf}
+                    onChange={(e) => {
+                      setCpf(e.target.value);
+                      void conferirCpf(e.target.value);
+                    }}
+                    placeholder="000.000.000-00"
+                    disabled={travado}
+                    className={classeCampo}
+                  />
+                  {normalizarCpf(cpf).length === 11 && !cpfOk && <span className="font-normal text-danger">CPF inválido</span>}
+                </label>
+                {jaFez && (
+                  <p role="alert" className="rounded-lg border border-danger/40 bg-danger-soft px-3 py-2 text-xs text-ink">
+                    <strong>Já fez aula experimental:</strong> {jaFez}. Se ela faltou, marque “Faltou” no Histórico da
+                    Aula experimental e agende de novo.
+                  </p>
+                )}
                 <details className="rounded-lg border border-border bg-surface px-3 py-2">
                   <summary className="cursor-pointer text-xs font-semibold text-muted">
                     Mensagem que vai sair no WhatsApp
@@ -332,7 +373,12 @@ export function AulaExperimentalPainel({
                   <>
                     {desfecho?.tipo === "falha" && <MensagemErro>{desfecho.erro} Nada foi gravado na agenda.</MensagemErro>}
                     <div className="flex flex-wrap gap-2">
-                      <Botao variante="primario" onClick={() => void confirmar()} carregando={enviando}>
+                      <Botao
+                        variante="primario"
+                        onClick={() => void confirmar()}
+                        carregando={enviando}
+                        disabled={!cpfOk || Boolean(jaFez)}
+                      >
                         {enviando ? "Enviando e marcando…" : "Confirmar e enviar no WhatsApp"}
                       </Botao>
                       <Botao onClick={voltar} disabled={enviando}>

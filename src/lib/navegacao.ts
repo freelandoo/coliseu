@@ -202,7 +202,7 @@ export function lerEnum<T extends string>(
 export const ABAS_COBRANCA = ["cobrancas", "vencimentos", "planos"] as const;
 export type AbaCobranca = (typeof ABAS_COBRANCA)[number];
 
-export const VISOES_AGENDA = ["calendario", "lista"] as const;
+export const VISOES_AGENDA = ["calendario", "lista", "historico"] as const;
 export type VisaoAgenda = (typeof VISOES_AGENDA)[number];
 
 export const SITUACOES_ALUNO = ["todos", "ativo", "pendente", "inadimplente", "cancelado"] as const;

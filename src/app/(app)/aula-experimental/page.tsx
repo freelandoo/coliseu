@@ -4,9 +4,10 @@ import { Coliseu3D } from "@/components/coliseu3d/Coliseu3D";
 import { classeBotao } from "@/components/ui/Botao";
 import { CabecalhoEditorial, CartaoIndicador, EstadoVazio } from "@/components/ui/editorial";
 import { listarAulasExperimentais } from "@/lib/store";
+import { listarLegadoRepo } from "@/lib/repositories/aulas-experimentais";
 import { ehDataISO, hojeNaAcademia, horaNaAcademia, resumoDoDia } from "@/lib/aula-experimental";
 import { requireModulo } from "@/lib/auth/rbac";
-import type { AulaExperimentalItem } from "@/lib/types";
+import type { AulaExperimentalItem, AulaLegadoItem } from "@/lib/types";
 
 export const dynamic = "force-dynamic";
 
@@ -28,7 +29,8 @@ export default async function AulaExperimentalPage({
   /** `dia`: "AAAA-MM-DD" vindo da central — abre o calendário nesse dia. */
   searchParams: Promise<{ dia?: string | string[] }>;
 }) {
-  await requireModulo("aula-experimental");
+  const usuario = await requireModulo("aula-experimental");
+  const agendante = { nome: usuario.nome, podeLiberar: usuario.role === "ADMIN" };
   const { dia } = await searchParams;
   const pedido = Array.isArray(dia) ? dia[0] : dia;
   // O dia e a hora são do relógio da academia, não do servidor (UTC) nem do celular.
@@ -38,13 +40,14 @@ export default async function AulaExperimentalPage({
 
   // Falha ao carregar não pode virar "zero visitas": vira aviso de erro.
   let aulas: AulaExperimentalItem[] | null = null;
+  let legado: AulaLegadoItem[] = [];
   try {
-    aulas = await listarAulasExperimentais();
+    [aulas, legado] = await Promise.all([listarAulasExperimentais(), listarLegadoRepo()]);
   } catch (e) {
     console.error("[aula-experimental] falha ao listar", e);
   }
 
-  const agendar = <AgendarAulaBalcao dia={ehDataISO(pedido) ? pedido : hoje} />;
+  const agendar = <AgendarAulaBalcao agendante={agendante} dia={ehDataISO(pedido) ? pedido : hoje} />;
 
   return (
     <div className="flex flex-col gap-6 lg:gap-8">
@@ -76,6 +79,8 @@ export default async function AulaExperimentalPage({
       {aulas ? (
         <AgendaAulaExperimental
           aulas={aulas}
+          legado={legado}
+          agendante={agendante}
           hoje={hoje}
           horaInicial={hora}
           // Data inválida ou ausente: o calendário abre em hoje, como sempre.

@@ -378,4 +378,23 @@ export interface AulaExperimentalItem {
   agendadoPor: string | null; // null quando o colaborador saiu
   observacao: string | null; // recado da recepção, escrito no calendário
   criadoEm: string; // ISO
+  cpf: string | null; // só dígitos; aulas de antes de 26/10/2026 não têm
+  presenca: "veio" | "faltou" | null;
+  lembreteEnviadoEm: string | null; // ISO
+}
+
+/** Linha da planilha antiga de visitas/aulas experimentais (aba Histórico). */
+export interface AulaLegadoItem {
+  id: string;
+  nome: string;
+  telefone: string; // formatado
+  modalidade: string | null;
+  dataVisita: string | null;
+  dataAula: string | null;
+  hora: number | null;
+  presenca: "veio" | "faltou" | null;
+  statusOriginal: string | null;
+  atendente: string | null;
+  comoConheceu: string | null;
+  andamento: string | null;
 }

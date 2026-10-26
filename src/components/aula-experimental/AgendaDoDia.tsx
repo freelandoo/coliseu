@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { AgendarAulaBalcao } from "@/components/aula-experimental/AgendarAulaBalcao";
+import { AgendarAulaBalcao, type AgendanteAula } from "@/components/aula-experimental/AgendarAulaBalcao";
 import { cn } from "@/lib/cn";
 import {
   formatarDiaPorExtenso,
@@ -47,6 +47,7 @@ export function AgendaDoDia({
   hoje,
   horaAgora,
   modalidade,
+  agendante,
 }: {
   aulas: AulaExperimentalItem[];
   dia: string;
@@ -54,6 +55,7 @@ export function AgendaDoDia({
   horaAgora: number;
   /** Filtro de modalidade em uso — entra na frase do vazio. */
   modalidade: string | null;
+  agendante: AgendanteAula;
 }) {
   const doDia = [...aulas].filter((a) => a.data === dia).sort((a, b) => a.hora - b.hora);
   const ehHoje = dia === hoje;
@@ -94,6 +96,7 @@ export function AgendaDoDia({
             acao={
               dia >= hoje && (
                 <AgendarAulaBalcao
+                  agendante={agendante}
                   dia={dia}
                   rotulo="Agendar neste dia"
                   variante="secundario"
@@ -117,7 +120,7 @@ export function AgendaDoDia({
           </ol>
           {dia >= hoje && (
             <div className="border-t border-ink/15 px-4 py-3 sm:px-5">
-              <AgendarAulaBalcao dia={dia} rotulo="Agendar neste dia" variante="discreto" tamanho="sm" />
+              <AgendarAulaBalcao agendante={agendante} dia={dia} rotulo="Agendar neste dia" variante="discreto" tamanho="sm" />
             </div>
           )}
         </>

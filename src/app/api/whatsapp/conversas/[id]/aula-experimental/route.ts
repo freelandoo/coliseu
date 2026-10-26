@@ -1,7 +1,12 @@
 import { NextResponse } from "next/server";
 import { exigirSessaoApi } from "@/lib/auth/api-guard";
 import { podePapel, type Papel } from "@/lib/auth/rbac";
-import { criarAulaExperimentalRepo } from "@/lib/repositories/aulas-experimentais";
+import {
+  criarAulaExperimentalRepo,
+  guardarCpfNaPessoaRepo,
+  pessoaPorCpfRepo,
+} from "@/lib/repositories/aulas-experimentais";
+import { conferirAulaNova } from "@/lib/aula-experimental-regra";
 import {
   mensagemPorWaIdRepo,
   obterConversaRepo,
@@ -47,6 +52,8 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
     modalidade?: unknown;
     data?: unknown;
     hora?: unknown;
+    cpf?: unknown;
+    forcar?: unknown;
   };
 
   const { modalidade, data } = body;
@@ -71,6 +78,18 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
     );
   }
 
+  // Uma aula por pessoa: confere ANTES de mandar a confirmação.
+  const conf = await conferirAulaNova({
+    cpf: body.cpf,
+    telefone: soDigitos(conversa.telefone),
+    nome: conversa.nome,
+    forcar: body.forcar,
+    papel: g.user.role,
+  });
+  if (!conf.ok) return NextResponse.json({ erro: conf.erro }, { status: conf.status });
+  const porCpf = await pessoaPorCpfRepo(conf.cpf);
+  const personId = conversa.personId ?? porCpf?.id ?? null;
+
   const envio = await enviarTextoNaConversa({
     conversaId: id,
     texto: mensagemAulaExperimental({ modalidade, data, hora }),
@@ -89,14 +108,16 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
   try {
     aula = await criarAulaExperimentalRepo({
       conversaId: id,
-      personId: conversa.personId,
+      personId,
       nome: conversa.nome,
       telefone: soDigitos(conversa.telefone),
       modalidade,
       data,
       hora,
       agendadoPorId: g.user.id,
+      cpf: conf.cpf,
     });
+    if (personId) await guardarCpfNaPessoaRepo(personId, conf.cpf).catch(() => undefined);
   } catch (e) {
     console.error("[aula-experimental] confirmação enviada, gravação falhou", e);
     const mensagem = await mensagemPorWaIdRepo(id, envio.waMessageId).catch(() => null);

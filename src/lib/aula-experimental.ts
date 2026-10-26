@@ -261,3 +261,82 @@ export function mensagemAulaExperimental(input: {
     "Qualquer dúvida antes da aula, estou à disposição. Nos vemos em breve!",
   ].join("\n");
 }
+
+// ---------- uma aula experimental por pessoa (26/10/2026) ----------
+
+/**
+ * Primeiro nome para casar registros pelo telefone: minúsculo e sem acento.
+ * Telefone sozinho não basta — mãe e filho dividem o número (a planilha tem
+ * Leandro e Noah no mesmo celular).
+ */
+export function primeiroNomeChave(nome: string): string {
+  const primeiro = nome.trim().split(/[\s/]+/)[0] ?? "";
+  return primeiro
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toLowerCase();
+}
+
+/**
+ * O que um registro anterior diz sobre a pessoa:
+ * - "fez": a aula passou e ninguém marcou falta (sem presença marcada, conta);
+ * - "faltou": passou com falta marcada — pode marcar de novo;
+ * - "marcada": ainda vai acontecer — marcar de novo é remarcar.
+ * Visita sem data de aula não é aula experimental.
+ */
+export type SituacaoAnterior = "fez" | "faltou" | "marcada";
+
+export function situacaoAnterior(
+  r: { data: string | null; presenca: string | null },
+  hoje: string,
+): SituacaoAnterior | null {
+  if (!r.data) return null;
+  if (r.presenca === "faltou") return "faltou";
+  if (r.presenca === "veio") return "fez";
+  return r.data < hoje ? "fez" : "marcada";
+}
+
+/** Status escrito à mão na planilha → presença. */
+export function presencaDaPlanilha(status: string | null | undefined): "veio" | "faltou" | null {
+  const s = (status ?? "")
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .trim()
+    .toLowerCase();
+  if (!s) return null;
+  if (["nao veio", "faltou", "nao compareceu", "nao fez", "reagendar"].some((x) => s.includes(x))) return "faltou";
+  if (["veio", "aula ok", "assistiu"].some((x) => s.includes(x)) || s === "ok") return "veio";
+  return null;
+}
+
+/** "19h", "09h", "19:30", "10h30" → hora cheia; qualquer outra coisa → null. */
+export function horaDaPlanilha(v: string | null | undefined): number | null {
+  const m = String(v ?? "").match(/^\s*(\d{1,2})\s*(h|:)/i);
+  if (!m) return null;
+  const h = Number(m[1]);
+  return h >= 0 && h <= 23 ? h : null;
+}
+
+/** Lembrete da véspera (ou do dia, se a véspera passou sem enviar). */
+export function mensagemLembreteAula(input: {
+  nome: string;
+  modalidade: string;
+  data: string;
+  hora: number;
+  hoje: string;
+}): string {
+  const quem = primeiroNomeExibicao(input.nome);
+  const quando =
+    input.data === input.hoje ? "hoje" : input.data === somarDias(input.hoje, 1) ? "amanhã" : `no dia ${formatarDiaMes(input.data)}`;
+  return [
+    `Olá${quem ? `, ${quem}` : ""}! Passando para lembrar da sua aula experimental de ${input.modalidade} ${quando}, ${formatarDiaMes(input.data)}, às ${formatarHora(input.hora)}. 💪`,
+    "",
+    "Venha com roupa confortável e traga uma garrafinha de água.",
+    "Se surgir algum imprevisto, é só responder aqui que a gente remarca. Até lá!",
+  ].join("\n");
+}
+
+function primeiroNomeExibicao(nome: string): string {
+  const p = nome.trim().split(/[\s/]+/)[0] ?? "";
+  return p ? p[0].toUpperCase() + p.slice(1).toLowerCase() : "";
+}

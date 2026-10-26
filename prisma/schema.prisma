@@ -958,8 +958,48 @@ model AulaExperimental {
   agendadoPorId String?
   criadoEm      DateTime @default(now())
 
+  /// Só dígitos. Obrigatório nas aulas marcadas desde 26/10/2026: é a chave
+  /// de "cada pessoa faz uma aula experimental só" (as antigas não têm).
+  cpf        String?
+  /// Marcado pela recepção depois do horário: "veio" | "faltou". Nulo =
+  /// ninguém marcou — para a regra de uma aula só, conta como feita.
+  presenca   String?
+  /// Lembrete automático no WhatsApp na véspera (decisão de 26/10/2026).
+  lembreteEnviadoEm DateTime?
+  lembreteErro      String?
+
   @@index([unitId, data])
   @@index([conversaId])
+  @@index([cpf])
+}
+
+/// Planilha "Visitas + Experimental" (jun–out/2026), de antes do sistema:
+/// registro de quem já veio. Sem CPF — a regra de uma aula só casa estas
+/// linhas por telefone + primeiro nome. Importada uma vez; não se edita.
+model AulaExperimentalLegado {
+  id            String  @id @default(cuid())
+  /// Aba e linha da planilha: chave do import (rodar de novo não duplica).
+  aba           String
+  linha         Int
+  nome          String
+  /// Só dígitos.
+  telefone      String
+  modalidade    String?
+  /// Dia do atendimento/visita ("AAAA-MM-DD").
+  dataVisita    String?
+  /// Dia da aula experimental ("AAAA-MM-DD"); nulo = só visitou.
+  dataAula      String?
+  hora          Int?
+  /// "veio" | "faltou" | nulo (planilha sem status).
+  presenca      String?
+  statusOriginal String?
+  canal         String?
+  atendente     String?
+  comoConheceu  String?
+  andamento     String?
+
+  @@unique([aba, linha])
+  @@index([telefone])
 }
 
 // ============================================================

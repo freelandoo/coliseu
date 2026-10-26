@@ -5,11 +5,12 @@ import { describe, expect, test } from "vitest";
 /**
  * Teste de arquitetura do envio automático (decisão Q4, 2026-10-20).
  *
- * A regra do Coliseu é que nada sai no WhatsApp sozinho. A ÚNICA exceção é a
- * mensagem de boas-vindas da Freelandoo (link de primeiro acesso), e ela fica
- * presa num módulo só: `lib/freelandoo/boas-vindas.ts`. Quem dispara a criação
- * da conta (catraca, matrícula) só enfileira; o processador da fila roda no
- * agendador.
+ * A regra do Coliseu é que nada sai no WhatsApp sozinho. Exceções, cada uma
+ * presa num módulo só e chamada só pelo agendador:
+ * - boas-vindas da Freelandoo (link de primeiro acesso), em
+ *   `lib/freelandoo/boas-vindas.ts` — quem cria a conta só enfileira;
+ * - lembrete da aula experimental na véspera (pedido do Alex, 26/10/2026), em
+ *   `lib/aula-experimental-lembrete.ts`.
  *
  * Mesma técnica do `lib/whatsapp/sem-automacao.test.ts`: fecho transitivo dos
  * imports estáticos `@/…`. Se um destes casos falhar, alguém abriu um caminho
@@ -19,6 +20,8 @@ import { describe, expect, test } from "vitest";
 const RAIZ = resolve(__dirname, "../..");
 const MODULO_DE_ENVIO = "@/lib/whatsapp/evolution";
 const BOAS_VINDAS = "@/lib/freelandoo/boas-vindas";
+const LEMBRETE_AULA = "@/lib/aula-experimental-lembrete";
+const PORTAS = [BOAS_VINDAS, LEMBRETE_AULA];
 
 function arquivoDe(especificador: string): string | null {
   if (!especificador.startsWith("@/")) return null; // dependência externa
@@ -82,15 +85,24 @@ describe("a catraca só enfileira", () => {
     const deps = alcancaveis(resolve(RAIZ, "lib/whatsapp/ingest.ts"));
     expect([...deps]).not.toContain("@/lib/freelandoo/fila");
     expect([...deps]).not.toContain(BOAS_VINDAS);
+    expect([...deps]).not.toContain(LEMBRETE_AULA);
     expect([...deps]).not.toContain("@/lib/agendador");
   });
 });
 
-describe("boas-vindas é a única porta", () => {
+describe("boas-vindas e lembrete de aula são as únicas portas", () => {
   test("boas-vindas alcança o envio (controle negativo)", () => {
     // Se isto não acusasse, os outros casos estariam passando por engano.
     const deps = alcancaveis(resolve(RAIZ, "lib/freelandoo/boas-vindas.ts"));
     expect([...deps]).toContain(MODULO_DE_ENVIO);
+    expect([...alcancaveis(resolve(RAIZ, "lib/aula-experimental-lembrete.ts"))]).toContain(MODULO_DE_ENVIO);
+  });
+
+  test("o lembrete de aula só é chamado pelo agendador", () => {
+    const quem = modulosDe(resolve(RAIZ))
+      .filter((arquivo) => importsDe(arquivo).includes(LEMBRETE_AULA))
+      .map(rel);
+    expect(quem).toEqual(["lib/agendador.ts"]);
   });
 
   /**
@@ -100,13 +112,13 @@ describe("boas-vindas é a única porta", () => {
    */
   const JA_PERMITIDOS = ["lib/whatsapp/responder.ts", "lib/whatsapp/status.ts"];
 
-  test("fora do Atendimento, todo caminho de lib/ até o envio passa por boas-vindas", () => {
+  test("fora do Atendimento, todo caminho de lib/ até o envio passa por uma das portas", () => {
     const fora: string[] = [];
     for (const arquivo of modulosDe(resolve(RAIZ, "lib"))) {
       const nome = rel(arquivo);
-      if (nome === "lib/whatsapp/evolution.ts" || nome === "lib/freelandoo/boas-vindas.ts") continue;
+      if (["lib/whatsapp/evolution.ts", "lib/freelandoo/boas-vindas.ts", "lib/aula-experimental-lembrete.ts"].includes(nome)) continue;
       if (JA_PERMITIDOS.includes(nome)) continue;
-      if (alcancaveis(arquivo, [BOAS_VINDAS]).has(MODULO_DE_ENVIO)) fora.push(nome);
+      if (alcancaveis(arquivo, PORTAS).has(MODULO_DE_ENVIO)) fora.push(nome);
     }
     expect(fora).toEqual([]);
   });

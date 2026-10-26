@@ -18,8 +18,20 @@ import { DescricaoModal, Modal, TituloModal } from "@/components/ui/Modal";
 import { Botao, classeBotao, type VarianteBotao } from "@/components/ui/Botao";
 import { Campo, MensagemErro, classeCampo } from "@/components/ui/Campo";
 import { IconeSetaDireita } from "@/components/ui/editorial";
+import { cpfValido, normalizarCpf } from "@/lib/cpf";
 
-type Achado = { personId: string | null; nome: string | null; fase: string | null; conversaId: string | null };
+/** Quem está agendando (a sessão), para o modal dizer e o ADMIN poder liberar exceção. */
+export interface AgendanteAula {
+  nome: string;
+  podeLiberar: boolean;
+}
+
+type Conferencia = {
+  pessoa: { personId: string; nome: string; fase: string; porque: "cpf" | "telefone" } | null;
+  conversaId: string | null;
+  jaFez: string | null;
+  anteriores: { situacao: "fez" | "faltou" | "marcada"; texto: string }[];
+};
 type Agendada = { aula: AulaExperimentalItem; leadCriado: boolean; mensagem: string; waLink: string };
 
 function ehAgendada(v: unknown): v is Agendada {
@@ -30,22 +42,34 @@ const soDigitos = (s: string) => s.replace(/\D/g, "");
 
 const FASE: Record<string, string> = { lead: "lead", aluno: "aluno", exaluno: "ex-aluno" };
 
+function mascaraCpf(v: string): string {
+  const d = v.replace(/\D/g, "").slice(0, 11);
+  if (d.length <= 3) return d;
+  if (d.length <= 6) return `${d.slice(0, 3)}.${d.slice(3)}`;
+  if (d.length <= 9) return `${d.slice(0, 3)}.${d.slice(3, 6)}.${d.slice(6)}`;
+  return `${d.slice(0, 3)}.${d.slice(3, 6)}.${d.slice(6, 9)}-${d.slice(9)}`;
+}
+
 /**
  * Botão + diálogo para marcar aula experimental no balcão, sem passar pelo
  * Atendimento. O outro caminho (a conversa no Atendimento) continua: lá a
  * confirmação sai pela conversa; aqui a aula entra na agenda e a recepção
  * manda a confirmação pelo WhatsApp dela, com o texto pronto.
  *
- * Telefone de alguém que já existe liga a aula ao cadastro (e à conversa, se
- * houver) — a tela mostra quem é antes de gravar. Número novo vira lead.
+ * CPF obrigatório: cada pessoa faz uma aula experimental só. A tela confere
+ * pelo CPF e pelo telefone + primeiro nome (no sistema e na planilha antiga)
+ * antes de gravar, e mostra quem já existe com esses dados. Número novo vira
+ * lead.
  */
 export function AgendarAulaBalcao({
+  agendante,
   dia,
   rotulo = "Agendar aula",
   variante = "primario",
   tamanho = "lg",
   className,
 }: {
+  agendante: AgendanteAula;
   /** Dia que o formulário abre preenchido (o selecionado no calendário). */
   dia?: string;
   rotulo?: string;
@@ -70,17 +94,19 @@ export function AgendarAulaBalcao({
         {rotulo}
         <IconeSetaDireita />
       </Botao>
-      {aberto && <Formulario key={chave} dia={dia} onFechar={() => setAberto(false)} />}
+      {aberto && <Formulario key={chave} dia={dia} agendante={agendante} onFechar={() => setAberto(false)} />}
     </>
   );
 }
 
-function Formulario({ dia, onFechar }: { dia?: string; onFechar: () => void }) {
+function Formulario({ dia, agendante, onFechar }: { dia?: string; agendante: AgendanteAula; onFechar: () => void }) {
   const router = useRouter();
   const hoje = hojeNaAcademia();
+  const [cpf, setCpf] = useState("");
   const [telefone, setTelefone] = useState("");
   const [nome, setNome] = useState("");
-  const [achado, setAchado] = useState<Achado | null>(null);
+  const [conf, setConf] = useState<Conferencia | null>(null);
+  const [liberar, setLiberar] = useState(false);
   const [modalidade, setModalidade] = useState<Modalidade | null>(null);
   const [data, setData] = useState(dia && dia >= hoje ? dia : hoje);
   const [hora, setHora] = useState<number | null>(null);
@@ -93,23 +119,32 @@ function Formulario({ dia, onFechar }: { dia?: string; onFechar: () => void }) {
   const emVoo = useRef(false);
   const ultimaBusca = useRef("");
 
-  async function procurar() {
+  /** Confere CPF/telefone/nome (ao sair de cada campo). O servidor confere de novo ao gravar. */
+  async function conferir() {
+    const c = normalizarCpf(cpf);
     const d = soDigitos(telefone);
-    if (d.length < 10 || d === ultimaBusca.current) return;
-    ultimaBusca.current = d;
+    if (!cpfValido(c) && d.length < 10) return;
+    const chave = `${c}|${d}|${nome.trim().toLowerCase()}`;
+    if (chave === ultimaBusca.current) return;
+    ultimaBusca.current = chave;
     try {
-      const r = await fetch(`/api/aulas-experimentais?telefone=${d}`, { cache: "no-store" });
-      const a = (await r.json()) as Achado;
-      if (soDigitos(telefone) !== d) return; // digitou outro número no meio
-      setAchado(a);
-      if (a.nome && !nome.trim()) setNome(a.nome);
+      const q = new URLSearchParams({ cpf: c, telefone: d, nome: nome.trim() });
+      const r = await fetch(`/api/aulas-experimentais?${q}`, { cache: "no-store" });
+      const a = (await r.json()) as Conferencia;
+      if (ultimaBusca.current !== chave) return; // mudou algo no meio
+      setConf(a);
+      setLiberar(false);
+      if (a.pessoa?.nome && !nome.trim()) setNome(a.pessoa.nome);
     } catch {
-      // Sem a busca, grava igual — o servidor procura de novo.
+      // Sem a conferência, o servidor confere ao gravar.
     }
   }
 
+  const cpfOk = cpfValido(normalizarCpf(cpf));
   const telefoneOk = soDigitos(telefone).length >= 10;
-  const pronto = telefoneOk && nome.trim() && modalidade && data >= hoje && hora !== null;
+  const bloqueado = Boolean(conf?.jaFez) && !liberar;
+  const marcada = conf?.anteriores.find((a) => a.situacao === "marcada");
+  const pronto = cpfOk && telefoneOk && nome.trim() && modalidade && data >= hoje && hora !== null && !bloqueado;
 
   async function agendar() {
     if (!pronto || emVoo.current) return;
@@ -120,7 +155,7 @@ function Formulario({ dia, onFechar }: { dia?: string; onFechar: () => void }) {
       fetch("/api/aulas-experimentais", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ nome, telefone, modalidade, data, hora, observacao }),
+        body: JSON.stringify({ nome, cpf, telefone, modalidade, data, hora, observacao, forcar: liberar }),
         signal: sinalDeTempo(),
       }),
       ehAgendada,
@@ -180,10 +215,29 @@ function Formulario({ dia, onFechar }: { dia?: string; onFechar: () => void }) {
     <Modal onFechar={onFechar} fecharComEsc={!enviando} className="max-w-lg">
       <TituloModal>Agendar aula experimental</TituloModal>
       <DescricaoModal className="mt-0.5">
-        Marca na agenda. A confirmação você manda depois, pelo WhatsApp, com o texto pronto.
+        Uma aula experimental por pessoa. A confirmação você manda depois, pelo WhatsApp, com o texto pronto — e o
+        lembrete sai sozinho na véspera.
       </DescricaoModal>
+      <p className="mt-3 text-sm text-ink">
+        Agendado por <strong>{agendante.nome}</strong>
+      </p>
 
-      <div className="mt-5 grid gap-4">
+      <div className="mt-4 grid gap-4">
+        <Campo rotulo="CPF" erro={normalizarCpf(cpf).length === 11 && !cpfOk ? "CPF inválido" : undefined}>
+          {(a) => (
+            <input
+              {...a}
+              inputMode="numeric"
+              autoComplete="off"
+              value={cpf}
+              onChange={(e) => setCpf(mascaraCpf(e.target.value))}
+              onBlur={() => void conferir()}
+              placeholder="000.000.000-00"
+              className={classeCampo}
+              disabled={enviando}
+            />
+          )}
+        </Campo>
         <Campo rotulo="Celular (com DDD)">
           {(a) => (
             <input
@@ -191,25 +245,23 @@ function Formulario({ dia, onFechar }: { dia?: string; onFechar: () => void }) {
               inputMode="tel"
               autoComplete="off"
               value={telefone}
-              onChange={(e) => {
-                setTelefone(e.target.value);
-                setAchado(null);
-              }}
-              onBlur={() => void procurar()}
+              onChange={(e) => setTelefone(e.target.value)}
+              onBlur={() => void conferir()}
               placeholder="(11) 98765-4321"
               className={classeCampo}
               disabled={enviando}
             />
           )}
         </Campo>
-        {achado?.personId && (
+        {conf?.pessoa && (
           <p role="status" className="-mt-2 rounded-lg border border-info/30 bg-info-soft px-3 py-2 text-xs text-ink">
-            Já cadastrado: <strong>{achado.nome}</strong> ({FASE[achado.fase ?? ""] ?? achado.fase})
-            {achado.conversaId ? " · tem conversa no Atendimento" : ""}. A aula fica ligada a esse cadastro.
+            Já cadastrado {conf.pessoa.porque === "cpf" ? "com este CPF" : "com este celular"}:{" "}
+            <strong>{conf.pessoa.nome}</strong> ({FASE[conf.pessoa.fase] ?? conf.pessoa.fase})
+            {conf.conversaId ? " · tem conversa no Atendimento" : ""}. A aula fica ligada a esse cadastro.
           </p>
         )}
-        {achado && !achado.personId && telefoneOk && (
-          <p role="status" className="-mt-2 text-xs text-muted">Número novo — vira lead ao agendar.</p>
+        {conf && !conf.pessoa && cpfOk && telefoneOk && (
+          <p role="status" className="-mt-2 text-xs text-muted">Pessoa nova — vira lead ao agendar.</p>
         )}
 
         <Campo rotulo="Nome">
@@ -219,6 +271,7 @@ function Formulario({ dia, onFechar }: { dia?: string; onFechar: () => void }) {
               autoComplete="off"
               value={nome}
               onChange={(e) => setNome(e.target.value)}
+              onBlur={() => void conferir()}
               className={classeCampo}
               disabled={enviando}
             />
@@ -295,6 +348,24 @@ function Formulario({ dia, onFechar }: { dia?: string; onFechar: () => void }) {
         </Campo>
       </div>
 
+      {conf?.jaFez && (
+        <div role="alert" className="mt-4 rounded-lg border border-danger/40 bg-danger-soft px-3 py-2 text-sm text-ink">
+          <p className="font-semibold">Esta pessoa já fez aula experimental.</p>
+          <p className="mt-0.5 text-xs">{conf.jaFez}</p>
+          <p className="mt-1 text-xs text-muted">Se ela faltou, marque “Faltou” no Histórico e agende de novo.</p>
+          {agendante.podeLiberar && (
+            <label className="mt-2 flex items-center gap-2 text-xs">
+              <input type="checkbox" checked={liberar} onChange={(e) => setLiberar(e.target.checked)} />
+              Liberar mesmo assim (exceção do administrador)
+            </label>
+          )}
+        </div>
+      )}
+      {!conf?.jaFez && marcada && (
+        <p role="status" className="mt-4 text-xs text-muted">
+          Já tem aula marcada: {marcada.texto}. Esta fica como remarcação.
+        </p>
+      )}
       {erro && <MensagemErro className="mt-4">{erro}</MensagemErro>}
       {incerto && (
         <MensagemErro className="mt-4">

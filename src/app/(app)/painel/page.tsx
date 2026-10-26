@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { cache, Suspense, type CSSProperties, type ReactNode } from "react";
 import { requireModulo } from "@/lib/auth/rbac";
-import { hojeNaAcademia, FUSO_ACADEMIA } from "@/lib/aula-experimental";
+import { hojeNaAcademia, horaNaAcademia, formatarHora, FUSO_ACADEMIA } from "@/lib/aula-experimental";
 import {
   CONVERSAS_NA_CENTRAL,
   dataPorExtenso,
@@ -14,7 +14,6 @@ import { formatBRL } from "@/lib/mock-data";
 import { cn } from "@/lib/cn";
 import { listarAulasExperimentaisEntreRepo } from "@/lib/repositories/aulas-experimentais";
 import { cobrancasEmAbertoRepo } from "@/lib/repositories/cobrancas";
-import { contarAlunosAtivosRepo } from "@/lib/repositories/pessoas";
 import { conversasComNaoLidasRepo, paginaConversasRepo, totaisNaoLidasRepo } from "@/lib/repositories/whatsapp";
 import { statusTokenFreelandoo } from "@/lib/freelandoo/token";
 import { FreelandooTokenCard } from "@/components/painel/FreelandooTokenCard";
@@ -112,11 +111,14 @@ function Indicador({
 }
 
 async function FaixaIndicadores({ agora }: { agora: string }) {
-  const [ativos, naoLidas, abertas] = await Promise.all([
-    tentar("alunos ativos", contarAlunosAtivosRepo),
+  const hoje = hojeNaAcademia();
+  const [aulasHoje, naoLidas, abertas] = await Promise.all([
+    tentar("aulas de hoje", () => listarAulasExperimentaisEntreRepo(hoje, hoje)),
     totaisNaoLidas(),
     emAberto(),
   ]);
+  const horaAgora = horaNaAcademia();
+  const proxima = aulasHoje?.find((a) => a.hora >= horaAgora);
   return (
     <section
       aria-label="Números de agora"
@@ -124,11 +126,17 @@ async function FaixaIndicadores({ agora }: { agora: string }) {
       className="entrada relative z-[1] grid grid-cols-2 rounded-md border border-border bg-surface p-1 text-ink shadow-[var(--shadow-card)] md:grid-cols-[1fr_1fr_1.2fr] md:p-2"
     >
       <Indicador
-        icone={<IconePessoas className="h-4 w-4" />}
-        rotulo="Alunos ativos"
-        href="/matriculados?situacao=ativo"
-        valor={ativos === null ? null : <Contador valor={ativos} atraso={120} />}
-        nota="Última matrícula de cada um está ativa"
+        icone={<IconeCalendario className="h-4 w-4" />}
+        rotulo="Aulas agendadas hoje"
+        href={`/aula-experimental?dia=${hoje}`}
+        valor={aulasHoje === null ? null : <Contador valor={aulasHoje.length} atraso={120} />}
+        nota={
+          aulasHoje === null || aulasHoje.length === 0
+            ? "Aula experimental"
+            : proxima
+              ? `Próxima às ${formatarHora(proxima.hora)} · ${proxima.nome.split(" ")[0]}`
+              : "Todas já passaram do horário"
+        }
         className="border-r border-border"
       />
       <Indicador
