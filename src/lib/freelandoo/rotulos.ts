@@ -125,6 +125,26 @@ export function combinaFiltroApp(
   }
 }
 
+/**
+ * Situação do aluno na aba Treinos — a mesma régua da fila do professor na
+ * Freelandoo (utils/trainingQueue.js de lá): vencido, vencendo (barrinha no
+ * fim) e sem treino entram; ficha do professor esperando o aluno confirmar
+ * vira "aguardando_aluno" (o professor já fez a parte dele). Quem não tem conta
+ * na Freelandoo não tem onde receber treino: "sem_conta". Em dia = null.
+ */
+export type SituacaoTreino = "vencido" | "vencendo" | "sem_treino" | "aguardando_aluno" | "sem_conta";
+
+export function situacaoTreino(
+  conta: { estado: EstadoFreelandoo; treinoVenceEm?: string; treinoValidadeDias?: number; treinoPropostaPendente?: boolean } | undefined,
+  agora: Date = new Date(),
+): SituacaoTreino | null {
+  const estado = conta?.estado ?? "sem_conta";
+  if (estado !== "ativa" && estado !== "aguardando_aceite") return "sem_conta";
+  if (conta?.treinoPropostaPendente) return "aguardando_aluno";
+  const b = barraTreino(conta?.treinoVenceEm, conta?.treinoValidadeDias, agora);
+  return b.situacao === "em_dia" ? null : b.situacao;
+}
+
 export function treinoVencido(venceEm: string | Date | null | undefined, agora: Date = new Date()): boolean {
   return barraTreino(venceEm, null, agora).situacao === "vencido";
 }

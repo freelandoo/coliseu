@@ -26,6 +26,13 @@ export interface ItemMembro {
   estado: EstadoMembro;
   avatar_url: string | null;
   treino: TreinoMembro | null;
+  /** Ficha do professor esperando o aluno confirmar (ausente em versões antigas da API). */
+  proposta_treino_pendente?: boolean;
+}
+
+export interface AvisoProfessores {
+  professores: number;
+  pendentes: number;
 }
 
 export type CriarMembroResposta =
@@ -53,6 +60,7 @@ export type ErroFreelandoo =
   | "email_em_uso"
   | "ja_aceito"
   | "nao_encontrado"
+  | "sem_professor"
   | "inesperado";
 
 export type RespostaFreelandoo<T> =
@@ -61,7 +69,7 @@ export type RespostaFreelandoo<T> =
 
 const CODIGOS_CONHECIDOS: ReadonlySet<string> = new Set([
   "chave_invalida", "cpf_invalido", "dados_incompletos", "menor_de_idade",
-  "email_em_uso", "ja_aceito", "nao_encontrado",
+  "email_em_uso", "ja_aceito", "nao_encontrado", "sem_professor",
 ]);
 
 export interface ConfigFreelandoo {
@@ -106,6 +114,8 @@ export interface ClienteFreelandoo {
   enviarFotoAcademia(idUser: string, jpeg: Uint8Array): Promise<RespostaFreelandoo<{ ok: true }>>;
   listarMembros(cursor?: string | null, limite?: number): Promise<RespostaFreelandoo<PaginaMembros>>;
   obterMembro(idUser: string): Promise<RespostaFreelandoo<ItemMembro>>;
+  /** Reabre o modal da fila de treinos para os professores da academia. */
+  avisarProfessores(): Promise<RespostaFreelandoo<AvisoProfessores>>;
 }
 
 /** Cliente que só responde "não configurado" — usado quando falta env. */
@@ -116,6 +126,7 @@ export const clienteNaoConfigurado: ClienteFreelandoo = {
   enviarFotoAcademia: async () => NAO_CONFIGURADO,
   listarMembros: async () => NAO_CONFIGURADO,
   obterMembro: async () => NAO_CONFIGURADO,
+  avisarProfessores: async () => NAO_CONFIGURADO,
 };
 
 export function criarClienteFreelandoo(
@@ -185,5 +196,6 @@ export function criarClienteFreelandoo(
       return chamar<PaginaMembros>("GET", `/partner/v1/members?${q.toString()}`, undefined, [200]);
     },
     obterMembro: (idUser) => chamar<ItemMembro>("GET", `/partner/v1/members/${id(idUser)}`, undefined, [200]),
+    avisarProfessores: () => chamar<AvisoProfessores>("POST", "/partner/v1/training-reminder", undefined, [200]),
   };
 }

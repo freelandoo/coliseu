@@ -21,6 +21,7 @@ export type Modulo =
   | "matriculados"
   | "captacao"
   | "aula-experimental"
+  | "treinos"
   | "atendimento"
   | "cobranca"
   | "custos"
@@ -33,8 +34,8 @@ export type Modulo =
  * A ordem é a do menu — a tela inicial é decidida por `rotaInicial`.
  */
 const MODULOS_POR_PAPEL: Record<Papel, Modulo[]> = {
-  ADMIN: ["painel", "matriculados", "captacao", "aula-experimental", "atendimento", "cobranca", "custos", "acesso", "relatorios"],
-  RECEPCAO: ["matriculados", "captacao", "aula-experimental", "atendimento", "acesso"],
+  ADMIN: ["painel", "matriculados", "captacao", "aula-experimental", "treinos", "atendimento", "cobranca", "custos", "acesso", "relatorios"],
+  RECEPCAO: ["matriculados", "captacao", "aula-experimental", "treinos", "atendimento", "acesso"],
   TECNICO: ["acesso"],
 };
 

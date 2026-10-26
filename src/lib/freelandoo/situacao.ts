@@ -16,6 +16,7 @@ export type CamposFreelandoo = {
   freelandooTreinoNome?: string | null;
   freelandooTreinoVenceEm?: Date | null;
   freelandooTreinoValidadeDias?: number | null;
+  freelandooTreinoPropostaPendente?: boolean;
   freelandooSincronizadoEm?: Date | null;
   freelandooAcessoEnviadoEm?: Date | null;
 };
@@ -29,6 +30,7 @@ export const CAMPOS_SEM_CONTA: CamposFreelandoo = {
   freelandooTreinoNome: null,
   freelandooTreinoVenceEm: null,
   freelandooTreinoValidadeDias: null,
+  freelandooTreinoPropostaPendente: false,
   freelandooSincronizadoEm: null,
   freelandooAcessoEnviadoEm: null,
 };
@@ -49,6 +51,7 @@ export function camposDoItem(item: ItemMembro, agora: Date): CamposFreelandoo {
     freelandooTreinoNome: item.treino?.nome ?? null,
     freelandooTreinoVenceEm: dataOuNull(item.treino?.vence_em),
     freelandooTreinoValidadeDias: item.treino?.validade_dias ?? null,
+    freelandooTreinoPropostaPendente: item.proposta_treino_pendente === true,
     freelandooSincronizadoEm: agora,
   };
 }

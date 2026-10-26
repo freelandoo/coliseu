@@ -14,6 +14,7 @@ export type IconeNav =
   | "chat"
   | "funil"
   | "calendario"
+  | "treino"
   | "painel"
   | "pessoas"
   | "cobranca"
@@ -54,6 +55,7 @@ export const GRUPOS_NAV: GrupoNav[] = [
       { href: "/matriculados", rotulo: "Alunos", icone: "pessoas", modulo: "matriculados" },
       { href: "/captacao", rotulo: "Captação", icone: "funil", modulo: "captacao" },
       { href: "/aula-experimental", rotulo: "Aula experimental", icone: "calendario", modulo: "aula-experimental" },
+      { href: "/treinos", rotulo: "Treinos", icone: "treino", modulo: "treinos" },
     ],
   },
   {
@@ -244,6 +246,7 @@ export const ORIGENS_FICHA = [
   "captacao",
   "retencao",
   "fidelidade",
+  "treinos",
 ] as const;
 export type OrigemFicha = (typeof ORIGENS_FICHA)[number];
 
@@ -284,6 +287,9 @@ export function retornoDaFicha(
   }
   if (origem === "fidelidade" && podeModulo(papel, "matriculados")) {
     return { href: "/matriculados/fidelidade", rotulo: "Fidelidade", origem };
+  }
+  if (origem === "treinos" && podeModulo(papel, "treinos")) {
+    return { href: "/treinos", rotulo: "Treinos", origem };
   }
   return { href: "/matriculados", rotulo: "Alunos", origem: "alunos" };
 }

@@ -243,6 +243,8 @@ model Person {
   freelandooTreinoNome         String?
   freelandooTreinoVenceEm      DateTime?
   freelandooTreinoValidadeDias Int?
+  /// Ficha mandada pelo professor esperando o aluno confirmar no app (aba Treinos).
+  freelandooTreinoPropostaPendente Boolean @default(false)
   freelandooSincronizadoEm     DateTime?
   /// Quando a mensagem com o link de 1º acesso saiu. Nulo com conta criada =
   /// "acesso não enviado" na ficha.

@@ -74,6 +74,7 @@ export function toPessoa(p: PPerson & { memberships: MembershipComAutor[] }): Pe
             treinoNome: p.freelandooTreinoNome ?? undefined,
             treinoVenceEm: p.freelandooTreinoVenceEm?.toISOString(),
             treinoValidadeDias: p.freelandooTreinoValidadeDias ?? undefined,
+            treinoPropostaPendente: p.freelandooTreinoPropostaPendente || undefined,
           }
         : undefined,
   };

@@ -110,8 +110,12 @@ describe("camposDoItem", () => {
       freelandooUserId: "42", freelandooEstado: "aguardando_aceite", freelandooMotivo: null,
       freelandooFotoUrl: "https://r2/x.jpg", freelandooTreinoNome: "Hipertrofia A",
       freelandooTreinoVenceEm: new Date("2026-10-31T00:00:00Z"), freelandooTreinoValidadeDias: 60,
-      freelandooSincronizadoEm: AGORA,
+      freelandooTreinoPropostaPendente: false, freelandooSincronizadoEm: AGORA,
     });
+  });
+
+  test("ficha do professor esperando o aluno vira a marca da aba Treinos", () => {
+    expect(camposDoItem(item("7", { proposta_treino_pendente: true }), AGORA).freelandooTreinoPropostaPendente).toBe(true);
   });
 
   test("sem treino zera os campos do treino", () => {

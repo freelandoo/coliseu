@@ -43,6 +43,14 @@ const ICONES: Record<IconeNav, ReactNode> = {
       <path d="M2.5 7.3h13M6 2v3M12 2v3" />
     </Icone>
   ),
+  treino: (
+    <Icone>
+      <path d="M6 9h6" />
+      <rect x="3.5" y="5.5" width="2.5" height="7" rx="0.8" />
+      <rect x="12" y="5.5" width="2.5" height="7" rx="0.8" />
+      <path d="M2 7.5v3M16 7.5v3" />
+    </Icone>
+  ),
   painel: (
     <Icone>
       <rect x="2.5" y="2.5" width="5.5" height="5.5" rx="1.2" />

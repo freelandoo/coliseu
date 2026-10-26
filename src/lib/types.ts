@@ -185,6 +185,8 @@ export interface FreelandooResumo {
   treinoNome?: string;
   treinoVenceEm?: string; // ISO
   treinoValidadeDias?: number;
+  /** Ficha do professor esperando o aluno confirmar no app. */
+  treinoPropostaPendente?: boolean;
 }
 
 /** Dados mínimos para criar um cadastro (entra como lead novo). */
