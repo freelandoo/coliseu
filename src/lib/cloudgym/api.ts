@@ -266,3 +266,12 @@ export async function criarPlano(p: CgNovoPlano): Promise<number> {
   });
   return r.id;
 }
+
+/** Catálogo de planos da unidade (GET /config/plans/{unidade}). */
+export async function listarPlanos(): Promise<import("@/lib/cloudgym/planos").PlanoCloudgym[]> {
+  const r = await cg<{ content: import("@/lib/cloudgym/planos").PlanoCloudgym[] }>(
+    "GET",
+    `/config/plans/${UNIDADE_CLOUDGYM}?page=0&size=1000`,
+  );
+  return r.content;
+}
