@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
+import { AgendarAulaBalcao } from "@/components/aula-experimental/AgendarAulaBalcao";
 import { cn } from "@/lib/cn";
 import {
   formatarDiaPorExtenso,
@@ -91,25 +92,35 @@ export function AgendaDoDia({
                 : "Nenhuma aula agendada para este dia."
             }
             acao={
-              <Link
-                href="/atendimento"
-                className={cn(classeBotao({ variante: "secundario", tamanho: "md" }), "border-ink bg-transparent")}
-              >
-                Abrir Atendimento
-                <IconeSetaDireita />
-              </Link>
+              dia >= hoje && (
+                <AgendarAulaBalcao
+                  dia={dia}
+                  rotulo="Agendar neste dia"
+                  variante="secundario"
+                  tamanho="md"
+                  className="border-ink bg-transparent"
+                />
+              )
             }
           >
-            Para agendar, abra a conversa da pessoa no Atendimento e use “Aula experimental”. A mensagem de
-            confirmação é revisada antes do envio.
+            {dia >= hoje
+              ? "Marque por aqui ou pela conversa da pessoa no Atendimento, em “Aula experimental”."
+              : "Este dia já passou."}
           </EstadoVazio>
         </div>
       ) : (
-        <ol className="border-t border-ink/15">
-          {doDia.map((aula) => (
-            <ItemAgenda key={aula.id} aula={aula} momento={momentoDaVisita(aula, hoje, horaAgora)} />
-          ))}
-        </ol>
+        <>
+          <ol className="border-t border-ink/15">
+            {doDia.map((aula) => (
+              <ItemAgenda key={aula.id} aula={aula} momento={momentoDaVisita(aula, hoje, horaAgora)} />
+            ))}
+          </ol>
+          {dia >= hoje && (
+            <div className="border-t border-ink/15 px-4 py-3 sm:px-5">
+              <AgendarAulaBalcao dia={dia} rotulo="Agendar neste dia" variante="discreto" tamanho="sm" />
+            </div>
+          )}
+        </>
       )}
     </PainelAngular>
   );

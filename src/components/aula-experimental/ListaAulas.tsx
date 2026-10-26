@@ -65,7 +65,7 @@ export function ListaAulas({
       ? "Ninguém marcou aula experimental para hoje."
       : filtro === "proximas"
         ? "Nenhuma aula experimental marcada daqui para frente."
-        : "Nenhuma aula experimental marcada ainda. Marque pela conversa da pessoa no Atendimento, em “Aula experimental”.";
+        : "Nenhuma aula experimental marcada ainda. Marque em “Agendar aula”, aqui em cima, ou pela conversa da pessoa no Atendimento.";
 
   return (
     <div className="flex flex-col gap-5">

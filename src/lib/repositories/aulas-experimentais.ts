@@ -1,6 +1,6 @@
 import { prisma } from "@/lib/db";
 import { unitIdAtual } from "@/lib/repositories/unit";
-import { formatarTelefone } from "@/lib/whatsapp/telefone";
+import { chaveTelefone, formatarTelefone } from "@/lib/whatsapp/telefone";
 import type { AulaExperimentalItem } from "@/lib/types";
 
 type Linha = {
@@ -80,7 +80,8 @@ export async function listarAulasExperimentaisEntreRepo(
  * o anterior, e a lista mostra a conversa inteira de tentativas.
  */
 export async function criarAulaExperimentalRepo(input: {
-  conversaId: string;
+  /** Nula quando a aula foi marcada na própria tela de Aula experimental. */
+  conversaId: string | null;
   personId: string | null;
   nome: string;
   telefone: string;
@@ -88,6 +89,7 @@ export async function criarAulaExperimentalRepo(input: {
   data: string;
   hora: number;
   agendadoPorId: string;
+  observacao?: string | null;
 }): Promise<AulaExperimentalItem> {
   const aula = await prisma.aulaExperimental.create({
     data: {
@@ -100,10 +102,36 @@ export async function criarAulaExperimentalRepo(input: {
       data: input.data,
       hora: input.hora,
       agendadoPorId: input.agendadoPorId,
+      observacao: input.observacao ?? null,
     },
     select: SELECT,
   });
   return toItem(aula);
+}
+
+/**
+ * Quem já existe com este telefone (casamento pelos 8 últimos dígitos, o mesmo
+ * do Atendimento): o cadastro mais recente e a conversa dele. Serve para a aula
+ * marcada no balcão aparecer ligada à pessoa e à conversa, sem duplicar lead.
+ */
+export async function acharPorTelefoneRepo(
+  telefone: string,
+): Promise<{ personId: string | null; nome: string | null; fase: string | null; conversaId: string | null }> {
+  const chave = chaveTelefone(telefone);
+  if (!chave) return { personId: null, nome: null, fase: null, conversaId: null };
+  const [pessoa] = await prisma.$queryRaw<{ id: string; nome: string; fase: string }[]>`
+    SELECT id, nome, fase::text AS fase FROM "Person"
+    WHERE right(regexp_replace(coalesce(telefone, ''), '[^0-9]', '', 'g'), 8) = ${chave}
+    ORDER BY (fase = 'exaluno'), "criadoEm" DESC
+    LIMIT 1`;
+  const conversas = await prisma.$queryRaw<{ id: string; personId: string | null }[]>`
+    SELECT id, "personId" FROM "Conversa"
+    WHERE "ehGrupo" = false AND right(telefone, 8) = ${chave}
+    ORDER BY "ultimaMensagemEm" DESC
+    LIMIT 5`;
+  // A conversa já ligada a essa pessoa vence; senão, a mais recente.
+  const conversa = conversas.find((c) => pessoa && c.personId === pessoa.id) ?? conversas[0];
+  return { personId: pessoa?.id ?? null, nome: pessoa?.nome ?? null, fase: pessoa?.fase ?? null, conversaId: conversa?.id ?? null };
 }
 
 /**

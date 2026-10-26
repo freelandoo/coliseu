@@ -1,8 +1,8 @@
-import Link from "next/link";
+import { AgendarAulaBalcao } from "@/components/aula-experimental/AgendarAulaBalcao";
 import { AgendaAulaExperimental } from "@/components/aula-experimental/AgendaAulaExperimental";
 import { Coliseu3D } from "@/components/coliseu3d/Coliseu3D";
 import { classeBotao } from "@/components/ui/Botao";
-import { CabecalhoEditorial, CartaoIndicador, EstadoVazio, IconeSetaDireita } from "@/components/ui/editorial";
+import { CabecalhoEditorial, CartaoIndicador, EstadoVazio } from "@/components/ui/editorial";
 import { listarAulasExperimentais } from "@/lib/store";
 import { ehDataISO, hojeNaAcademia, horaNaAcademia, resumoDoDia } from "@/lib/aula-experimental";
 import { requireModulo } from "@/lib/auth/rbac";
@@ -17,8 +17,10 @@ export const dynamic = "force-dynamic";
  * funil (quem é lead, em que estágio está), aqui se olha o relógio — quem vem
  * hoje, que dia já tem visita marcada.
  *
- * O agendamento acontece na conversa do Atendimento (com a confirmação
- * revisada antes do envio); daqui só se navega até ela.
+ * Dois caminhos para agendar: a conversa do Atendimento (a confirmação sai
+ * por lá) ou o "Agendar aula" daqui, para o balcão não precisar ir ao
+ * Atendimento — aqui a aula entra na agenda e a confirmação vai pelo WhatsApp
+ * da recepção, com o texto pronto.
  */
 export default async function AulaExperimentalPage({
   searchParams,
@@ -42,12 +44,7 @@ export default async function AulaExperimentalPage({
     console.error("[aula-experimental] falha ao listar", e);
   }
 
-  const abrirAtendimento = (
-    <Link href="/atendimento" className={classeBotao({ variante: "primario", tamanho: "lg" })}>
-      Abrir Atendimento
-      <IconeSetaDireita />
-    </Link>
-  );
+  const agendar = <AgendarAulaBalcao dia={ehDataISO(pedido) ? pedido : hoje} />;
 
   return (
     <div className="flex flex-col gap-6 lg:gap-8">
@@ -61,14 +58,14 @@ export default async function AulaExperimentalPage({
             <>
               <p className="font-semibold">{resumoDoDia(aulas, hoje, hora)}</p>
               <p className="mt-0.5 text-muted">
-                Agende pela conversa no Atendimento — a confirmação é revisada antes do envio.
+                Agende por aqui ou pela conversa no Atendimento — as duas caem nesta agenda.
               </p>
             </>
           ) : (
             <p className="text-muted">A agenda não pôde ser carregada agora.</p>
           )
         }
-        acoes={abrirAtendimento}
+        acoes={agendar}
         decoracao={
           <div className="relative h-[8.5rem] w-[17rem]">
             <Coliseu3D className="absolute inset-0" intensidade="discreto" />
