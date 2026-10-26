@@ -321,7 +321,14 @@ export function MatriculaFlow({
 
               {carga.tipo === "pronta" && (op.tipo === "editando" || op.tipo === "falhou") && (
                 <>
-                  <CamposCadastro form={form} setCampo={setCampo} erros={erros} exigeCpf mostrarOrigem={false} />
+                  <CamposCadastro
+                    form={form}
+                    setCampo={setCampo}
+                    erros={erros}
+                    exigeCpf
+                    mostrarOrigem={false}
+                    conferirCpf={{ ignorarId: sel.refId }}
+                  />
 
                   <fieldset className="flex flex-col gap-2">
                     <legend className="mb-2 text-sm font-semibold text-ink">Plano *</legend>

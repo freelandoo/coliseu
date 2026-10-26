@@ -28,22 +28,20 @@ export function BuscaTodosCadastros({
   /** Sem isso, cada resultado abre a ficha. */
   aoEscolher?: (p: Achada) => void;
 }) {
-  const [achadas, setAchadas] = useState<Achada[] | null>(null);
+  // Resultado guardado com o termo que o gerou: termo mudou, o velho não aparece.
+  const [resposta, setResposta] = useState<{ termo: string; achadas: Achada[] } | null>(null);
   const t = termo.trim();
 
   useEffect(() => {
-    if (t.length < 3) {
-      setAchadas(null);
-      return;
-    }
+    if (t.length < 3) return;
     let vivo = true;
     const timer = setTimeout(async () => {
       try {
         const r = await fetch(`/api/pessoas/busca?q=${encodeURIComponent(t)}`, { cache: "no-store" });
         const d = (await r.json()) as Achada[];
-        if (vivo) setAchadas(Array.isArray(d) ? d : []);
+        if (vivo) setResposta({ termo: t, achadas: Array.isArray(d) ? d : [] });
       } catch {
-        if (vivo) setAchadas([]);
+        if (vivo) setResposta({ termo: t, achadas: [] });
       }
     }, 300);
     return () => {
@@ -52,6 +50,7 @@ export function BuscaTodosCadastros({
     };
   }, [t]);
 
+  const achadas = resposta && resposta.termo === t ? resposta.achadas : null;
   const visiveis = (achadas ?? []).filter((a) => !ocultarIds.includes(a.id));
   if (t.length < 3 || achadas === null || visiveis.length === 0) return null;
 

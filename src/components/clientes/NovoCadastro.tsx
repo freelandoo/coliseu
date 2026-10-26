@@ -8,7 +8,7 @@ import { formatBRL } from "@/lib/mock-data";
 import type { Pessoa, Plano } from "@/lib/types";
 import { Botao } from "@/components/ui/Botao";
 import { MensagemErro } from "@/components/ui/Campo";
-import { CamposCadastro } from "@/components/clientes/CamposCadastro";
+import { CamposCadastro, type CpfExistente } from "@/components/clientes/CamposCadastro";
 import { ResultadoMatricula } from "@/components/matricula/ResultadoMatricula";
 import {
   ESCOLHA_PADRAO,
@@ -154,6 +154,8 @@ function ModalCadastro({
 
   const plano = planos.find((p) => p.id === planoId);
   const semPlano = matricula && planos.length === 0;
+  // CPF que já é de outro cadastro: não cria outro (o aviso no campo leva ao antigo).
+  const [cpfExistente, setCpfExistente] = useState<CpfExistente | null>(null);
   const travado = enviando || !!incerto;
 
   function setCampo(campo: CampoCadastro, valor: string) {
@@ -170,6 +172,7 @@ function ModalCadastro({
 
   function validar(): boolean {
     const e = validarCadastro(form, { exigeCpf: matricula });
+    if (cpfExistente) e.cpf = `CPF já cadastrado (${cpfExistente.codigo}) — abra o cadastro antigo.`;
     setErros(e);
     return Object.keys(e).length === 0;
   }
@@ -370,6 +373,7 @@ function ModalCadastro({
                   exigeCpf={matricula}
                   mostrarOrigem={!lead && !idConfirmado}
                   desabilitado={travado}
+                  conferirCpf={{ ignorarId: lead?.id ?? idConfirmado, aoMudar: setCpfExistente }}
                 />
               </div>
               {!lead && <p className="mt-3 text-xs text-muted">Vendedor: registrado automaticamente como quem está logado.</p>}
@@ -417,11 +421,11 @@ function ModalCadastro({
 
               <div className="mt-5 flex gap-3">
                 {matricula ? (
-                  <Botao variante="primario" tamanho="lg" onClick={revisar} disabled={semPlano || travado} className="flex-1">
+                  <Botao variante="primario" tamanho="lg" onClick={revisar} disabled={semPlano || travado || !!cpfExistente} className="flex-1">
                     Revisar matrícula
                   </Botao>
                 ) : (
-                  <Botao variante="primario" tamanho="lg" onClick={() => void cadastrarLead()} carregando={enviando} disabled={travado} className="flex-1">
+                  <Botao variante="primario" tamanho="lg" onClick={() => void cadastrarLead()} carregando={enviando} disabled={travado || !!cpfExistente} className="flex-1">
                     {enviando ? "Cadastrando…" : "Cadastrar lead"}
                   </Botao>
                 )}

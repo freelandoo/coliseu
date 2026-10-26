@@ -238,6 +238,7 @@ export function FichaCliente({
                 exigeCpf={false}
                 mostrarOrigem={false}
                 desabilitado={salvando}
+                conferirCpf={{ ignorarId: pessoa.id }}
               />
               <Campo rotulo="Vendedor / consultor">
                 {(a) => (

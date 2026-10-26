@@ -371,6 +371,7 @@ export function FichaMatriculaBalcao({ motivo, onFechar }: { motivo: MotivoFicha
                 exigeCpf
                 mostrarOrigem={false}
                 desabilitado={registrando}
+                conferirCpf={{ ignorarId: personId }}
               />
             )}
           </div>
