@@ -185,6 +185,14 @@ export function FichaCliente({
             ) : (
               plano && (
                 <>
+                  <a
+                    href={`/contrato/${encodeURIComponent(pessoa.id)}`}
+                    target="_blank"
+                    rel="noreferrer"
+                    className={classeBotao({ variante: "contorno" })}
+                  >
+                    Ver contrato
+                  </a>
                   {/* Vale também com pagamento pendente: é como se corrige um plano escolhido errado. */}
                   <Botao variante="contorno" onClick={() => setRenovando("alterar")}>
                     Alterar plano

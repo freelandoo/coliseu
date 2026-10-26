@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { pessoaComCpfRepo } from "@/lib/repositories/pessoas";
 import { criarPessoa, listarPessoas } from "@/lib/store";
 import type { NovaPessoa } from "@/lib/types";
 import { exigirModuloApi } from "@/lib/auth/api-guard";
@@ -25,6 +26,21 @@ export async function POST(req: Request) {
       { erro: "Informe ao menos telefone ou e-mail" },
       { status: 400 },
     );
+  }
+
+  // CPF já cadastrado (lead antigo, ex-aluno, importado do CloudGym): não
+  // duplica — a tela mostra quem é para continuar daquele cadastro.
+  if (body.cpf?.trim()) {
+    const ja = await pessoaComCpfRepo(body.cpf);
+    if (ja) {
+      return NextResponse.json(
+        {
+          erro: `Já existe cadastro com este CPF: ${ja.codigo} · ${ja.nome}. Abra esse cadastro em vez de criar outro.`,
+          existente: { id: ja.id, codigo: ja.codigo, nome: ja.nome, fase: ja.fase },
+        },
+        { status: 409 },
+      );
+    }
   }
 
   // Vendedor é quem está logado fazendo o cadastro — não um campo livre do

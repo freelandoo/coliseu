@@ -226,3 +226,57 @@ export async function matricularPessoaRepo(
 
   return obterPessoaRepo(id);
 }
+
+export interface PessoaAchada {
+  id: string;
+  codigo: string;
+  nome: string;
+  fase: string;
+  cpf: string | null;
+  telefone: string | null;
+}
+
+const COM_ACENTO = "áàâãäéèêëíìîïóòôõöúùûüçñ";
+const SEM_ACENTO = "aaaaaeeeeiiiiooooouuuucn";
+
+/**
+ * Busca em TODOS os cadastros (aluno, lead, ex-aluno) — o que escapa das listas
+ * do dia a dia. Mesma regra de `casaPessoa`: número procura CPF, telefone e
+ * código; texto procura nome (sem acento) e código.
+ */
+export async function buscarPessoasRepo(termo: string, limite = 8): Promise<PessoaAchada[]> {
+  const t = termo.trim();
+  const d = t.replace(/\D/g, "");
+  const soNumero = !/\p{L}/u.test(t);
+  if (soNumero) {
+    if (d.length < 3) return [];
+    return prisma.$queryRaw<PessoaAchada[]>`
+      SELECT id, codigo, nome, fase::text AS fase, cpf, telefone FROM "Person"
+      WHERE regexp_replace(coalesce(cpf, ''), '[^0-9]', '', 'g') LIKE ${`%${d}%`}
+         OR regexp_replace(coalesce(telefone, ''), '[^0-9]', '', 'g') LIKE ${`%${d}%`}
+         OR regexp_replace(codigo, '[^0-9]', '', 'g') LIKE ${`%${d}%`}
+      ORDER BY (fase = 'exaluno'), "criadoEm" DESC
+      LIMIT ${limite}`;
+  }
+  if (t.length < 2) return [];
+  const n = t.normalize("NFD").replace(/\p{Diacritic}/gu, "").toLowerCase();
+  return prisma.$queryRaw<PessoaAchada[]>`
+    SELECT id, codigo, nome, fase::text AS fase, cpf, telefone FROM "Person"
+    WHERE translate(lower(nome), ${COM_ACENTO}, ${SEM_ACENTO}) LIKE ${`%${n}%`}
+       OR lower(codigo) LIKE ${`%${n}%`}
+    ORDER BY (fase = 'exaluno'), "criadoEm" DESC
+    LIMIT ${limite}`;
+}
+
+/** Cadastro que já tem este CPF (comparando só dígitos). */
+export async function pessoaComCpfRepo(cpf: string, ignorarId?: string): Promise<PessoaAchada | null> {
+  const d = cpf.replace(/\D/g, "");
+  if (d.length !== 11) return null;
+  const [p] = await prisma.$queryRaw<PessoaAchada[]>`
+    SELECT id, codigo, nome, fase::text AS fase, cpf, telefone FROM "Person"
+    WHERE regexp_replace(coalesce(cpf, ''), '[^0-9]', '', 'g') = ${d}
+      AND id <> ${ignorarId ?? ""}
+    ORDER BY (fase = 'exaluno'), "criadoEm" DESC
+    LIMIT 1`;
+  return p ?? null;
+}

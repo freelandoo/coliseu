@@ -28,6 +28,8 @@ import {
   type FormCadastro,
 } from "@/lib/cadastro";
 import { executarMatricula, type MatriculaRegistrada } from "@/lib/matricula-cliente";
+import { casaPessoa } from "@/lib/busca-pessoa";
+import { BuscaTodosCadastros } from "@/components/clientes/BuscaTodosCadastros";
 import type { Candidato, Pessoa, Plano } from "@/lib/types";
 
 const METODO_LABEL: Record<MetodoBalcao, string> = {
@@ -50,7 +52,6 @@ interface Matriculado {
   email?: string;
 }
 
-const soDigitos = (s: string) => s.replace(/\D/g, "");
 
 type Carga = { tipo: "carregando" } | { tipo: "erro"; mensagem: string } | { tipo: "pronta" };
 
@@ -146,14 +147,11 @@ export function MatriculaFlow({
     };
   }, [selId]);
 
-  const resultados = useMemo(() => {
-    const q = busca.trim().toLowerCase();
-    if (!q) return candidatos;
-    const qd = soDigitos(busca);
-    return candidatos.filter(
-      (c) => c.nome.toLowerCase().includes(q) || (qd.length > 0 && soDigitos(c.telefone).includes(qd)),
-    );
-  }, [busca, candidatos]);
+  // Nome sem acento, CPF, telefone ou código — ver `casaPessoa`.
+  const resultados = useMemo(
+    () => (busca.trim() ? candidatos.filter((c) => casaPessoa(c, busca)) : candidatos),
+    [busca, candidatos],
+  );
 
   function selecionar(c: Candidato) {
     if (travado) return;
@@ -252,7 +250,7 @@ export function MatriculaFlow({
                 id={buscaId}
                 value={busca}
                 onChange={(e) => setBusca(e.target.value)}
-                placeholder="Nome ou celular…"
+                placeholder="Nome, CPF ou celular…"
                 autoComplete="off"
                 className={classeCampo}
               />
@@ -272,7 +270,9 @@ export function MatriculaFlow({
               <ul className="flex flex-col gap-2">
                 {resultados.length === 0 ? (
                   <Card className="px-4 py-6 text-center text-sm text-muted">
-                    {candidatos.length === 0 ? "Ninguém aguardando matrícula ou renovação." : "Ninguém encontrado."}
+                    {candidatos.length === 0
+                      ? "Ninguém aguardando matrícula ou renovação."
+                      : "Ninguém encontrado entre leads em aberto e renovações."}
                   </Card>
                 ) : (
                   resultados.map((c) => (
@@ -295,6 +295,8 @@ export function MatriculaFlow({
                   ))
                 )}
               </ul>
+              {/* Lead antigo, ex-aluno, cadastro do CloudGym: abre a ficha (de lá, "Iniciar matrícula"). */}
+              <BuscaTodosCadastros termo={busca} ocultarIds={resultados.map((c) => c.refId)} />
             </div>
           ) : (
             <div className="flex flex-col gap-5">

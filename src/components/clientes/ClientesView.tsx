@@ -29,6 +29,8 @@ import { combinaFiltroApp } from "@/lib/freelandoo/rotulos";
 import { BarraTreino, FotoAluno } from "@/components/clientes/FreelandooAluno";
 import { consultaAlunosLembrada, lembrarConsultaAlunos } from "@/lib/memoria-navegacao";
 import { useCascata } from "@/lib/useCascata";
+import { casaPessoa } from "@/lib/busca-pessoa";
+import { BuscaTodosCadastros } from "@/components/clientes/BuscaTodosCadastros";
 
 type Filtro = SituacaoAluno;
 
@@ -49,7 +51,6 @@ const CHIPS_APP: { key: FiltroAppAluno; label: string }[] = [
   { key: "treino_vencido", label: "Treino vencido" },
 ];
 
-const soDigitos = (s: string) => s.replace(/\D/g, "");
 
 /**
  * Nome do aluno na lista. Conta ativa na Freelandoo vira linha rica: foto
@@ -222,18 +223,12 @@ export function ClientesView({
   }
 
   // sem useMemo: o React Compiler memoiza (o manual não podia ser preservado)
-  const q = busca.trim().toLowerCase();
-  const qd = soDigitos(busca);
+  const q = busca.trim();
+  // Nome sem acento, código, CPF ou telefone — ver `casaPessoa`.
   const visiveis = pessoas.filter((p) => {
     if (!combina(p, filtro)) return false;
     if (!combinaFiltroApp(p.freelandoo, filtroApp)) return false;
-    if (!q) return true;
-    return (
-      p.nome.toLowerCase().includes(q) ||
-      p.codigo.toLowerCase().includes(q) ||
-      (!!p.cpf && soDigitos(p.cpf).includes(qd) && qd.length > 0) ||
-      (!!p.telefone && soDigitos(p.telefone).includes(qd) && qd.length > 0)
-    );
+    return casaPessoa(p, busca);
   });
 
   return (
@@ -332,13 +327,16 @@ export function ClientesView({
         </div>
       )}
 
+      {/* Fora desta lista (lead antigo, ex-aluno, cadastro do CloudGym): mostra antes de recadastrar. */}
+      <BuscaTodosCadastros termo={busca} ocultarIds={visiveis.map((p) => p.id)} />
+
       <Card className="overflow-hidden">
         <div ref={listaRef}>
         {visiveis.length === 0 ? (
           <p className="px-5 py-10 text-center text-sm text-muted">
             {pessoas.length === 0
               ? "Nenhum aluno cadastrado ainda. Matricule um lead pela Captação ou use “+ Nova matrícula”."
-              : q
+              : busca.trim()
                 ? `Ninguém encontrado para “${busca.trim()}”${filtro !== "todos" ? " nesta situação" : ""}. A busca cobre nome, código, CPF e telefone.`
                 : filtroApp !== "todos"
                   ? "Nenhum aluno neste filtro do app de treinos."

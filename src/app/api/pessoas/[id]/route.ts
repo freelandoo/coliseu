@@ -10,6 +10,7 @@ import { AsaasError, linkPagamentoWhatsApp, linkParcelamentoWhatsApp, matricular
 import { ehPlanoGratuito, lerFormaCobranca, valorTotalDoPlano } from "@/lib/billing/parcelamento";
 import { cancelarAssinaturasAnteriores } from "@/lib/billing/cobrancas";
 import { prisma } from "@/lib/db";
+import { pessoaComCpfRepo } from "@/lib/repositories/pessoas";
 import type { Pessoa } from "@/lib/types";
 import { exigirModuloApi } from "@/lib/auth/api-guard";
 import { avaliarContaFreelandooSemFalhar } from "@/lib/freelandoo/gatilhos";
@@ -37,6 +38,17 @@ export async function PATCH(req: Request, { params }: Ctx) {
     /** Assinatura mensal (padrão) ou boleto parcelado. */
     formaCobranca?: unknown;
   } & Partial<Pessoa>;
+
+  // CPF de outro cadastro: não grava (seria o mesmo aluno em duas fichas).
+  if (body.cpf?.trim()) {
+    const ja = await pessoaComCpfRepo(body.cpf, id);
+    if (ja) {
+      return NextResponse.json(
+        { erro: `Este CPF já é do cadastro ${ja.codigo} · ${ja.nome}.`, existente: { id: ja.id, codigo: ja.codigo } },
+        { status: 409 },
+      );
+    }
+  }
 
   // Ação especial: matricular (lead → aluno) + assinatura no Asaas
   if (body.acao === "matricular") {

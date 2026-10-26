@@ -387,6 +387,9 @@ model Membership {
   matriculadoPor   User?   @relation("MatriculadoPor", fields: [matriculadoPorId], references: [id], onDelete: SetNull)
   matriculadoPorId String?
 
+  /// Contrato editado pela recepção (sem ele, o contrato sai do modelo preenchido).
+  contrato ContratoAluno?
+
   @@index([personId, status])
   @@index([matriculadoPorId])
 }
@@ -1287,4 +1290,19 @@ model EspelhoCloudgym {
 
   @@unique([tipo, localId])
   @@index([estado])
+}
+
+/// Contrato de uma matrícula depois que a recepção editou o texto (tela "Ver
+/// contrato" na ficha). Sem linha aqui, o contrato é o modelo da academia
+/// preenchido na hora com os dados atuais. Renovação = matrícula nova =
+/// contrato novo.
+model ContratoAluno {
+  id           String     @id @default(cuid())
+  membership   Membership @relation(fields: [membershipId], references: [id], onDelete: Cascade)
+  membershipId String     @unique
+  /// HTML já preenchido e editado (limpo em `limparHtmlContrato`).
+  html         String
+  /// Nome de quem editou por último (cópia — o colaborador pode sair).
+  editadoPor   String?
+  editadoEm    DateTime   @updatedAt
 }
