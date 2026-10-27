@@ -262,7 +262,7 @@ export function mensagemAulaExperimental(input: {
   ].join("\n");
 }
 
-// ---------- uma aula experimental por pessoa (26/10/2026) ----------
+// ---------- limite de aula experimental por pessoa (1 em 26/10; 3 dias desde 27/10/2026) ----------
 
 /**
  * Primeiro nome para casar registros pelo telefone: minúsculo e sem acento.

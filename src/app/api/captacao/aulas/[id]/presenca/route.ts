@@ -8,7 +8,7 @@ export const dynamic = "force-dynamic";
 /**
  * PATCH — veio / faltou, marcado depois do horário (aba Histórico).
  *
- * Decide a regra de uma aula por pessoa: aula passada sem marcação conta como
+ * Decide a regra dos 3 dias de aula por pessoa: aula passada sem marcação conta como
  * feita; "faltou" libera agendar de novo. `null` desfaz a marcação.
  */
 export async function PATCH(req: Request, { params }: { params: Promise<{ id: string }> }) {

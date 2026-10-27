@@ -81,7 +81,7 @@ export function AulaExperimentalPainel({
   const [hora, setHora] = useState<number | null>(null);
   const [enviando, setEnviando] = useState(false);
   const [desfecho, setDesfecho] = useState<Desfecho | null>(null);
-  // CPF: uma aula experimental por pessoa (conferido aqui e de novo no servidor).
+  // CPF: até 3 dias de aula experimental por pessoa (conferido aqui e de novo no servidor).
   const [cpf, setCpf] = useState("");
   const [jaFez, setJaFez] = useState<string | null>(null);
   const cpfOk = cpfValido(normalizarCpf(cpf));
@@ -327,7 +327,7 @@ export function AulaExperimentalPainel({
                   </div>
                 </dl>
                 <label className="flex flex-col gap-1 text-xs font-semibold text-muted">
-                  CPF da pessoa (obrigatório — uma aula experimental por pessoa)
+                  CPF da pessoa (obrigatório — até 3 dias de aula experimental por pessoa)
                   <input
                     inputMode="numeric"
                     autoComplete="off"
@@ -344,7 +344,7 @@ export function AulaExperimentalPainel({
                 </label>
                 {jaFez && (
                   <p role="alert" className="rounded-lg border border-danger/40 bg-danger-soft px-3 py-2 text-xs text-ink">
-                    <strong>Já fez aula experimental:</strong> {jaFez}. Se ela faltou, marque “Faltou” no Histórico da
+                    <strong>Esta pessoa {jaFez}.</strong> Se ela faltou em alguma, marque “Faltou” no Histórico da
                     Aula experimental e agende de novo.
                   </p>
                 )}

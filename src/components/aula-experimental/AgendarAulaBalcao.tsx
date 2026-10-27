@@ -30,6 +30,8 @@ type Conferencia = {
   pessoa: { personId: string; nome: string; fase: string; porque: "cpf" | "telefone" } | null;
   conversaId: string | null;
   jaFez: string | null;
+  diasUsados: number;
+  limiteDias: number;
   anteriores: { situacao: "fez" | "faltou" | "marcada"; texto: string }[];
 };
 type Agendada = { aula: AulaExperimentalItem; leadCriado: boolean; mensagem: string; waLink: string };
@@ -56,7 +58,7 @@ function mascaraCpf(v: string): string {
  * confirmação sai pela conversa; aqui a aula entra na agenda e a recepção
  * manda a confirmação pelo WhatsApp dela, com o texto pronto.
  *
- * CPF obrigatório: cada pessoa faz uma aula experimental só. A tela confere
+ * CPF obrigatório: cada pessoa tem até 3 dias de aula experimental. A tela confere
  * pelo CPF e pelo telefone + primeiro nome (no sistema e na planilha antiga)
  * antes de gravar, e mostra quem já existe com esses dados. Número novo vira
  * lead.
@@ -215,7 +217,7 @@ function Formulario({ dia, agendante, onFechar }: { dia?: string; agendante: Age
     <Modal onFechar={onFechar} fecharComEsc={!enviando} className="max-w-lg">
       <TituloModal>Agendar aula experimental</TituloModal>
       <DescricaoModal className="mt-0.5">
-        Uma aula experimental por pessoa. A confirmação você manda depois, pelo WhatsApp, com o texto pronto — e o
+        Até 3 dias de aula experimental por pessoa. A confirmação você manda depois, pelo WhatsApp, com o texto pronto — e o
         lembrete sai sozinho na véspera.
       </DescricaoModal>
       <p className="mt-3 text-sm text-ink">
@@ -350,9 +352,9 @@ function Formulario({ dia, agendante, onFechar }: { dia?: string; agendante: Age
 
       {conf?.jaFez && (
         <div role="alert" className="mt-4 rounded-lg border border-danger/40 bg-danger-soft px-3 py-2 text-sm text-ink">
-          <p className="font-semibold">Esta pessoa já fez aula experimental.</p>
+          <p className="font-semibold">Esta pessoa já usou os {conf.limiteDias} dias de aula experimental.</p>
           <p className="mt-0.5 text-xs">{conf.jaFez}</p>
-          <p className="mt-1 text-xs text-muted">Se ela faltou, marque “Faltou” no Histórico e agende de novo.</p>
+          <p className="mt-1 text-xs text-muted">Se ela faltou em alguma, marque “Faltou” no Histórico e agende de novo.</p>
           {agendante.podeLiberar && (
             <label className="mt-2 flex items-center gap-2 text-xs">
               <input type="checkbox" checked={liberar} onChange={(e) => setLiberar(e.target.checked)} />
@@ -361,9 +363,10 @@ function Formulario({ dia, agendante, onFechar }: { dia?: string; agendante: Age
           )}
         </div>
       )}
-      {!conf?.jaFez && marcada && (
+      {!conf?.jaFez && conf && conf.diasUsados > 0 && (
         <p role="status" className="mt-4 text-xs text-muted">
-          Já tem aula marcada: {marcada.texto}. Esta fica como remarcação.
+          {conf.diasUsados} de {conf.limiteDias} dias de aula experimental usados
+          {marcada ? ` · já tem aula marcada: ${marcada.texto}` : ""}.
         </p>
       )}
       {erro && <MensagemErro className="mt-4">{erro}</MensagemErro>}

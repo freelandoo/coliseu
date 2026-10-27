@@ -7,7 +7,13 @@ import {
   primeiroNomeChave,
   situacaoAnterior,
 } from "@/lib/aula-experimental";
-import { aulasAnterioresRepo, criarAulaExperimentalRepo, jaFez } from "@/lib/repositories/aulas-experimentais";
+import {
+  aulasAnterioresRepo,
+  criarAulaExperimentalRepo,
+  diasUsados,
+  esgotouAulas,
+  type AulaAnterior,
+} from "@/lib/repositories/aulas-experimentais";
 import { conferirAulaNova } from "@/lib/aula-experimental-regra";
 import { enviarLembretesAula } from "@/lib/aula-experimental-lembrete";
 
@@ -48,7 +54,21 @@ describe("regras puras", () => {
   });
 });
 
-describe("uma aula experimental por pessoa (banco de teste)", () => {
+describe("até 3 dias de aula por pessoa", () => {
+  const aula = (data: string, situacao: AulaAnterior["situacao"]): AulaAnterior => ({
+    origem: "sistema", nome: "Ana", data, hora: 18, modalidade: "Boxe", situacao, porque: "cpf",
+  });
+
+  it("conta os dias que fez e os marcados; falta não conta; mesmo dia conta uma vez", () => {
+    const duas = [aula("2026-10-20", "fez"), aula("2026-10-29", "marcada")];
+    expect(esgotouAulas(duas)).toBeNull();
+    expect(esgotouAulas([...duas, aula("2026-10-10", "faltou")])).toBeNull();
+    expect(diasUsados([...duas, aula("2026-10-20", "fez")])).toHaveLength(2);
+    expect(esgotouAulas([...duas, aula("2026-10-25", "fez")])).toHaveLength(3);
+  });
+});
+
+describe("limite de aula experimental por pessoa (banco de teste)", () => {
   const k = String(Date.now()).slice(-8);
   const cel = `119${k}`;
 
@@ -60,23 +80,29 @@ describe("uma aula experimental por pessoa (banco de teste)", () => {
       ],
     });
     const hoje = "2026-10-27";
-    expect(jaFez(await aulasAnterioresRepo({ telefone: `(11) 9${k.slice(0, 4)}-${k.slice(4)}`, nome: "leandro" }, hoje))).not.toBeNull();
+    expect(diasUsados(await aulasAnterioresRepo({ telefone: `(11) 9${k.slice(0, 4)}-${k.slice(4)}`, nome: "leandro" }, hoje))).toHaveLength(1);
     // Noah faltou: pode marcar.
     const noah = await aulasAnterioresRepo({ telefone: cel, nome: "Noah" }, hoje);
     expect(noah.map((a) => a.situacao)).toEqual(["faltou"]);
-    expect(jaFez(noah)).toBeNull();
+    expect(diasUsados(noah)).toHaveLength(0);
     // Mesmo número, nome que não está na planilha.
     expect(await aulasAnterioresRepo({ telefone: cel, nome: "Maria" }, hoje)).toEqual([]);
   });
 
-  it("sistema: CPF casa mesmo com outro telefone; conferirAulaNova recusa CPF inválido e quem já fez", async () => {
+  it("sistema: CPF casa mesmo com outro telefone; conferirAulaNova recusa CPF inválido e quem usou os 3 dias", async () => {
     const user = await prisma.user.findFirstOrThrow();
     const cpf = "52998224725"; // CPF de exemplo válido
     await prisma.aulaExperimental.deleteMany({ where: { cpf } });
-    await criarAulaExperimentalRepo({
-      conversaId: null, personId: null, nome: "Pessoa Cpf", telefone: "11900000001",
-      modalidade: "Boxe", data: "2020-01-01", hora: 18, agendadoPorId: user.id, cpf,
-    });
+    const marcar = (data: string) =>
+      criarAulaExperimentalRepo({
+        conversaId: null, personId: null, nome: "Pessoa Cpf", telefone: "11900000001",
+        modalidade: "Boxe", data, hora: 18, agendadoPorId: user.id, cpf,
+      });
+    await marcar("2020-01-01");
+    await marcar("2020-01-02");
+    // 2 dias usados: ainda pode o 3º.
+    expect((await conferirAulaNova({ cpf, telefone: null, nome: null })).ok).toBe(true);
+    await marcar("2020-01-03");
     expect((await conferirAulaNova({ cpf: "123", telefone: null, nome: null })).ok).toBe(false);
     const c = await conferirAulaNova({ cpf: "529.982.247-25", telefone: "11955555555", nome: "Outro Nome" });
     expect(c.ok).toBe(false);

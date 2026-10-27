@@ -78,7 +78,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
     );
   }
 
-  // Uma aula por pessoa: confere ANTES de mandar a confirmação.
+  // Até 3 dias de aula por pessoa: confere ANTES de mandar a confirmação.
   const conf = await conferirAulaNova({
     cpf: body.cpf,
     telefone: soDigitos(conversa.telefone),

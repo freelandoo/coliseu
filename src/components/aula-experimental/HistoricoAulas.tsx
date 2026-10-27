@@ -9,7 +9,7 @@ import { BadgeStatus, type TomStatus } from "@/components/ui/editorial";
 /**
  * Quem já fez (ou marcou) aula experimental: as aulas do sistema que já
  * passaram e a planilha antiga (jun–out/2026). É aqui que a recepção marca
- * "Veio" / "Faltou" — e isso decide a regra de uma aula por pessoa: aula
+ * "Veio" / "Faltou" — e isso decide a regra dos 3 dias de aula por pessoa: aula
  * passada sem marcação conta como feita; "Faltou" libera agendar de novo.
  */
 type Linha =

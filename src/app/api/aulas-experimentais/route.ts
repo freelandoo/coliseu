@@ -6,13 +6,15 @@ import {
   aulasAnterioresRepo,
   criarAulaExperimentalRepo,
   guardarCpfNaPessoaRepo,
-  jaFez,
+  diasUsados,
+  esgotouAulas,
+  LIMITE_DIAS_AULA,
   pessoaPorCpfRepo,
 } from "@/lib/repositories/aulas-experimentais";
 import { criarPessoaRepo } from "@/lib/repositories/pessoas";
 import { formatarTelefone, soDigitos } from "@/lib/whatsapp/telefone";
 import { cpfValido, normalizarCpf } from "@/lib/cpf";
-import { conferirAulaNova, descreverAnterior } from "@/lib/aula-experimental-regra";
+import { conferirAulaNova, descreverAnterior, descreverEsgotado } from "@/lib/aula-experimental-regra";
 import {
   ehDataISO,
   ehHora,
@@ -26,7 +28,7 @@ export const dynamic = "force-dynamic";
 
 /**
  * GET ?cpf=&telefone=&nome= — antes de gravar, a tela mostra quem é a pessoa
- * (cadastro e conversa) e se ela já fez aula experimental.
+ * (cadastro e conversa) e quantos dos 3 dias de aula experimental já usou.
  */
 export async function GET(req: Request) {
   const g = await exigirModuloApi("aula-experimental", "atendimento");
@@ -41,7 +43,7 @@ export async function GET(req: Request) {
     telefone.length >= 10 ? acharPorTelefoneRepo(telefone) : Promise.resolve(null),
     aulasAnterioresRepo({ cpf: cpfValido(cpf) ? cpf : null, telefone, nome }, hojeNaAcademia()),
   ]);
-  const fez = jaFez(anteriores);
+  const esgotou = esgotouAulas(anteriores);
   return NextResponse.json({
     pessoa: porCpf
       ? { personId: porCpf.id, nome: porCpf.nome, fase: porCpf.fase, porque: "cpf" }
@@ -49,7 +51,10 @@ export async function GET(req: Request) {
         ? { personId: porTelefone.personId, nome: porTelefone.nome, fase: porTelefone.fase, porque: "telefone" }
         : null,
     conversaId: porTelefone?.conversaId ?? null,
-    jaFez: fez ? descreverAnterior(fez) : null,
+    // Nome antigo do campo: texto que bloqueia o agendamento (dias esgotados).
+    jaFez: esgotou ? descreverEsgotado(esgotou) : null,
+    diasUsados: diasUsados(anteriores).length,
+    limiteDias: LIMITE_DIAS_AULA,
     anteriores: anteriores.map((a) => ({ ...a, texto: descreverAnterior(a) })),
   });
 }
@@ -58,7 +63,7 @@ export async function GET(req: Request) {
  * POST — aula marcada no balcão, pela tela de Aula experimental (o outro
  * caminho é a conversa do Atendimento, que já envia a confirmação).
  *
- * CPF obrigatório e uma aula por pessoa (ver `conferirAulaNova`). Daqui nada é
+ * CPF obrigatório e até 3 dias de aula por pessoa (ver `conferirAulaNova`). Daqui nada é
  * enviado: a aula entra na agenda e a resposta traz o texto da confirmação para
  * a recepção mandar pelo WhatsApp dela; o lembrete da véspera sai sozinho.
  * Liga a aula ao cadastro com o mesmo CPF — ou, sem ele, ao do mesmo telefone

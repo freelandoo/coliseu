@@ -239,9 +239,31 @@ export async function aulasAnterioresRepo(
   return out;
 }
 
-/** A pessoa já fez aula experimental (e por isso não pode marcar outra)? */
-export function jaFez(anteriores: AulaAnterior[]): AulaAnterior | null {
-  return anteriores.find((a) => a.situacao === "fez") ?? null;
+/** Dias de aula experimental por pessoa (pedido de 27/10/2026; antes era 1). */
+export const LIMITE_DIAS_AULA = 3;
+
+/**
+ * Dias de aula que a pessoa já usou: os que fez e os que tem marcados (falta
+ * não conta). Duas aulas no mesmo dia contam como um dia. A mais recente
+ * primeiro.
+ */
+export function diasUsados(anteriores: AulaAnterior[]): AulaAnterior[] {
+  const vistos = new Set<string>();
+  const out: AulaAnterior[] = [];
+  for (const a of anteriores) {
+    if (a.situacao === "faltou") continue;
+    const dia = a.data ?? `sem-data-${out.length}`;
+    if (vistos.has(dia)) continue;
+    vistos.add(dia);
+    out.push(a);
+  }
+  return out;
+}
+
+/** A pessoa já usou os dias de aula experimental (e por isso não pode marcar outra)? */
+export function esgotouAulas(anteriores: AulaAnterior[]): AulaAnterior[] | null {
+  const usados = diasUsados(anteriores);
+  return usados.length >= LIMITE_DIAS_AULA ? usados : null;
 }
 
 /** Veio / faltou, marcado pela recepção depois do horário. `null` desfaz. */
