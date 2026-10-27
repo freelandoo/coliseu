@@ -37,8 +37,8 @@ export async function POST(req: Request, { params }: Ctx) {
   const metodo = body.metodo as MetodoBalcao;
 
   try {
-    const venda = await confirmarVendaBalcao(id, metodo);
-    return NextResponse.json({ ok: true, status: "pago", metodo, valor: venda.valor });
+    const venda = await confirmarVendaBalcao(id, metodo, body.parcelas ?? 1);
+    return NextResponse.json({ ok: true, status: "pago", metodo, valor: venda.valorPago, parcelas: venda.parcelas });
   } catch (e) {
     if (e instanceof VendaBalcaoInvalida) return NextResponse.json({ erro: e.message }, { status: e.status });
     console.error("[checkout] venda de balcão falhou:", e);

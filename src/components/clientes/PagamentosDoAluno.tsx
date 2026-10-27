@@ -6,6 +6,8 @@ import { formatBRL, formatData } from "@/lib/mock-data";
 import { classeBotao } from "@/components/ui/Botao";
 import { MensagemErro, classeCampo, classeRotulo } from "@/components/ui/Campo";
 import { linkCobrancaWhatsApp } from "@/lib/asaas";
+import { PREFIXO_PARCELA_BALCAO } from "@/lib/billing/parcelamento";
+import { CheckoutBalcao } from "@/components/matricula/CheckoutBalcao";
 
 type Pagamento = {
   id: string;
@@ -95,6 +97,8 @@ export function PagamentosDoAluno({
   const [novaAberta, setNovaAberta] = useState(false);
   const [nova, setNova] = useState({ valor: "", vencimento: "", descricao: "" });
   const [cobranca, setCobranca] = useState<Cobranca | null>(null);
+  // Parcela do plano parcelado no balcão: a recepção confirma aqui, mês a mês.
+  const [recebendo, setRecebendo] = useState<Pagamento | null>(null);
 
   const carregar = useCallback(async () => {
     try {
@@ -339,6 +343,7 @@ export function PagamentosDoAluno({
           {pagamentos.map((p) => {
             const st = STATUS[p.status] ?? STATUS.PENDING;
             const aberta = p.status === "PENDING" || p.status === "OVERDUE";
+            const parcelaBalcao = p.asaasPaymentId.startsWith(PREFIXO_PARCELA_BALCAO);
             return (
               <li key={p.id} className="flex flex-wrap items-center gap-x-3 gap-y-1 py-3">
                 <div className="min-w-0 flex-1">
@@ -354,6 +359,15 @@ export function PagamentosDoAluno({
                   </p>
                 </div>
                 <Badge tone={st.tom}>{st.rotulo}</Badge>
+                {aberta && parcelaBalcao && (
+                  <button
+                    type="button"
+                    onClick={() => setRecebendo(p)}
+                    className={classeBotao({ variante: "primario", tamanho: "sm" })}
+                  >
+                    Receber no balcão
+                  </button>
+                )}
                 {aberta && p.link && (
                   <button type="button" onClick={() => copiar(p)} className={btnGhost}>
                     {copiado === p.link ? "Copiado" : "Copiar link"}
@@ -401,6 +415,20 @@ export function PagamentosDoAluno({
             </ul>
           )}
         </div>
+      )}
+
+      {recebendo && (
+        <CheckoutBalcao
+          personId={personId}
+          nome={cobranca?.aluno.nome ?? ""}
+          planoNome="Plano parcelado no balcão"
+          valor={recebendo.valor}
+          onPago={() => {
+            setRecebendo(null);
+            void carregar();
+          }}
+          onFechar={() => setRecebendo(null)}
+        />
       )}
     </Card>
   );

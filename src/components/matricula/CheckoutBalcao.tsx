@@ -5,13 +5,11 @@ import { cn } from "@/lib/cn";
 import { formatBRL } from "@/lib/mock-data";
 import { DescricaoModal, Modal, TituloModal } from "@/components/ui/Modal";
 import { Botao } from "@/components/ui/Botao";
-import { MensagemErro } from "@/components/ui/Campo";
+import { MensagemErro, classeCampo } from "@/components/ui/Campo";
+import { dividirEmParcelas } from "@/lib/billing/parcelamento";
 import { lerResultado, sinalDeTempo, temOk } from "@/lib/operacao";
 
 export type MetodoBalcao = "dinheiro" | "pix" | "debito" | "credito";
-
-/** Até quantas vezes a maquininha parcela (igual a `MAX_PARCELAS_CARTAO` do servidor). */
-const MAX_PARCELAS_CARTAO = 12;
 
 interface Venda {
   valor: number;
@@ -19,13 +17,14 @@ interface Venda {
   valorMensal: number | null;
   meses: number;
   rotulo: string | null;
+  parcela: { numero: number; de: number } | null;
 }
 
-const METODOS: { key: MetodoBalcao; label: string; icone: string; parcelavel?: boolean }[] = [
+const METODOS: { key: MetodoBalcao; label: string; icone: string }[] = [
   { key: "dinheiro", label: "Dinheiro", icone: "💵" },
   { key: "pix", label: "PIX", icone: "⚡" },
   { key: "debito", label: "Cartão débito", icone: "💳" },
-  { key: "credito", label: "Cartão crédito", icone: "💳", parcelavel: true },
+  { key: "credito", label: "Cartão crédito", icone: "💳" },
 ];
 
 export function CheckoutBalcao({
@@ -73,8 +72,12 @@ export function CheckoutBalcao({
   }, [personId]);
 
   const total = venda?.valor ?? valor;
-  const credito = metodo === "credito";
-  const valorParcela = credito && parcelas > 1 ? total / parcelas : total;
+  // Plano de vários meses: primeiro escolhe em quantas parcelas mensais o total
+  // fica. A 1ª é paga agora; as outras a recepção confirma aqui, mês a mês.
+  const parcelavel = !!venda?.planoInteiro && venda.meses > 1;
+  const n = parcelavel ? parcelas : 1;
+  const valores = dividirEmParcelas(total, n);
+  const agora = valores[0];
 
   async function confirmar() {
     if (emVoo.current || incerto) return;
@@ -85,7 +88,7 @@ export function CheckoutBalcao({
       fetch(`/api/pessoas/${personId}/checkout`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ metodo, parcelas: credito ? parcelas : 1 }),
+        body: JSON.stringify({ metodo, parcelas: n }),
         signal: sinalDeTempo(),
       }),
       temOk,
@@ -120,12 +123,41 @@ export function CheckoutBalcao({
         {venda?.planoInteiro && venda.valorMensal !== null && (
           <Linha rotulo="Mensalidade" valor={`${formatBRL(venda.valorMensal)} × ${venda.meses} meses`} />
         )}
-        <Linha rotulo={venda?.planoInteiro ? "Total do plano" : "Total"} valor={formatBRL(total)} destaque />
+        {venda?.parcela && (
+          <Linha rotulo="Parcela" valor={`${venda.parcela.numero} de ${venda.parcela.de}`} />
+        )}
+        <Linha
+          rotulo={venda?.planoInteiro ? "Total do plano" : venda?.parcela ? "Valor da parcela" : "Total"}
+          valor={formatBRL(total)}
+          destaque={!parcelavel || n === 1}
+        />
       </div>
-      {venda?.planoInteiro && (
-        <p className="mt-2 text-xs text-muted">
-          O plano inteiro é pago agora. A cobrança mensal no Asaas é cancelada para o aluno não ser cobrado de novo.
-        </p>
+
+      {parcelavel && (
+        <div className="mt-5">
+          <label htmlFor="checkout-parcelas" className="text-sm font-medium text-muted">
+            Em quantas parcelas?
+          </label>
+          <select
+            id="checkout-parcelas"
+            value={parcelas}
+            onChange={(e) => setParcelas(Number(e.target.value))}
+            disabled={enviando || incerto}
+            className={cn(classeCampo, "mt-2")}
+          >
+            {Array.from({ length: venda.meses }, (_, i) => i + 1).map((k) => (
+              <option key={k} value={k}>
+                {k === 1 ? `À vista · ${formatBRL(total)}` : `${k}× de ${formatBRL(dividirEmParcelas(total, k)[1])}`}
+              </option>
+            ))}
+          </select>
+          <p className="mt-2 text-xs text-muted">
+            {n === 1
+              ? "O plano inteiro é pago agora."
+              : `Hoje: 1ª parcela de ${formatBRL(agora)}. As outras ${n - 1} vencem uma por mês e a recepção confirma cada uma no balcão (ficha do aluno → Pagamentos).`}{" "}
+            A cobrança mensal no Asaas é cancelada para o aluno não ser cobrado de novo.
+          </p>
+        </div>
       )}
 
       <div className="mt-5">
@@ -153,39 +185,6 @@ export function CheckoutBalcao({
         </div>
       </div>
 
-      {credito && (
-        <div className="mt-4">
-          <p id="checkout-parcelas" className="text-sm font-medium text-muted">
-            Parcelas
-          </p>
-          <div role="group" aria-labelledby="checkout-parcelas" className="mt-2 flex flex-wrap gap-2">
-            {Array.from({ length: MAX_PARCELAS_CARTAO }, (_, i) => i + 1).map((n) => (
-              <button
-                type="button"
-                key={n}
-                onClick={() => setParcelas(n)}
-                aria-pressed={parcelas === n}
-                className={cn(
-                  "min-h-9 rounded-md border px-3 py-1.5 text-sm tabular-nums transition-colors",
-                  parcelas === n
-                    ? "border-brand bg-brand-soft font-semibold text-ink"
-                    : "border-border-strong bg-surface text-muted hover:border-control hover:text-ink",
-                )}
-              >
-                {n}x
-              </button>
-            ))}
-          </div>
-          {parcelas > 1 && (
-            <p className="mt-2 text-xs text-muted">
-              {parcelas}× de <span className="font-medium text-ink">{formatBRL(valorParcela)}</span> na
-              maquininha (total {formatBRL(total)}). O sistema registra o pagamento do total; o parcelamento fica
-              entre a pessoa e a operadora.
-            </p>
-          )}
-        </div>
-      )}
-
       {erro && <MensagemErro className="mt-4">{erro}</MensagemErro>}
 
       <Botao
@@ -197,7 +196,7 @@ export function CheckoutBalcao({
         disabled={incerto || carregandoVenda}
         className="mt-6"
       >
-        {enviando ? "Confirmando…" : `Confirmar pagamento · ${formatBRL(total)}`}
+        {enviando ? "Confirmando…" : n > 1 ? `Confirmar 1ª parcela · ${formatBRL(agora)}` : `Confirmar pagamento · ${formatBRL(agora)}`}
       </Botao>
       <Botao bloco onClick={onFechar} disabled={enviando} className="mt-3">
         {incerto ? "Fechar" : "Cancelar"}

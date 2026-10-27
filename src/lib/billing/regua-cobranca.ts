@@ -1,5 +1,6 @@
 import { prisma } from "@/lib/db";
 import { ehIdAsaasReal, pausarAvisosAsaas } from "@/lib/asaas";
+import { PREFIXO_PARCELA_BALCAO } from "@/lib/billing/parcelamento";
 import { carregarContextoAcesso } from "@/lib/access/context";
 import { evaluateAccessEligibility } from "@/lib/access/policy";
 import { recalcularAcessoDePessoa } from "@/lib/access/outbox";
@@ -230,6 +231,11 @@ async function estadoDaParcela(
   const atraso = diasDesde(parcela.dueDate, agora);
   const venc = parcela.dueDate.toLocaleDateString("pt-BR", { timeZone: "UTC" });
 
+  if (parcela.asaasPaymentId.startsWith(PREFIXO_PARCELA_BALCAO)) {
+    return atraso > 0
+      ? { cor: "vermelho", enviada: false, texto: `Parcela do balcão de ${venc} vencida: cobre e receba no balcão.` }
+      : { cor: "nenhuma", enviada: false, texto: `Próxima parcela do balcão vence ${venc}.` };
+  }
   if (!ehIdAsaasReal(parcela.asaasPaymentId)) {
     return atraso > 0
       ? { cor: "vermelho", enviada: false, texto: `Parcela de ${venc} vencida fora do Asaas (CloudGym): cobre manualmente.` }

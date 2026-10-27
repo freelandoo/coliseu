@@ -3,6 +3,7 @@ import { prisma } from "@/lib/db";
 import { matricularNoAsaas } from "@/lib/asaas";
 import { matricularPessoaRepo } from "@/lib/repositories/pessoas";
 import { confirmarVendaBalcao, rotuloDaDuracao, vendaDeBalcao } from "@/lib/billing/balcao";
+import { dividirEmParcelas } from "@/lib/billing/parcelamento";
 
 let unitId = "";
 
@@ -52,6 +53,36 @@ test("semestral no balcão cobra mensalidade × 6 e para a assinatura", async ()
 test("anual no balcão cobra mensalidade × 12", async () => {
   const p = await matricular("TBAL02", 365);
   expect((await vendaDeBalcao(p.id))?.valor).toBe(1558.8);
+});
+
+test("dividir em parcelas fecha o total em centavos", () => {
+  expect(dividirEmParcelas(1155, 15)).toEqual(Array(15).fill(77));
+  const tres = dividirEmParcelas(100, 3);
+  expect(tres).toEqual([33.34, 33.33, 33.33]);
+});
+
+test("anual parcelado no balcão: paga a 1ª agora, as outras ficam uma por mês", async () => {
+  const p = await matricular("TBAL04", 365);
+  const r = await confirmarVendaBalcao(p.id, "pix", 12);
+  expect(r).toMatchObject({ valorPago: 129.9, parcelas: 12 });
+
+  const pagamentos = await prisma.payment.findMany({ where: { personId: p.id, asaasPaymentId: { startsWith: "balcao_parc_" } }, orderBy: { dueDate: "asc" } });
+  expect(pagamentos).toHaveLength(12);
+  expect(pagamentos[0]).toMatchObject({ status: "PAID", value: 129.9, descricao: "Parcela 1 de 12 · Anual no balcão" });
+  expect(pagamentos.slice(1).every((x) => x.status === "PENDING")).toBe(true);
+  expect(pagamentos.reduce((s, x) => s + x.value, 0)).toBeCloseTo(1558.8, 2);
+  expect((await prisma.membership.findFirstOrThrow({ where: { personId: p.id } })).status).toBe("ACTIVE");
+
+  // mês seguinte: o balcão oferece a 2ª parcela
+  const proxima = await vendaDeBalcao(p.id);
+  expect(proxima).toMatchObject({ valor: 129.9, parcela: { numero: 2, de: 12 }, planoInteiro: false });
+  await confirmarVendaBalcao(p.id, "dinheiro");
+  expect((await vendaDeBalcao(p.id))?.parcela).toEqual({ numero: 3, de: 12 });
+});
+
+test("parcelas acima dos meses do plano são recusadas", async () => {
+  const p = await matricular("TBAL05", 90);
+  await expect(confirmarVendaBalcao(p.id, "pix", 4)).rejects.toThrow("Parcelas devem ir de 1 a 3.");
 });
 
 test("mensal no balcão segue cobrando a mensalidade", async () => {

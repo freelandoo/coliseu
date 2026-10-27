@@ -33,6 +33,16 @@ export function opcoesDeParcelas(plano: { duracaoDias: number }): number[] {
   return Array.from({ length: mesesDoPlano(plano.duracaoDias) }, (_, i) => i + 1);
 }
 
+/** Id das parcelas mensais da venda de balcão (`balcao_parc_<cobrança>_<n>`). */
+export const PREFIXO_PARCELA_BALCAO = "balcao_parc_";
+
+/** Divide o total em N parcelas em centavos; a diferença do arredondamento vai na 1ª. */
+export function dividirEmParcelas(total: number, parcelas: number): number[] {
+  const centavos = Math.round(total * 100);
+  const base = Math.floor(centavos / parcelas);
+  return Array.from({ length: parcelas }, (_, i) => (i === 0 ? centavos - base * (parcelas - 1) : base) / 100);
+}
+
 /** Lê o que veio da tela. Devolve erro em texto quando não dá para parcelar. */
 export function lerFormaCobranca(
   bruto: unknown,
