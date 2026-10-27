@@ -27,6 +27,8 @@ export interface CgParcela {
   dueDate: string;
   /** paid | overdue | canceled | null (em aberto, ainda não venceu) */
   status: string | null;
+  /** Dia em que entrou no caixa (parcela paga). */
+  cashBookDate?: string | null;
 }
 
 export interface CgContrato {
@@ -144,6 +146,11 @@ async function cg<T>(metodo: "GET" | "POST" | "PUT" | "DELETE", caminho: string,
     });
     // Token derrubado (outro login do mesmo usuário): renova uma vez.
     if (res.status === 401 && tentativa === 0 && process.env.CLOUDGYM_SENHA) continue;
+    // Limite de requisições ("Too many requests"): espera e tenta de novo.
+    if (res.status === 429 && tentativa < 5) {
+      await new Promise((r) => setTimeout(r, 3_000 * (tentativa + 1)));
+      continue;
+    }
     const texto = await res.text();
     let json: unknown = {};
     try {
@@ -158,6 +165,53 @@ async function cg<T>(metodo: "GET" | "POST" | "PUT" | "DELETE", caminho: string,
     }
     return json as T;
   }
+}
+
+/** Linha da listagem de clientes (GET /customer/{unidade}). */
+export interface CgClienteLista {
+  id: number;
+  name: string;
+  cpf: string | null;
+  email: string | null;
+  cellPhoneNumber: string | null;
+  birthDay: string | null;
+  gender: string | null;
+  rg: string | null;
+  zipCode: string | null;
+  city: string | null;
+  state: string | null;
+  source: string | null;
+  status: string; // active | inactive
+  plan: string | null; // nomes dos planos separados por "|"
+  creationDate: string | null;
+  startDate: string | null;
+  endDate: string | null;
+}
+
+/** Todos os clientes da unidade num status (a listagem só conhece active e inactive). */
+export async function listarClientes(status: "active" | "inactive"): Promise<CgClienteLista[]> {
+  // O CloudGym devolve no máximo 1000 por página.
+  const todos: CgClienteLista[] = [];
+  for (let page = 0; ; page++) {
+    const r = await cg<{ content: CgClienteLista[]; totalElements: number; last: boolean }>(
+      "GET",
+      `/customer/${UNIDADE_CLOUDGYM}?page=${page}&size=1000&filter=${encodeURIComponent(`status:${status}`)}`,
+    );
+    todos.push(...r.content);
+    if (r.last || r.content.length === 0) {
+      if (todos.length !== r.totalElements) {
+        throw new CloudgymError(500, `listagem veio incompleta: ${todos.length} de ${r.totalElements}`);
+      }
+      return todos;
+    }
+  }
+}
+
+/** Relatório "pagamentos pendentes": quem tem parcela vencida em aberto. */
+export async function pendenciasDePagamento(): Promise<
+  { memberId: number; name: string; cpf: string | null; pendingAmount: number; DueDate: string }[]
+> {
+  return cg("GET", `/report/membersPendingPayment/${UNIDADE_CLOUDGYM}`);
 }
 
 export async function obterCliente(id: number): Promise<CgCliente> {
