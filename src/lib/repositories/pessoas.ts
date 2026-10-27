@@ -1,5 +1,6 @@
 import { prisma } from "@/lib/db";
 import { toPessoa } from "@/lib/repositories/mappers";
+import { contaComoAtivo } from "@/lib/billing/regua";
 import type { LeadEstagio, NovaPessoa, Pessoa, PessoaFase } from "@/lib/types";
 import type { AsaasMatricula } from "@/lib/asaas";
 import { upsertBillingCustomerRepo, upsertBillingSubscriptionRepo, upsertPaymentRepo } from "@/lib/repositories/billing";
@@ -11,6 +12,16 @@ const withMemberships = {
     orderBy: { matriculadoEm: "desc" as const },
     take: 1,
     include: { matriculadoPor: { select: { nome: true } } },
+  },
+  // Régua de cobrança: a parcela aberta mais antiga e se há assinatura que renove sozinha.
+  payments: {
+    where: { status: { in: ["PENDING" as const, "OVERDUE" as const] } },
+    orderBy: { dueDate: "asc" as const },
+    take: 1,
+    select: { dueDate: true, value: true, invoiceUrl: true },
+  },
+  billingCustomer: {
+    select: { subscriptions: { where: { status: "ACTIVE" }, select: { asaasSubscriptionId: true } } },
   },
 };
 
@@ -49,22 +60,12 @@ export async function contarLeadsPorEstagioRepo(): Promise<Record<LeadEstagio, n
 }
 
 /**
- * Alunos cuja matrícula mais recente está ATIVA — o mesmo critério do filtro
- * "Ativos" da lista de alunos (`?situacao=ativo`: fase aluno e última matrícula
- * ACTIVE, ver `membershipToStatus`). Aluno sem matrícula nenhuma não conta.
- * A contagem é no banco, sem carregar a base para a memória.
+ * Alunos que contam como ativos — o mesmo critério do filtro "Ativos" da lista
+ * (`contaComoAtivo`: em dia ou inadimplente, como no CloudGym). A régua depende
+ * da parcela aberta e do vencimento do plano, por isso a conta é a da lista.
  */
 export async function contarAlunosAtivosRepo(): Promise<number> {
-  const [r] = await prisma.$queryRaw<{ total: number }[]>`
-    SELECT count(*)::int AS total FROM (
-      SELECT DISTINCT ON (m."personId") m.status
-      FROM "Membership" m
-      JOIN "Person" p ON p.id = m."personId"
-      WHERE p.fase = 'aluno'
-      ORDER BY m."personId", m."matriculadoEm" DESC
-    ) ultima
-    WHERE ultima.status = 'ACTIVE'`;
-  return r?.total ?? 0;
+  return (await listarPessoasRepo(["aluno"])).filter((p) => contaComoAtivo(p.status)).length;
 }
 
 export async function obterPessoaRepo(id: string): Promise<Pessoa | undefined> {

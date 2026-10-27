@@ -25,7 +25,7 @@ export interface AccessContext {
   membershipStatus: "DRAFT" | "PENDING_PAYMENT" | "ACTIVE" | "SUSPENDED" | "CANCELED" | "EXPIRED" | null;
   billingStatus: "PENDING" | "PAID" | "OVERDUE" | "REFUNDED" | "CHARGEBACK" | "CANCELED" | null;
   diasAtraso: number;        // dias desde o vencimento (>0 = vencido). 0/neg = em dia
-  graceDays: number;         // carência configurada (default 5)
+  graceDays: number;         // carência configurada (CARENCIA_DIAS da régua)
   courtesyEntriesLeft: number;
   temCredencialEnrolled: boolean;
   sincronizado: boolean;     // pelo menos um DeviceUserMapping IN_SYNC

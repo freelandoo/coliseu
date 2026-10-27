@@ -14,6 +14,8 @@
 // inteiro vira N boletos de uma vez (um por mês, com carnê em PDF).
 // ============================================================
 
+import { AVISO_ANTES_DIAS } from "@/lib/billing/regua";
+
 export type AsaasBillingType = "UNDEFINED" | "PIX" | "BOLETO" | "CREDIT_CARD";
 
 export interface AsaasCustomer {
@@ -173,25 +175,36 @@ export interface AvisoAsaas {
 }
 
 /**
- * Avisos que a academia quer que o Asaas mande (decisão do Alex, 26/10/2026 —
- * "1 dia antes + depois de vencida"; o Asaas só antecipa 5/10/15/30 dias, então
- * o lembrete fica no dia do vencimento):
- * - sem "cobrança criada" nem linha digitável na criação (a mensalidade seguinte
- *   nasce logo depois do pagamento e o aviso confundia quem acabou de pagar);
- * - sem lembrete antecipado de 10 dias;
- * - ficam: no dia do vencimento, vencida (e a cada 7 dias), recibo, alteração.
+ * Avisos que a academia quer que o Asaas mande — régua de 27/10/2026 (antes,
+ * em 26/10, era só "no dia + vencida"):
+ * - 5 dias antes (o Asaas só antecipa 5/10/15/30; usa o aviso de 10 dias,
+ *   remarcado para 5);
+ * - no dia do vencimento;
+ * - vencida (dia seguinte) e 7 dias depois do vencimento;
+ * - recibo e alteração continuam; sem "cobrança criada" nem linha digitável
+ *   na criação (a mensalidade seguinte nasce logo depois do pagamento e o
+ *   aviso confundia quem acabou de pagar).
+ * Depois do 7º dia o Coliseu pausa os avisos do cliente (`pausarAvisosAsaas`)
+ * e a cobrança passa a ser manual.
  * Devolve só o que precisa mudar (rodar de novo não faz nada).
  */
-export function ajustesDeAviso(avisos: AvisoAsaas[]): { id: string; enabled: boolean }[] {
-  return avisos
-    .filter((a) => {
-      const desligar =
-        a.event === "PAYMENT_CREATED" ||
-        a.event === "SEND_LINHA_DIGITAVEL" ||
-        (a.event === "PAYMENT_DUEDATE_WARNING" && a.scheduleOffset > 0);
-      return desligar ? a.enabled : false;
-    })
-    .map((a) => ({ id: a.id, enabled: false }));
+export function ajustesDeAviso(avisos: AvisoAsaas[]): { id: string; enabled: boolean; scheduleOffset?: number }[] {
+  const ajustes: { id: string; enabled: boolean; scheduleOffset?: number }[] = [];
+  const antecipados = avisos.filter((a) => a.event === "PAYMENT_DUEDATE_WARNING" && a.scheduleOffset > 0);
+  // O lembrete de 5 dias: o que já está em 5, ou o primeiro antecipado remarcado.
+  const cinco = antecipados.find((a) => a.scheduleOffset === AVISO_ANTES_DIAS) ?? antecipados[0];
+  if (cinco && (!cinco.enabled || cinco.scheduleOffset !== AVISO_ANTES_DIAS)) {
+    ajustes.push({ id: cinco.id, enabled: true, scheduleOffset: AVISO_ANTES_DIAS });
+  }
+  for (const a of avisos) {
+    if (a === cinco) continue;
+    const desligar =
+      a.event === "PAYMENT_CREATED" ||
+      a.event === "SEND_LINHA_DIGITAVEL" ||
+      (a.event === "PAYMENT_DUEDATE_WARNING" && a.scheduleOffset > 0);
+    if (desligar && a.enabled) ajustes.push({ id: a.id, enabled: false });
+  }
+  return ajustes;
 }
 
 /** Aplica `ajustesDeAviso` a um cliente do Asaas. Devolve quantos avisos mudaram. */
@@ -199,8 +212,18 @@ export async function configurarAvisosAsaas(customerId: string): Promise<number>
   if (!asaasConfigurado() || !ehIdAsaasReal(customerId)) return 0;
   const r = await asaas<{ data: AvisoAsaas[] }>("GET", `/customers/${customerId}/notifications`);
   const ajustes = ajustesDeAviso(r.data);
-  for (const a of ajustes) await asaas("PUT", `/notifications/${a.id}`, { enabled: a.enabled });
+  for (const { id, ...corpo } of ajustes) await asaas("PUT", `/notifications/${id}`, corpo);
   return ajustes.length;
+}
+
+/**
+ * Liga/desliga todos os avisos do Asaas para o cliente (`notificationDisabled`).
+ * A régua pausa no 8º dia de atraso — dali em diante a cobrança é manual — e
+ * religa quando ele quita.
+ */
+export async function pausarAvisosAsaas(customerId: string, pausar: boolean): Promise<void> {
+  if (!asaasConfigurado() || !ehIdAsaasReal(customerId)) return;
+  await asaas("PUT", `/customers/${customerId}`, { notificationDisabled: pausar });
 }
 
 /** Cria a assinatura mensal recorrente (POST /subscriptions). 1ª cobrança vence amanhã. */
@@ -407,6 +430,22 @@ export function linkPagamentoWhatsApp(
       `Pode pagar por PIX, boleto ou cartão:\n${invoiceUrl}`,
   );
   return `https://wa.me/55${fone}?text=${texto}`;
+}
+
+/** Cobrança manual (régua: depois de 7 dias a recepção cobra). */
+export function linkCobrancaWhatsApp(
+  telefone: string,
+  nome: string,
+  invoiceUrl: string,
+  vencimento: string,
+): string {
+  const fone = telefone.replace(/\D/g, "");
+  const dd = fone.startsWith("55") && fone.length > 11 ? fone : `55${fone}`;
+  const texto = encodeURIComponent(
+    `Olá ${nome}! Consta em aberto a mensalidade da Coliseu Team com vencimento em ${vencimento}.\n` +
+      `Pode pagar por PIX, boleto ou cartão neste link:\n${invoiceUrl}`,
+  );
+  return `https://wa.me/${dd}?text=${texto}`;
 }
 
 /** Mensagem do boleto parcelado: manda o 1º boleto; os outros o Asaas avisa. */

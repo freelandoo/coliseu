@@ -48,6 +48,21 @@ test("candidatos: passou da carência, sem assinatura real ativa, só a matrícu
   expect(ids.has(renovou.p.id)).toBe(false);
 });
 
+test("parcela vencida há mais de 60 dias vence a matrícula, mesmo com o plano em dia", async () => {
+  const devendo61 = await aluno("TEXP09", -200);
+  const devendo60 = await aluno("TEXP10", -200);
+  for (const [a, atraso] of [[devendo61, 61], [devendo60, 60]] as const) {
+    await prisma.payment.create({
+      data: { asaasPaymentId: `cg_pay_${a.p.codigo}`, personId: a.p.id, value: 100, dueDate: dias(atraso), status: "OVERDUE" },
+    });
+  }
+  const candidatos = await candidatosExpiracao(AGORA);
+  const c61 = candidatos.find((c) => c.personId === devendo61.p.id);
+  expect(c61?.motivo).toBe("parcela");
+  expect(c61?.diasVencido).toBe(61);
+  expect(candidatos.some((c) => c.personId === devendo60.p.id)).toBe(false);
+});
+
 test("modo simulação (padrão) não vence ninguém", async () => {
   const { m } = await aluno("TEXP06", 10);
   const r = await expirarMatriculasVencidas({ agora: AGORA });

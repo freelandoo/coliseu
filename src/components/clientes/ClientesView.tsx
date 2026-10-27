@@ -26,6 +26,8 @@ import {
   type SituacaoAluno,
 } from "@/lib/navegacao";
 import { combinaFiltroApp } from "@/lib/freelandoo/rotulos";
+import { contaComoAtivo } from "@/lib/billing/regua";
+import { linkCobrancaWhatsApp } from "@/lib/asaas";
 import { BarraTreino, FotoAluno } from "@/components/clientes/FreelandooAluno";
 import { consultaAlunosLembrada, lembrarConsultaAlunos } from "@/lib/memoria-navegacao";
 import { useCascata } from "@/lib/useCascata";
@@ -39,6 +41,7 @@ const CHIPS: { key: Filtro; label: string }[] = [
   { key: "ativo", label: "Ativos" },
   { key: "pendente", label: "Pendentes" },
   { key: "inadimplente", label: "Inadimplentes" },
+  { key: "inativo", label: "Inativos" },
   { key: "cancelado", label: "Cancelados" },
 ];
 
@@ -94,15 +97,21 @@ export function situacaoDe(p: Pessoa): {
     ativo: "ok",
     pendente: "warn",
     inadimplente: "danger",
+    inativo: "neutral",
     cancelado: "neutral",
   };
   const s = p.status ?? "ativo";
-  return { rotulo: ALUNO_STATUS_LABEL[s], tone: tone[s] };
+  // Inadimplente mostra há quanto tempo: aos 60 dias sai da lista e vira inativo.
+  const dias = s === "inadimplente" && p.parcelaAberta ? ` · ${p.parcelaAberta.diasAtraso} dias` : "";
+  return { rotulo: `${ALUNO_STATUS_LABEL[s]}${dias}`, tone: tone[s] };
 }
 
 function combina(p: Pessoa, filtro: Filtro): boolean {
   if (filtro === "todos") return true;
-  return p.fase === "aluno" && p.status === filtro;
+  if (p.fase !== "aluno") return false;
+  // "Ativos" inclui o inadimplente, como no CloudGym (a matrícula segue ativa).
+  if (filtro === "ativo") return contaComoAtivo(p.status);
+  return p.status === filtro;
 }
 
 export function ClientesView({
@@ -218,6 +227,38 @@ export function ClientesView({
         title={pendente ? "Registrar pagamento recebido no balcão" : "Revisar a renovação deste plano"}
       >
         {pendente ? "Receber no balcão" : "Renovar"}
+      </Botao>
+    );
+  }
+
+  // Inadimplente (8–60 dias): o Asaas já parou de avisar, a cobrança é manual.
+  // Abre o WhatsApp com o link da parcela e registra na ficha.
+  function botaoCobrar(p: Pessoa) {
+    if (p.status !== "inadimplente") return null;
+    const parcela = p.parcelaAberta;
+    const pode = Boolean(parcela?.link && p.telefone);
+    return (
+      <Botao
+        variante="contorno"
+        tamanho="sm"
+        disabled={!pode}
+        title={pode ? "Mandar o link da parcela pelo WhatsApp" : "Sem link do Asaas ou sem telefone: cobre pela ficha"}
+        onClick={(e) => {
+          e.stopPropagation();
+          if (!parcela?.link || !p.telefone) return;
+          window.open(
+            linkCobrancaWhatsApp(p.telefone, p.nome.split(" ")[0], parcela.link, formatData(parcela.vencimento)),
+            "_blank",
+            "noopener",
+          );
+          void fetch(`/api/pessoas/${p.id}/cobranca`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ canal: "whatsapp" }),
+          }).catch(() => {});
+        }}
+      >
+        Cobrar
       </Botao>
     );
   }
@@ -372,7 +413,7 @@ export function ClientesView({
                   </div>
                   <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-2">
                     <Badge tone={s.tone}>{s.rotulo}</Badge>
-                    <span className="ml-auto">{botaoRenovacao(p)}</span>
+                    <span className="ml-auto">{botaoCobrar(p) ?? botaoRenovacao(p)}</span>
                   </div>
                 </div>
               );
@@ -421,7 +462,7 @@ export function ClientesView({
                       <td className="px-4 py-3">
                         <Badge tone={s.tone}>{s.rotulo}</Badge>
                       </td>
-                      <td className="px-4 py-3">{botaoRenovacao(p)}</td>
+                      <td className="px-4 py-3">{botaoCobrar(p) ?? botaoRenovacao(p)}</td>
                       <td className="px-4 py-3 text-muted">
                         {p.telefone || p.email || "—"}
                       </td>

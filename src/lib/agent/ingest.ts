@@ -200,6 +200,24 @@ async function avisarNegadoNaRecepcao(e: {
   avisarRecepcao({ tipo: "sem-matricula", deviceId: e.deviceId, personId: e.personId, nome: person.nome, quando: e.quando });
 }
 
+/**
+ * Aluno entrou na carência (parcela ou plano vencido há 1–3 dias): a recepção
+ * vê quantos dias restam antes do bloqueio, para cobrar ali mesmo.
+ */
+async function avisarCarenciaNaRecepcao(personId: string, quando: string): Promise<void> {
+  const { carregarContextoAcesso } = await import("@/lib/access/context");
+  const { evaluateAccessEligibility } = await import("@/lib/access/policy");
+  const { avisoDeCarencia } = await import("@/lib/billing/regua");
+  const { ctx } = await carregarContextoAcesso(personId);
+  if (evaluateAccessEligibility(ctx).reason !== "EM_CARENCIA") return;
+  const dias = ctx.billingStatus === null ? (ctx.diasAposVencimentoPlano ?? 0) : ctx.diasAtraso;
+  const aviso = avisoDeCarencia(dias);
+  if (!aviso) return;
+  const person = await prisma.person.findUnique({ where: { id: personId }, select: { nome: true } });
+  if (!person) return;
+  avisarRecepcao({ tipo: "carencia", personId, nome: person.nome, texto: aviso.texto, restam: aviso.restam, quando });
+}
+
 export async function ingestarEvento(input: {
   deviceId: string; deviceEventId: string; externalUserId?: string; personId?: string;
   deviceTime: string; direction: "ENTRY" | "EXIT";
@@ -238,6 +256,14 @@ export async function ingestarEvento(input: {
       return { created: false };
     }
     throw e;
+  }
+
+  if (input.aoVivo === true && input.decision === "ALLOWED" && personId && input.direction === "ENTRY") {
+    try {
+      await avisarCarenciaNaRecepcao(personId, input.deviceTime);
+    } catch (e) {
+      console.error("[ingest] aviso de carência falhou:", e);
+    }
   }
 
   if (input.aoVivo === true && input.decision === "DENIED") {

@@ -8,6 +8,7 @@
 
 import { listarAulasExperimentais, listarDespesas, listarPessoas, listarPlanos } from "@/lib/store";
 import { cobrancasRelatorioRepo, type CobrancaRelatorio } from "@/lib/repositories/relatorios";
+import { contaComoAtivo } from "@/lib/billing/regua";
 import type { AulaExperimentalItem, Despesa, Pessoa, Plano } from "@/lib/types";
 
 export type { CobrancaRelatorio };
@@ -46,7 +47,7 @@ export function nomeDoPlano(planos: Plano[]): (planoId: string | undefined) => s
 
 /** Alunos que contam como base: matriculados que não cancelaram. */
 export function baseAtiva(pessoas: Pessoa[]): Pessoa[] {
-  return pessoas.filter((p) => p.fase === "aluno" && p.status !== "cancelado");
+  return pessoas.filter((p) => p.fase === "aluno" && contaComoAtivo(p.status));
 }
 
 export function cancelados(pessoas: Pessoa[]): Pessoa[] {

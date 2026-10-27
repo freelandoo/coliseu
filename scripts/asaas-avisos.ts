@@ -29,7 +29,7 @@ async function main() {
       console.error(id, e instanceof Error ? e.message : e);
     }
   }
-  console.log(`${clientes.length} cliente(s) no Asaas · ${mudados} ajustado(s) · ${avisos} aviso(s) desligado(s) · ${falhas} falha(s)`);
+  console.log(`${clientes.length} cliente(s) no Asaas · ${mudados} ajustado(s) · ${avisos} aviso(s) alterado(s) · ${falhas} falha(s)`);
   await prisma.$disconnect();
 }
 

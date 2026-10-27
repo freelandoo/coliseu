@@ -199,13 +199,13 @@ export function lerEnum<T extends string>(
   return valor && (aceitos as readonly string[]).includes(valor) ? (valor as T) : padrao;
 }
 
-export const ABAS_COBRANCA = ["cobrancas", "vencimentos", "planos"] as const;
+export const ABAS_COBRANCA = ["cobrancas", "contratos", "vencimentos", "planos"] as const;
 export type AbaCobranca = (typeof ABAS_COBRANCA)[number];
 
 export const VISOES_AGENDA = ["calendario", "lista", "historico"] as const;
 export type VisaoAgenda = (typeof VISOES_AGENDA)[number];
 
-export const SITUACOES_ALUNO = ["todos", "ativo", "pendente", "inadimplente", "cancelado"] as const;
+export const SITUACOES_ALUNO = ["todos", "ativo", "pendente", "inadimplente", "inativo", "cancelado"] as const;
 export type SituacaoAluno = (typeof SITUACOES_ALUNO)[number];
 
 /** Filtro do app de treinos na lista de alunos (`?app=`). */

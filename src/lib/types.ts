@@ -92,12 +92,13 @@ export interface NovoPlano {
 }
 
 // Estágio 2/3 — situação do aluno
-export type AlunoStatus = "ativo" | "pendente" | "inadimplente" | "cancelado";
+export type AlunoStatus = "ativo" | "pendente" | "inadimplente" | "inativo" | "cancelado";
 
 export const ALUNO_STATUS_LABEL: Record<AlunoStatus, string> = {
   ativo: "Ativo",
   pendente: "Pagamento pendente",
   inadimplente: "Inadimplente",
+  inativo: "Inativo",
   cancelado: "Cancelado",
 };
 
@@ -171,6 +172,8 @@ export interface Pessoa {
   matriculadoPor?: string;
   vencimentoPlano?: string;
   ultimaPresenca?: string;
+  /** Parcela aberta mais antiga (a que decide a régua de cobrança). */
+  parcelaAberta?: { vencimento: string; valor: number; diasAtraso: number; link?: string };
   // ficha opcional
   dataNascimento?: string;
   endereco?: Endereco;

@@ -235,20 +235,20 @@ model Person {
   /// Acesso Freelandoo (2026-10-20): conta no app de treinos criada pelo
   /// Coliseu via API de parceiro. Cópia local do que a Freelandoo devolve —
   /// a fonte de verdade da conta e do treino é ela.
-  freelandooUserId             String?          @unique
-  freelandooEstado             FreelandooEstado @default(sem_conta)
+  freelandooUserId                 String?          @unique
+  freelandooEstado                 FreelandooEstado @default(sem_conta)
   /// Motivo do "falta dado"/"menor"/conflito (ver lib/freelandoo/elegibilidade).
-  freelandooMotivo             String?
-  freelandooFotoUrl            String?
-  freelandooTreinoNome         String?
-  freelandooTreinoVenceEm      DateTime?
-  freelandooTreinoValidadeDias Int?
+  freelandooMotivo                 String?
+  freelandooFotoUrl                String?
+  freelandooTreinoNome             String?
+  freelandooTreinoVenceEm          DateTime?
+  freelandooTreinoValidadeDias     Int?
   /// Ficha mandada pelo professor esperando o aluno confirmar no app (aba Treinos).
-  freelandooTreinoPropostaPendente Boolean @default(false)
-  freelandooSincronizadoEm     DateTime?
+  freelandooTreinoPropostaPendente Boolean          @default(false)
+  freelandooSincronizadoEm         DateTime?
   /// Quando a mensagem com o link de 1º acesso saiu. Nulo com conta criada =
   /// "acesso não enviado" na ficha.
-  freelandooAcessoEnviadoEm    DateTime?
+  freelandooAcessoEnviadoEm        DateTime?
 
   unit   Unit   @relation(fields: [unitId], references: [id])
   unitId String
@@ -257,6 +257,7 @@ model Person {
   cobrancas       Cobranca[]
   billingCustomer BillingCustomer?
   payments        Payment[]
+  cobrancaEnvios  CobrancaEnvio[]
 
   credentials    AccessCredential[]
   deviceMappings DeviceUserMapping[]
@@ -465,6 +466,9 @@ model BillingCustomer {
   person            Person   @relation(fields: [personId], references: [id], onDelete: Cascade)
   personId          String   @unique
   createdAt         DateTime @default(now())
+  /// Avisos do Asaas desligados (notificationDisabled) porque a parcela mais
+  /// antiga passou de 7 dias: daí em diante a cobrança é manual (régua 27/10/2026).
+  avisosPausados    Boolean  @default(false)
 
   subscriptions BillingSubscription[]
 }
@@ -966,10 +970,10 @@ model AulaExperimental {
 
   /// Só dígitos. Obrigatório nas aulas marcadas desde 26/10/2026: é a chave
   /// de "cada pessoa faz uma aula experimental só" (as antigas não têm).
-  cpf        String?
+  cpf               String?
   /// Marcado pela recepção depois do horário: "veio" | "faltou". Nulo =
   /// ninguém marcou — para a regra de uma aula só, conta como feita.
-  presenca   String?
+  presenca          String?
   /// Lembrete automático no WhatsApp na véspera (decisão de 26/10/2026).
   lembreteEnviadoEm DateTime?
   lembreteErro      String?
@@ -983,26 +987,26 @@ model AulaExperimental {
 /// registro de quem já veio. Sem CPF — a regra de uma aula só casa estas
 /// linhas por telefone + primeiro nome. Importada uma vez; não se edita.
 model AulaExperimentalLegado {
-  id            String  @id @default(cuid())
+  id             String  @id @default(cuid())
   /// Aba e linha da planilha: chave do import (rodar de novo não duplica).
-  aba           String
-  linha         Int
-  nome          String
+  aba            String
+  linha          Int
+  nome           String
   /// Só dígitos.
-  telefone      String
-  modalidade    String?
+  telefone       String
+  modalidade     String?
   /// Dia do atendimento/visita ("AAAA-MM-DD").
-  dataVisita    String?
+  dataVisita     String?
   /// Dia da aula experimental ("AAAA-MM-DD"); nulo = só visitou.
-  dataAula      String?
-  hora          Int?
+  dataAula       String?
+  hora           Int?
   /// "veio" | "faltou" | nulo (planilha sem status).
-  presenca      String?
+  presenca       String?
   statusOriginal String?
-  canal         String?
-  atendente     String?
-  comoConheceu  String?
-  andamento     String?
+  canal          String?
+  atendente      String?
+  comoConheceu   String?
+  andamento      String?
 
   @@unique([aba, linha])
   @@index([telefone])
@@ -1308,4 +1312,31 @@ model ContratoAluno {
   /// Nome de quem editou por último (cópia — o colaborador pode sair).
   editadoPor   String?
   editadoEm    DateTime   @updatedAt
+}
+
+/// Cada vez que o aluno foi cobrado: os avisos automáticos do Asaas (a régua:
+/// 5 dias antes, no dia, vencida, 7 dias depois) e os envios manuais da
+/// recepção (link copiado, WhatsApp). Guarda só os últimos 3 meses.
+model CobrancaEnvio {
+  id         String   @id @default(cuid())
+  person     Person   @relation(fields: [personId], references: [id], onDelete: Cascade)
+  personId   String
+  /// Payment.id da parcela cobrada (sem FK: a parcela pode sumir antes do registro).
+  paymentId  String?
+  /// automatica | manual
+  origem     String
+  /// antes_5 | vencimento | vencida | vencida_7 | manual
+  etapa      String
+  /// asaas | link | whatsapp
+  canal      String
+  /// false = o aviso não tinha como sair (aluno sem contato, avisos pausados…)
+  ok         Boolean  @default(true)
+  detalhe    String?
+  porUsuario String?
+  /// Idempotência dos automáticos: "<paymentId>:<etapa>". Manual fica nulo.
+  chave      String?  @unique
+  criadoEm   DateTime @default(now())
+
+  @@index([personId, criadoEm])
+  @@index([criadoEm])
 }

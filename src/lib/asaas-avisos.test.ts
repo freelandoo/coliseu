@@ -12,15 +12,22 @@ const padrao: AvisoAsaas[] = [
   { id: "n8", event: "PAYMENT_OVERDUE", scheduleOffset: 7, enabled: true },
 ];
 
-test("desliga cobrança criada, linha digitável e o aviso de 10 dias; mantém o do dia, vencida e recibo", () => {
+test("remarca o aviso de 10 dias para 5; desliga cobrança criada e linha digitável", () => {
   expect(ajustesDeAviso(padrao)).toEqual([
-    { id: "n3", enabled: false },
+    { id: "n3", enabled: true, scheduleOffset: 5 },
     { id: "n5", enabled: false },
     { id: "n7", enabled: false },
   ]);
 });
 
+test("cliente configurado na régua de 26/10 (10 dias desligado) ganha o de 5 dias", () => {
+  const antigo = padrao.map((a) => (["n3", "n5", "n7"].includes(a.id) ? { ...a, enabled: false } : a));
+  expect(ajustesDeAviso(antigo)).toEqual([{ id: "n3", enabled: true, scheduleOffset: 5 }]);
+});
+
 test("já configurado: nada a mudar", () => {
-  const feito = padrao.map((a) => (["n3", "n5", "n7"].includes(a.id) ? { ...a, enabled: false } : a));
+  const feito = padrao.map((a) =>
+    a.id === "n3" ? { ...a, scheduleOffset: 5 } : ["n5", "n7"].includes(a.id) ? { ...a, enabled: false } : a,
+  );
   expect(ajustesDeAviso(feito)).toEqual([]);
 });

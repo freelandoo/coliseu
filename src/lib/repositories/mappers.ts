@@ -6,10 +6,11 @@ import type {
   Origem,
   LeadEstagio,
   PessoaFase,
-  AlunoStatus,
   CobrancaTipo,
   CobrancaStatus,
 } from "@/lib/types";
+import { ehIdAsaasReal } from "@/lib/asaas";
+import { diasDesde, situacaoDoAluno } from "@/lib/billing/regua";
 import type {
   Plan as PPlan,
   Person as PPerson,
@@ -31,9 +32,18 @@ export function toPlano(p: PPlan): Plano {
 }
 
 type MembershipComAutor = PMembership & { matriculadoPor?: { nome: string } | null };
+type ParcelaAberta = { dueDate: Date; value: number; invoiceUrl: string | null };
 
-export function toPessoa(p: PPerson & { memberships: MembershipComAutor[] }): Pessoa {
+export function toPessoa(
+  p: PPerson & {
+    memberships: MembershipComAutor[];
+    payments?: ParcelaAberta[];
+    billingCustomer?: { subscriptions: { asaasSubscriptionId: string }[] } | null;
+  },
+): Pessoa {
   const m = p.memberships[0];
+  const parcela = p.payments?.[0];
+  const diasAtraso = parcela ? diasDesde(parcela.dueDate) : null;
   return {
     id: p.id,
     codigo: p.codigo,
@@ -49,7 +59,22 @@ export function toPessoa(p: PPerson & { memberships: MembershipComAutor[] }): Pe
     estagio: (p.estagio ?? undefined) as LeadEstagio | undefined,
     motivoPerdido: p.motivoPerdido ?? undefined,
     planoId: m?.planId,
-    status: m ? membershipToStatus(m.status) : undefined,
+    status: m
+      ? situacaoDoAluno({
+          matricula: m.status,
+          diasAtrasoParcela: diasAtraso,
+          diasAposVencimentoPlano: diasDesde(m.vencimentoPlano),
+          renovaSozinho: (p.billingCustomer?.subscriptions ?? []).some((s) => ehIdAsaasReal(s.asaasSubscriptionId)),
+        })
+      : undefined,
+    parcelaAberta: parcela
+      ? {
+          vencimento: parcela.dueDate.toISOString(),
+          valor: parcela.value,
+          diasAtraso: diasAtraso!,
+          link: parcela.invoiceUrl ?? undefined,
+        }
+      : undefined,
     matriculadoEm: m?.matriculadoEm.toISOString(),
     matriculadoPor: m?.matriculadoPor?.nome ?? undefined,
     vencimentoPlano: m?.vencimentoPlano.toISOString(),
@@ -78,22 +103,6 @@ export function toPessoa(p: PPerson & { memberships: MembershipComAutor[] }): Pe
           }
         : undefined,
   };
-}
-
-function membershipToStatus(s: PMembership["status"]): AlunoStatus {
-  switch (s) {
-    case "ACTIVE":
-      return "ativo";
-    case "DRAFT":
-    case "PENDING_PAYMENT":
-      return "pendente";
-    case "CANCELED":
-      return "cancelado";
-    case "SUSPENDED":
-    case "EXPIRED":
-    default:
-      return "inadimplente";
-  }
 }
 
 export function toCobranca(c: PCobranca): Cobranca {

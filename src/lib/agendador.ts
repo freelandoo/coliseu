@@ -1,4 +1,5 @@
 import { expirarMatriculasVencidas, modoExpiracao } from "@/lib/billing/expiracao";
+import { rodarReguaCobranca } from "@/lib/billing/regua-cobranca";
 import { modoEspelho, rodarEspelho } from "@/lib/cloudgym/espelho";
 import { enviarLembretesAula, lembreteLigado } from "@/lib/aula-experimental-lembrete";
 import { freelandooConfigurado } from "@/lib/freelandoo/cliente";
@@ -9,6 +10,8 @@ import { sincronizarFreelandoo } from "@/lib/freelandoo/sincronizar";
  * Tarefas periódicas do servidor:
  * - vencimento de matrícula, de hora em hora (idempotente — rodar de novo não
  *   vence ninguém duas vezes);
+ * - régua de cobrança, de hora em hora: pausa os avisos do Asaas no 8º dia,
+ *   registra os avisos e limpa o registro com mais de 3 meses;
  * - fila da Freelandoo, a cada minuto, e a sincronização das contas, a cada
  *   10 min. Sem FREELANDOO_API_URL/FREELANDOO_PARTNER_KEY as duas não fazem nada;
  * - espelho no CloudGym, a cada 10 min, até o corte (CLOUDGYM_ESPELHO);
@@ -86,12 +89,24 @@ async function rodarExpiracao() {
   }
 }
 
+const rodarRegua = semSobreposicao("régua de cobrança", async () => {
+  const r = await rodarReguaCobranca();
+  if (r.pausados || r.religados || r.registrados || r.apagados || r.bloqueados || r.erros) {
+    console.log(
+      `[agendador] régua: ${r.pausados} pausado(s), ${r.religados} religado(s), ${r.registrados} aviso(s) registrado(s), ` +
+        `${r.apagados} apagado(s), ${r.bloqueados} ${modoExpiracao() === "ativa" ? "bloqueado(s)" : "seriam bloqueados (simulação)"}, ${r.erros} erro(s)`,
+    );
+  }
+});
+
 export function iniciarAgendador(): void {
   if (g.__coliseuAgendador) return;
   g.__coliseuAgendador = true;
   // Primeira rodada um minuto após o boot: não disputa com o healthcheck.
   setTimeout(() => void rodarExpiracao(), 60_000).unref?.();
   setInterval(() => void rodarExpiracao(), UMA_HORA).unref?.();
+  setTimeout(rodarRegua, 135_000).unref?.();
+  setInterval(rodarRegua, UMA_HORA).unref?.();
 
   setTimeout(rodarFilaFreelandoo, 75_000).unref?.();
   setInterval(rodarFilaFreelandoo, UM_MINUTO).unref?.();

@@ -15,6 +15,7 @@ type Candidato = {
   plano: string;
   vencimentoPlano: string;
   diasVencido: number;
+  motivo: "plano" | "parcela";
 };
 type Previa = { modo: "ativa" | "simular" | "desligada"; carenciaDias: number; candidatos: Candidato[] };
 
@@ -110,8 +111,9 @@ export function VencimentoMatriculas() {
         )}
       </div>
       <p className="mt-2 text-sm text-muted">
-        Vence quem passou {previa.carenciaDias} dias do vencimento do plano sem renovar. Aluno com
-        assinatura ativa no Asaas não entra: a mensalidade paga já estende o plano. {modo.texto}
+        Vence quem passou {previa.carenciaDias} dias do vencimento do plano sem renovar, e quem tem
+        parcela vencida há mais de 2 meses (sai dos inadimplentes e vira inativo). Aluno com
+        assinatura ativa no Asaas não vence pelo plano: a mensalidade paga já estende o plano. {modo.texto}
       </p>
 
       {resultado && <p className="mt-3 text-xs text-ok">{resultado}</p>}
@@ -128,7 +130,9 @@ export function VencimentoMatriculas() {
                 <span className="ml-2 text-xs font-normal text-faint">{c.codigo} · {c.plano}</span>
               </Link>
               <span className="text-xs text-muted">
-                venceu {formatData(c.vencimentoPlano)} · há {c.diasVencido} dias
+                {c.motivo === "parcela"
+                  ? `parcela vencida há ${c.diasVencido} dias`
+                  : `venceu ${formatData(c.vencimentoPlano)} · há ${c.diasVencido} dias`}
               </span>
             </li>
           ))}

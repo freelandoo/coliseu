@@ -8,6 +8,7 @@ import { contarCobrancasPorStatusRepo } from "@/lib/repositories/cobrancas";
 import { contarLeadsPorEstagioRepo } from "@/lib/repositories/pessoas";
 import { pontoDeEvasao, retencaoPorCoorte } from "@/lib/fidelidade";
 import { listarAlunos, listarPlanos, totalDespesas } from "@/lib/store";
+import { contaComoAtivo } from "@/lib/billing/regua";
 import { LEAD_ESTAGIO_LABEL, type LeadEstagio } from "@/lib/types";
 import { requireModulo } from "@/lib/auth/rbac";
 
@@ -31,7 +32,7 @@ export default async function RelatoriosPage() {
   const planoById = new Map(planos.map((p) => [p.id, p]));
 
   // ---------- base ----------
-  const naoCancelados = alunos.filter((a) => a.status !== "cancelado");
+  const naoCancelados = alunos.filter((a) => contaComoAtivo(a.status));
   const base = naoCancelados.length;
   const inadimplentes = naoCancelados.filter((a) => a.status === "inadimplente");
 

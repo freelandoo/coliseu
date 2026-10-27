@@ -14,7 +14,9 @@ import { EventEmitter } from "node:events";
 export type AvisoRecepcao =
   | { tipo: "nao-identificado"; deviceId: string; quando: string }
   | { tipo: "sem-matricula"; deviceId: string; personId: string; nome: string; quando: string }
-  | { tipo: "face"; personId: string; ok: boolean; imagem?: string; erro?: string };
+  | { tipo: "face"; personId: string; ok: boolean; imagem?: string; erro?: string }
+  /** Entrou na carência (3 dias depois do vencimento): a recepção avisa e cobra. */
+  | { tipo: "carencia"; personId: string; nome: string; texto: string; restam: number; quando: string };
 
 const g = globalThis as unknown as { __coliseuAvisosRecepcao?: EventEmitter; __coliseuAvisosUltimo?: Map<string, number> };
 export const barramentoRecepcao = g.__coliseuAvisosRecepcao ?? new EventEmitter();
@@ -39,6 +41,7 @@ function dentroDaJanela(chave: string, agora: number): boolean {
 export function avisarRecepcao(aviso: AvisoRecepcao, agora = Date.now()): boolean {
   if (aviso.tipo === "nao-identificado" && dentroDaJanela(`dev:${aviso.deviceId}`, agora)) return false;
   if (aviso.tipo === "sem-matricula" && dentroDaJanela(`pes:${aviso.personId}`, agora)) return false;
+  if (aviso.tipo === "carencia" && dentroDaJanela(`car:${aviso.personId}`, agora)) return false;
   barramentoRecepcao.emit("aviso", aviso);
   return true;
 }

@@ -1,5 +1,6 @@
 // Fachada de dados — delega aos repositórios Prisma.
 // As telas e rotas continuam importando estas funções (agora assíncronas).
+import { contaComoAtivo } from "@/lib/billing/regua";
 import {
   listarPlanosRepo, planoPorIdRepo, criarPlanoRepo, atualizarPlanoRepo,
 } from "@/lib/repositories/planos";
@@ -103,7 +104,7 @@ export async function receitaRecorrente(): Promise<number> {
   const [pessoas, planos] = await Promise.all([listarPessoasRepo(["aluno"]), listarPlanosRepo()]);
   const byId = new Map(planos.map((p) => [p.id, p]));
   return pessoas
-    .filter((p) => p.status !== "cancelado")
+    .filter((p) => contaComoAtivo(p.status))
     .reduce((s, p) => s + (p.planoId ? byId.get(p.planoId)?.valorMensal ?? 0 : 0), 0);
 }
 
@@ -120,12 +121,13 @@ export async function candidatosMatricula(pessoas?: Pessoa[]): Promise<Candidato
   const doAluno: Candidato[] = pessoas
     .filter((p) => {
       if (p.fase !== "aluno") return false;
-      if (p.status === "inadimplente" || p.status === "cancelado") return true;
+      if (p.status === "inadimplente" || p.status === "inativo" || p.status === "cancelado") return true;
       return p.vencimentoPlano ? diasEntre(p.vencimentoPlano) >= -15 : false;
     })
     .map((p) => {
       const dias = p.vencimentoPlano ? diasEntre(p.vencimentoPlano) : 0;
       const situacao = p.status === "inadimplente" ? "inadimplente"
+        : p.status === "inativo" ? "inativo"
         : p.status === "cancelado" ? "cancelado"
         : dias >= 0 ? `venceu há ${dias}d` : `vence em ${-dias}d`;
       return {
