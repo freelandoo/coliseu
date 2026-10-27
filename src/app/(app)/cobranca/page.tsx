@@ -10,6 +10,19 @@ import {
   listarPlanos,
 } from "@/lib/store";
 import { requireModulo } from "@/lib/auth/rbac";
+import { contaComoAtivo } from "@/lib/billing/regua";
+import type { ContratoAVencer, Duracao } from "@/components/cobranca/ContratosAVencer";
+
+/** Duração do contrato pela do plano (dias → anual, semestral…). */
+function duracaoDoPlano(dias: number | undefined): Duracao {
+  if (!dias) return "outro";
+  const meses = Math.round(dias / 30);
+  if (meses >= 12) return "anual";
+  if (meses >= 6) return "semestral";
+  if (meses >= 3) return "trimestral";
+  if (meses <= 1) return "mensal";
+  return "outro";
+}
 
 export const dynamic = "force-dynamic";
 
@@ -73,6 +86,27 @@ export default async function CobrancaPage() {
     }));
 
   const linhas = [...atrasadas, ...aVencer, ...aRenovar];
+
+  // Contratos (aba "Contratos"): matrícula ativa que vence nos próximos 30 dias.
+  const contratos: ContratoAVencer[] = alunos
+    .filter((a) => contaComoAtivo(a.status))
+    .map((a) => ({ aluno: a, dias: -diasEntre(a.vencimentoPlano) }))
+    .filter((x) => x.dias >= 0 && x.dias <= 30)
+    .sort((a, b) => a.dias - b.dias)
+    .map(({ aluno, dias }) => {
+      const plano = planoById.get(aluno.planoId);
+      return {
+        pessoaId: aluno.id,
+        nome: aluno.nome,
+        codigo: aluno.codigo,
+        telefone: aluno.telefone,
+        plano: plano?.nome ?? "Sem plano",
+        duracao: duracaoDoPlano(plano?.duracaoDias),
+        inicio: aluno.matriculadoEm,
+        vencimento: aluno.vencimentoPlano,
+        dias,
+      };
+    });
   const totalAtrasado = cobrancas
     .filter((c) => c.status === "atrasado")
     .reduce((s, c) => s + c.valor, 0);
@@ -109,7 +143,7 @@ export default async function CobrancaPage() {
 
       <Reveal delay={0.1}>
         <div className="mt-6">
-          <CobrancaTabs linhas={linhas} planos={planosComContagem} />
+          <CobrancaTabs linhas={linhas} planos={planosComContagem} contratos={contratos} />
         </div>
       </Reveal>
     </>

@@ -9,11 +9,13 @@ import {
   type PlanoComContagem,
 } from "@/components/cobranca/GestaoPlanos";
 import { VencimentoMatriculas } from "@/components/cobranca/VencimentoMatriculas";
+import { ContratosAVencer, type ContratoAVencer } from "@/components/cobranca/ContratosAVencer";
 import { ListaAbas, PainelAba, useIdAbas, useParametroUrl } from "@/components/ui/Abas";
 import { ABAS_COBRANCA, type AbaCobranca } from "@/lib/navegacao";
 
 const ABAS: { chave: AbaCobranca; rotulo: string }[] = [
   { chave: "cobrancas", rotulo: "Cobranças" },
+  { chave: "contratos", rotulo: "Contratos" },
   { chave: "vencimentos", rotulo: "Vencimentos" },
   { chave: "planos", rotulo: "Planos" },
 ];
@@ -26,9 +28,11 @@ const ABAS: { chave: AbaCobranca; rotulo: string }[] = [
 export function CobrancaTabs({
   linhas,
   planos,
+  contratos,
 }: {
   linhas: LinhaCobranca[];
   planos: PlanoComContagem[];
+  contratos: ContratoAVencer[];
 }) {
   const [aba, setAba] = useParametroUrl("aba", ABAS_COBRANCA, "cobrancas");
   const idBase = useIdAbas();
@@ -38,6 +42,7 @@ export function CobrancaTabs({
       <ListaAbas rotulo="Seções da cobrança" abas={ABAS} ativa={aba} onAtivar={setAba} idBase={idBase} />
       <PainelAba idBase={idBase} chave={aba}>
         {aba === "cobrancas" && <CobrancaFiltro linhas={linhas} />}
+        {aba === "contratos" && <ContratosAVencer contratos={contratos} />}
         {aba === "vencimentos" && <VencimentoMatriculas />}
         {aba === "planos" && <GestaoPlanos planos={planos} />}
       </PainelAba>
