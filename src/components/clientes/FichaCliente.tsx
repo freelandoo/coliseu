@@ -8,7 +8,6 @@ import { situacaoDe } from "@/components/clientes/ClientesView";
 import { AcessoDoCadastro, type AcessoDaPessoa } from "@/components/clientes/AcessoDoCadastro";
 import { PagamentosDoAluno } from "@/components/clientes/PagamentosDoAluno";
 import { CatracaDoAluno } from "@/components/clientes/CatracaDoAluno";
-import { CadastrarFacial } from "@/components/clientes/CadastrarFacial";
 import { FreelandooDoAluno } from "@/components/clientes/FreelandooDoAluno";
 import { CamposCadastro } from "@/components/clientes/CamposCadastro";
 import { RemoverPessoa } from "@/components/clientes/RemoverPessoa";
@@ -186,7 +185,6 @@ export function FichaCliente({
             ) : (
               plano && (
                 <>
-                  <CadastrarFacial personId={pessoa.id} nome={pessoa.nome} />
                   <a
                     href={`/contrato/${encodeURIComponent(pessoa.id)}`}
                     target="_blank"

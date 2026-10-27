@@ -15,7 +15,7 @@ const MOTIVO: Record<AccessReason, string> = {
   OK: "Liberado: matrícula ativa e em dia.",
   EM_CARENCIA: "Liberado na carência: a mensalidade venceu há poucos dias. Receba o pagamento antes que a carência acabe.",
   CORTESIA: "Liberado por cortesia (1 entrada) enquanto aguarda o 1º pagamento.",
-  SEM_BIOMETRIA: "Sem face cadastrada. Cadastre a face na tela Acesso.",
+  SEM_BIOMETRIA: "Sem face cadastrada. Use “Corrigir facial” para capturar o rosto no leitor.",
   AGUARDANDO_SYNC: "Ainda não está no aparelho (envio pendente ou com erro). Use \"Corrigir agora\".",
   AGUARDANDO_PAGAMENTO: "Matrícula aguardando o 1º pagamento. Receba no balcão (Renovar) ou pelo link.",
   INADIMPLENTE: "Mensalidade vencida além da carência, ou estornada. Receba o pagamento para liberar.",

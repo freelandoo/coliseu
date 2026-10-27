@@ -20,7 +20,7 @@ import {
 } from "@/lib/cadastro";
 import { criarPessoa, executarMatricula, type MatriculaRegistrada } from "@/lib/matricula-cliente";
 import { assinarAvisosCatraca } from "@/lib/access/avisos-cliente";
-import { cn } from "@/lib/cn";
+import { ESPERA_FOTO_MS, MolduraFoto, srcDaFoto, type Foto } from "@/components/acesso/CapturaFoto";
 import { formatBRL } from "@/lib/mock-data";
 import type { Pessoa, Plano } from "@/lib/types";
 
@@ -28,13 +28,6 @@ import type { Pessoa, Plano } from "@/lib/types";
 export type MotivoFicha =
   | { tipo: "nao-identificado"; deviceId: string; quando: string }
   | { tipo: "sem-matricula"; deviceId: string; quando: string; personId: string; nome: string };
-
-type Foto =
-  | { tipo: "vazia" }
-  | { tipo: "pedindo" }
-  | { tipo: "aguardando" }
-  | { tipo: "capturada"; src: string }
-  | { tipo: "falhou"; erro: string };
 
 type Operacao =
   | { tipo: "editando" }
@@ -44,9 +37,6 @@ type Operacao =
 
 type PlanoPopular = Plano & { alunosAtivos: number };
 
-/** Captura que não volta nesse tempo (agente fora, ninguém na frente do leitor) vira erro. */
-const ESPERA_FOTO_MS = 100_000;
-
 /**
  * Hora da tentativa para a recepção. O aviso chega em segundos, então a hora do
  * navegador basta — o `quando` do evento vem no relógio do aparelho (outro
@@ -54,11 +44,6 @@ const ESPERA_FOTO_MS = 100_000;
  */
 function horaDaTentativa(): string {
   return new Date().toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" });
-}
-
-function srcDaFoto(imagem?: string): string | null {
-  if (!imagem) return null;
-  return imagem.startsWith("data:") ? imagem : `data:image/jpeg;base64,${imagem}`;
 }
 
 /**
@@ -450,42 +435,3 @@ export function FichaMatriculaBalcao({ motivo, onFechar }: { motivo: MotivoFicha
 }
 
 /** Moldura 3x4 da ficha: vazia, esperando o leitor, ou com a foto capturada. */
-function MolduraFoto({ foto, nome }: { foto: Foto; nome: string }) {
-  const iniciais = nome
-    .trim()
-    .split(/\s+/)
-    .slice(0, 2)
-    .map((p) => p[0]?.toUpperCase() ?? "")
-    .join("");
-  const aguardando = foto.tipo === "aguardando" || foto.tipo === "pedindo";
-  return (
-    <div
-      className={cn(
-        "relative aspect-[3/4] w-full overflow-hidden rounded-xl border-2 bg-surface-2",
-        foto.tipo === "capturada" ? "border-brand" : "border-dashed border-border-strong",
-        aguardando && "border-brand motion-safe:animate-pulse",
-      )}
-    >
-      {foto.tipo === "capturada" ? (
-        // eslint-disable-next-line @next/next/no-img-element -- data URL da captura, sem otimização possível
-        <img
-          src={foto.src}
-          alt={`Foto de ${nome.trim() || "quem está sendo matriculado"}`}
-          className="h-full w-full object-cover motion-safe:animate-[foto-entra_260ms_var(--ease-padrao)]"
-        />
-      ) : (
-        <div className="flex h-full flex-col items-center justify-center gap-2 text-faint">
-          {iniciais ? (
-            <span className="font-display text-4xl font-semibold text-muted">{iniciais}</span>
-          ) : (
-            <svg aria-hidden viewBox="0 0 24 24" className="h-12 w-12" fill="none" stroke="currentColor" strokeWidth="1.5">
-              <circle cx="12" cy="8.5" r="3.75" />
-              <path d="M4.5 20c1.2-3.6 4-5.5 7.5-5.5s6.3 1.9 7.5 5.5" strokeLinecap="round" />
-            </svg>
-          )}
-          <span className="text-xs">{aguardando ? "Aguardando o leitor…" : "Sem foto"}</span>
-        </div>
-      )}
-    </div>
-  );
-}

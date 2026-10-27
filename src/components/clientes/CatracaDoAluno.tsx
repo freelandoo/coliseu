@@ -4,7 +4,7 @@ import { useCallback, useEffect, useState } from "react";
 import { Badge, Card } from "@/components/ui/primitives";
 import { classeBotao } from "@/components/ui/Botao";
 import { MensagemErro } from "@/components/ui/Campo";
-import { CadastrarFacial } from "@/components/clientes/CadastrarFacial";
+import { CorrigirFacialModal } from "@/components/clientes/CorrigirFacialModal";
 
 type Diagnostico = {
   liberado: boolean;
@@ -22,12 +22,17 @@ const COMANDO: Record<string, string> = {
   OPEN: "Liberação manual",
 };
 
-/** "Por que não passa na catraca?" + botão que reenvia o aluno ao aparelho. */
+/**
+ * "Por que não passa na catraca?" — com "Corrigir facial" (abre a captura do
+ * rosto no leitor, o mesmo modal da catraca) e "Reenviar ao aparelho" (manda de
+ * novo o cadastro e a liberação, para quando o envio deu erro).
+ */
 export function CatracaDoAluno({ personId, nome }: { personId: string; nome: string }) {
   const [d, setD] = useState<Diagnostico | null>(null);
   const [erro, setErro] = useState("");
   const [corrigindo, setCorrigindo] = useState(false);
   const [aviso, setAviso] = useState("");
+  const [capturando, setCapturando] = useState(false);
 
   const carregar = useCallback(async () => {
     try {
@@ -63,7 +68,6 @@ export function CatracaDoAluno({ personId, nome }: { personId: string; nome: str
   }
 
   if (!d) return erro ? <Card className="p-6 text-sm text-danger">{erro}</Card> : null;
-  const semFace = !d.checklist.find((c) => c.item === "Face cadastrada")?.ok;
 
   return (
     <Card className="p-6">
@@ -82,11 +86,10 @@ export function CatracaDoAluno({ personId, nome }: { personId: string; nome: str
           </button>
           <button
             type="button"
-            onClick={corrigir}
-            disabled={corrigindo}
+            onClick={() => setCapturando(true)}
             className={classeBotao({ variante: "primario", tamanho: "sm" })}
           >
-            {corrigindo ? "Enviando…" : "Corrigir agora"}
+            Corrigir facial
           </button>
         </div>
       </div>
@@ -109,9 +112,25 @@ export function CatracaDoAluno({ personId, nome }: { personId: string; nome: str
         ))}
       </ul>
 
-      <div className="mt-3">
-        <CadastrarFacial personId={personId} nome={nome} temFace={!semFace} tamanho="sm" />
-      </div>
+      <button
+        type="button"
+        onClick={corrigir}
+        disabled={corrigindo}
+        className="mt-3 text-xs font-medium text-muted underline-offset-2 hover:text-ink hover:underline disabled:opacity-60"
+        title="Manda de novo o cadastro e a liberação ao aparelho (quando o envio deu erro)"
+      >
+        {corrigindo ? "Reenviando…" : "Reenviar ao aparelho"}
+      </button>
+      {capturando && (
+        <CorrigirFacialModal
+          personId={personId}
+          nome={nome}
+          onFechar={(capturou) => {
+            setCapturando(false);
+            if (capturou) void carregar();
+          }}
+        />
+      )}
 
       {d.comandos.length > 0 && (
         <div className="mt-4">
