@@ -1,6 +1,6 @@
 "use client";
 
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { cn } from "@/lib/cn";
 import { formatBRL } from "@/lib/mock-data";
 import { DescricaoModal, Modal, TituloModal } from "@/components/ui/Modal";
@@ -9,6 +9,17 @@ import { MensagemErro } from "@/components/ui/Campo";
 import { lerResultado, sinalDeTempo, temOk } from "@/lib/operacao";
 
 export type MetodoBalcao = "dinheiro" | "pix" | "debito" | "credito";
+
+/** Até quantas vezes a maquininha parcela (igual a `MAX_PARCELAS_CARTAO` do servidor). */
+const MAX_PARCELAS_CARTAO = 12;
+
+interface Venda {
+  valor: number;
+  planoInteiro: boolean;
+  valorMensal: number | null;
+  meses: number;
+  rotulo: string | null;
+}
 
 const METODOS: { key: MetodoBalcao; label: string; icone: string; parcelavel?: boolean }[] = [
   { key: "dinheiro", label: "Dinheiro", icone: "💵" },
@@ -39,9 +50,31 @@ export function CheckoutBalcao({
   // Sem confirmação o botão trava: confirmar de novo pode dar baixa duas vezes.
   const [incerto, setIncerto] = useState(false);
   const emVoo = useRef(false);
+  // O servidor decide o valor: plano de vários meses sai inteiro (mensalidade × meses).
+  const [venda, setVenda] = useState<Venda | null>(null);
+  const [carregandoVenda, setCarregandoVenda] = useState(true);
 
+  useEffect(() => {
+    let ativo = true;
+    (async () => {
+      try {
+        const r = await fetch(`/api/pessoas/${personId}/checkout`, { cache: "no-store", signal: sinalDeTempo() });
+        const d = (await r.json().catch(() => null)) as Venda | null;
+        if (ativo && r.ok && d && typeof d.valor === "number") setVenda(d);
+      } catch {
+        // sem resposta: fica o valor que a tela já conhecia
+      } finally {
+        if (ativo) setCarregandoVenda(false);
+      }
+    })();
+    return () => {
+      ativo = false;
+    };
+  }, [personId]);
+
+  const total = venda?.valor ?? valor;
   const credito = metodo === "credito";
-  const valorParcela = credito && parcelas > 1 ? valor / parcelas : valor;
+  const valorParcela = credito && parcelas > 1 ? total / parcelas : total;
 
   async function confirmar() {
     if (emVoo.current || incerto) return;
@@ -83,9 +116,17 @@ export function CheckoutBalcao({
 
       <div className="mt-5 rounded-lg border border-border bg-surface-2 p-4 text-sm">
         <Linha rotulo="Aluno" valor={nome} />
-        <Linha rotulo="Plano" valor={planoNome} />
-        <Linha rotulo="Total" valor={formatBRL(valor)} destaque />
+        <Linha rotulo="Plano" valor={venda?.rotulo ? `${planoNome} · ${venda.rotulo}` : planoNome} />
+        {venda?.planoInteiro && venda.valorMensal !== null && (
+          <Linha rotulo="Mensalidade" valor={`${formatBRL(venda.valorMensal)} × ${venda.meses} meses`} />
+        )}
+        <Linha rotulo={venda?.planoInteiro ? "Total do plano" : "Total"} valor={formatBRL(total)} destaque />
       </div>
+      {venda?.planoInteiro && (
+        <p className="mt-2 text-xs text-muted">
+          O plano inteiro é pago agora. A cobrança mensal no Asaas é cancelada para o aluno não ser cobrado de novo.
+        </p>
+      )}
 
       <div className="mt-5">
         <p id="checkout-metodo" className="text-sm font-medium text-muted">
@@ -118,7 +159,7 @@ export function CheckoutBalcao({
             Parcelas
           </p>
           <div role="group" aria-labelledby="checkout-parcelas" className="mt-2 flex flex-wrap gap-2">
-            {[1, 2, 3, 4, 6, 12].map((n) => (
+            {Array.from({ length: MAX_PARCELAS_CARTAO }, (_, i) => i + 1).map((n) => (
               <button
                 type="button"
                 key={n}
@@ -138,7 +179,8 @@ export function CheckoutBalcao({
           {parcelas > 1 && (
             <p className="mt-2 text-xs text-muted">
               {parcelas}× de <span className="font-medium text-ink">{formatBRL(valorParcela)}</span> na
-              maquininha. O sistema registra o pagamento do total; o parcelamento fica entre a pessoa e a operadora.
+              maquininha (total {formatBRL(total)}). O sistema registra o pagamento do total; o parcelamento fica
+              entre a pessoa e a operadora.
             </p>
           )}
         </div>
@@ -152,10 +194,10 @@ export function CheckoutBalcao({
         bloco
         onClick={confirmar}
         carregando={enviando}
-        disabled={incerto}
+        disabled={incerto || carregandoVenda}
         className="mt-6"
       >
-        {enviando ? "Confirmando…" : `Confirmar pagamento · ${formatBRL(valor)}`}
+        {enviando ? "Confirmando…" : `Confirmar pagamento · ${formatBRL(total)}`}
       </Botao>
       <Botao bloco onClick={onFechar} disabled={enviando} className="mt-3">
         {incerto ? "Fechar" : "Cancelar"}

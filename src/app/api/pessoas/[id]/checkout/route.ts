@@ -1,19 +1,25 @@
 import { NextResponse } from "next/server";
-import { prisma } from "@/lib/db";
 import { exigirModuloApi } from "@/lib/auth/api-guard";
-import { processarEvento } from "@/lib/billing/processor";
-import { AsaasError, ehIdAsaasReal } from "@/lib/asaas";
-import { baixarNoAsaas } from "@/lib/billing/cobrancas";
+import { AsaasError } from "@/lib/asaas";
 import {
-  upsertBillingCustomerRepo,
-  upsertBillingSubscriptionRepo,
-  upsertPaymentRepo,
-} from "@/lib/repositories/billing";
+  METODOS_BALCAO,
+  VendaBalcaoInvalida,
+  confirmarVendaBalcao,
+  vendaDeBalcao,
+  type MetodoBalcao,
+} from "@/lib/billing/balcao";
 
 type Ctx = { params: Promise<{ id: string }> };
 
-const METODOS = ["dinheiro", "pix", "debito", "credito"] as const;
-type Metodo = (typeof METODOS)[number];
+/** O que o balcão vai cobrar: plano de vários meses sai pelo valor inteiro. */
+export async function GET(_req: Request, { params }: Ctx) {
+  const g = await exigirModuloApi("matriculados");
+  if (g.erro) return g.erro;
+  const { id } = await params;
+  const venda = await vendaDeBalcao(id);
+  if (!venda) return NextResponse.json({ erro: "Nenhuma cobrança pendente para esta pessoa" }, { status: 404 });
+  return NextResponse.json(venda);
+}
 
 /** Venda de balcão: confirma o pagamento na própria plataforma (dinheiro/pix/cartão presencial). */
 export async function POST(req: Request, { params }: Ctx) {
@@ -22,86 +28,23 @@ export async function POST(req: Request, { params }: Ctx) {
   const { id } = await params;
 
   const body = (await req.json()) as { metodo?: string; parcelas?: number };
-  if (!body.metodo || !METODOS.includes(body.metodo as Metodo)) {
+  if (!body.metodo || !METODOS_BALCAO.includes(body.metodo as MetodoBalcao)) {
     return NextResponse.json(
       { erro: "metodo inválido (dinheiro | pix | debito | credito)" },
       { status: 400 },
     );
   }
-  const metodo = body.metodo as Metodo;
+  const metodo = body.metodo as MetodoBalcao;
 
-  // Cobrança de matrícula em aberto desta pessoa.
-  const cobranca = await prisma.cobranca.findFirst({
-    where: { personId: id, status: "pendente" },
-    orderBy: { vencimento: "desc" },
-  });
-  if (!cobranca) {
-    return NextResponse.json({ erro: "Nenhuma cobrança pendente para esta pessoa" }, { status: 404 });
+  try {
+    const venda = await confirmarVendaBalcao(id, metodo);
+    return NextResponse.json({ ok: true, status: "pago", metodo, valor: venda.valor });
+  } catch (e) {
+    if (e instanceof VendaBalcaoInvalida) return NextResponse.json({ erro: e.message }, { status: e.status });
+    console.error("[checkout] venda de balcão falhou:", e);
+    return NextResponse.json(
+      { erro: e instanceof AsaasError ? e.message : "Falha ao dar baixa no Asaas" },
+      { status: 502 },
+    );
   }
-
-  // Cobrança que existe no Asaas: dá baixa lá primeiro. Se o Asaas recusar,
-  // nada muda aqui — senão o aluno seguiria recebendo cobrança já paga.
-  if (ehIdAsaasReal(cobranca.asaasId)) {
-    try {
-      await baixarNoAsaas(cobranca.asaasId, cobranca.valor);
-    } catch (e) {
-      console.error("[checkout] baixa no Asaas falhou:", e);
-      return NextResponse.json(
-        { erro: e instanceof AsaasError ? e.message : "Falha ao dar baixa no Asaas" },
-        { status: 502 },
-      );
-    }
-  }
-
-  // Registra o método (venda de balcão).
-  await prisma.cobranca.update({ where: { id: cobranca.id }, data: { metodo } });
-
-  if (!cobranca.asaasId) {
-    // Cobrança sem vínculo no Asaas (ex.: dados de seed): cria uma cadeia de pagamento
-    // local (customer → subscription → payment) para que o Payment fique ligado à pessoa
-    // e a política de acesso enxergue billingStatus=PAID. Assim o balcão libera o acesso.
-    const membership = await prisma.membership.findFirst({
-      where: { personId: id },
-      orderBy: { matriculadoEm: "desc" },
-    });
-    const payId = `balcao_pay_${cobranca.id}`;
-    const bc = await upsertBillingCustomerRepo({ asaasCustomerId: `balcao_cus_${id}`, personId: id });
-    const bs = await upsertBillingSubscriptionRepo({
-      asaasSubscriptionId: `balcao_sub_${cobranca.id}`,
-      customerId: bc.id,
-      value: cobranca.valor,
-      externalReference: membership?.id ?? null,
-    });
-    await upsertPaymentRepo({
-      asaasPaymentId: payId,
-      subscriptionId: bs.id,
-      value: cobranca.valor,
-      dueDate: cobranca.vencimento,
-      status: "PENDING",
-      statusUpdatedAt: new Date(),
-    });
-    await prisma.cobranca.update({ where: { id: cobranca.id }, data: { asaasId: payId } });
-    cobranca.asaasId = payId;
-  }
-
-  // Reaproveita o caminho do webhook: marca o Payment PAID, ativa a matrícula e libera o acesso.
-  await processarEvento({
-    id: `balcao:${cobranca.asaasId}:${Date.now()}`,
-    event: "PAYMENT_RECEIVED",
-    dateCreated: new Date().toISOString(),
-    payment: {
-      id: cobranca.asaasId,
-      status: "RECEIVED",
-      billingType: `BALCAO:${metodo}`,
-      value: cobranca.valor,
-      paymentDate: new Date().toISOString(),
-    },
-  });
-
-  await prisma.payment.updateMany({
-    where: { asaasPaymentId: cobranca.asaasId, personId: null },
-    data: { personId: id },
-  });
-
-  return NextResponse.json({ ok: true, status: "pago", metodo });
 }
