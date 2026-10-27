@@ -406,6 +406,9 @@ model Cobranca {
   assinaturaId  String?
   linkPagamento String?
   metodo        String? // venda de balcão: dinheiro | pix | debito | credito
+  /// Paga pela Freelandoo (o aluno pagou lá; a Freelandoo repassa). Idempotência
+  /// da baixa: `freelandoo:<id do pedido>`.
+  freelandooRef String?        @unique
   updatedAt     DateTime       @default(now()) @updatedAt
 
   @@index([personId, status])

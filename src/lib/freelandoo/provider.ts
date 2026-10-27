@@ -6,6 +6,7 @@ import {
   mapMembershipStatus,
   normalizarCpf,
 } from "@/lib/freelandoo/mapping";
+import { metodoDe } from "@/lib/freelandoo/baixa";
 
 const MAX_LIMIT = 500;
 
@@ -116,6 +117,8 @@ export async function paymentsSince(cursorRaw: string | null, limit: number) {
       due_date: c.vencimento.toISOString(),
       status,
       paid_at: c.status === "pago" ? c.updatedAt.toISOString() : null,
+      // Freelandoo mig 310: "freelandoo" quando o aluno pagou por ela.
+      method: metodoDe(c),
     });
   }
   const last = cobrancas[cobrancas.length - 1];

@@ -40,6 +40,8 @@ const NOMES_FORMA: Record<string, string> = {
   BOLETO: "boleto",
   CREDIT_CARD: "cartão de crédito",
   DEBIT_CARD: "cartão de débito",
+  // Pago pela Freelandoo (o aluno pagou lá; ela repassa).
+  FREELANDOO: "Freelandoo",
 };
 const NOMES_BALCAO: Record<string, string> = {
   dinheiro: "dinheiro no balcão",

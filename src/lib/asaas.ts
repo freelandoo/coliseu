@@ -361,6 +361,15 @@ export async function receberEmDinheiroAsaas(paymentId: string, value: number): 
   });
 }
 
+/**
+ * Desfaz a baixa de `receberEmDinheiroAsaas` (o pagamento feito fora voltou:
+ * estorno na Freelandoo antes do repasse). A cobrança volta a ficar em aberto.
+ */
+export async function desfazerRecebimentoAsaas(paymentId: string): Promise<void> {
+  if (!asaasConfigurado() || !ehIdAsaasReal(paymentId)) return;
+  await asaas("POST", `/payments/${paymentId}/undoReceivedInCash`);
+}
+
 /** Uma cobrança do Asaas (reconciliação pontual). */
 export async function obterCobrancaAsaas(paymentId: string): Promise<AsaasPaymentLike | null> {
   if (!asaasConfigurado() || !ehIdAsaasReal(paymentId)) return null;
