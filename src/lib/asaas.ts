@@ -102,14 +102,15 @@ export function asaasConfigurado(): boolean {
 
 /**
  * Ids que nunca existiram no Asaas: mock (sem chave), balcão (venda presencial
- * sem cobrança online) e semente. Chamar a API com eles só daria 404.
+ * sem cobrança online), adotados do CloudGym (cg_…) e semente. Chamar a API
+ * com eles só daria 404.
  */
 export function ehIdAsaasReal(id: string | null | undefined): id is string {
   if (!id) return false;
-  return !/^(pay|cus|sub|ins)_(mock|seed)_|^balcao_|^pay_\d{3}$/.test(id);
+  return !/^(pay|cus|sub|ins)_(mock|seed)_|^balcao_|^cg_|^pay_\d{3}$/.test(id);
 }
 
-async function chamar(metodo: "GET" | "POST" | "DELETE", caminho: string, corpo?: unknown): Promise<Response> {
+async function chamar(metodo: "GET" | "POST" | "PUT" | "DELETE", caminho: string, corpo?: unknown): Promise<Response> {
   const res = await fetch(`${ASAAS_BASE}${caminho}`, {
     method: metodo,
     headers: {
@@ -132,7 +133,7 @@ async function chamar(metodo: "GET" | "POST" | "DELETE", caminho: string, corpo?
   return res;
 }
 
-async function asaas<T>(metodo: "GET" | "POST" | "DELETE", caminho: string, corpo?: unknown): Promise<T> {
+async function asaas<T>(metodo: "GET" | "POST" | "PUT" | "DELETE", caminho: string, corpo?: unknown): Promise<T> {
   const texto = await (await chamar(metodo, caminho, corpo)).text();
   return (texto ? JSON.parse(texto) : {}) as T;
 }
@@ -156,7 +157,50 @@ export async function criarOuLocalizarCliente(
     const r = await asaas<{ data: AsaasCustomer[] }>("GET", `/customers?${filtro}&limit=1`);
     if (r.data[0]) return r.data[0];
   }
-  return asaas<AsaasCustomer>("POST", "/customers", input);
+  const novo = await asaas<AsaasCustomer>("POST", "/customers", input);
+  // Cliente novo já nasce com os avisos da academia (ver `ajustesDeAviso`).
+  // Falha aqui não impede a cobrança: o script asaas-avisos corrige depois.
+  await configurarAvisosAsaas(novo.id).catch((e) => console.error("[asaas] avisos do cliente não configurados:", e));
+  return novo;
+}
+
+/** Aviso do Asaas para o aluno (GET /customers/{id}/notifications). */
+export interface AvisoAsaas {
+  id: string;
+  event: string;
+  scheduleOffset: number;
+  enabled: boolean;
+}
+
+/**
+ * Avisos que a academia quer que o Asaas mande (decisão do Alex, 26/10/2026 —
+ * "1 dia antes + depois de vencida"; o Asaas só antecipa 5/10/15/30 dias, então
+ * o lembrete fica no dia do vencimento):
+ * - sem "cobrança criada" nem linha digitável na criação (a mensalidade seguinte
+ *   nasce logo depois do pagamento e o aviso confundia quem acabou de pagar);
+ * - sem lembrete antecipado de 10 dias;
+ * - ficam: no dia do vencimento, vencida (e a cada 7 dias), recibo, alteração.
+ * Devolve só o que precisa mudar (rodar de novo não faz nada).
+ */
+export function ajustesDeAviso(avisos: AvisoAsaas[]): { id: string; enabled: boolean }[] {
+  return avisos
+    .filter((a) => {
+      const desligar =
+        a.event === "PAYMENT_CREATED" ||
+        a.event === "SEND_LINHA_DIGITAVEL" ||
+        (a.event === "PAYMENT_DUEDATE_WARNING" && a.scheduleOffset > 0);
+      return desligar ? a.enabled : false;
+    })
+    .map((a) => ({ id: a.id, enabled: false }));
+}
+
+/** Aplica `ajustesDeAviso` a um cliente do Asaas. Devolve quantos avisos mudaram. */
+export async function configurarAvisosAsaas(customerId: string): Promise<number> {
+  if (!asaasConfigurado() || !ehIdAsaasReal(customerId)) return 0;
+  const r = await asaas<{ data: AvisoAsaas[] }>("GET", `/customers/${customerId}/notifications`);
+  const ajustes = ajustesDeAviso(r.data);
+  for (const a of ajustes) await asaas("PUT", `/notifications/${a.id}`, { enabled: a.enabled });
+  return ajustes.length;
 }
 
 /** Cria a assinatura mensal recorrente (POST /subscriptions). 1ª cobrança vence amanhã. */
