@@ -110,7 +110,7 @@ function combina(p: Pessoa, filtro: Filtro): boolean {
   if (filtro === "todos") return true;
   if (p.fase !== "aluno") return false;
   // "Ativos" inclui o inadimplente, como no CloudGym (a matrícula segue ativa).
-  if (filtro === "ativo") return contaComoAtivo(p.status);
+  if (filtro === "ativo") return contaComoAtivo(p);
   return p.status === filtro;
 }
 

@@ -111,6 +111,8 @@ export interface Aluno {
   cpf: string;
   planoId: string;
   status: AlunoStatus;
+  /** Contrato valendo: conta entre os ativos mesmo inadimplente (ver contaComoAtivo). */
+  contratoVigente?: boolean;
   matriculadoEm: string; // ISO
   vencimentoPlano: string; // ISO — fim do plano contratado
   ultimaPresenca: string; // ISO
@@ -172,6 +174,8 @@ export interface Pessoa {
   matriculadoPor?: string;
   vencimentoPlano?: string;
   ultimaPresenca?: string;
+  /** Matrícula ativa com o plano valendo (ou assinatura que renova sozinha). */
+  contratoVigente?: boolean;
   /** Parcela aberta mais antiga (a que decide a régua de cobrança). */
   parcelaAberta?: { vencimento: string; valor: number; diasAtraso: number; link?: string };
   // ficha opcional

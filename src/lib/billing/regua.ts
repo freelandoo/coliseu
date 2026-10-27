@@ -8,8 +8,12 @@
  *   1..3 ...... catraca libera na carência (a recepção vê o aviso)
  *   4 ......... catraca bloqueia
  *   1..7 ...... cobrança automática do Asaas (vencida + 7 dias depois)
- *   8..60 ..... INADIMPLENTE: o Asaas para de avisar e a cobrança é manual
- *   61+ ....... INATIVO: sai da lista de inadimplentes
+ *   8+ ........ INADIMPLENTE: o Asaas para de avisar e a cobrança é manual
+ *
+ * O contrato decide o resto (Alex, 27/10/2026): com contrato vigente (plano de
+ * 1 ano ainda valendo, p.ex.) o aluno é inadimplente e segue ATIVO, por mais
+ * velha que seja a parcela. Sem contrato (plano vencido), fica na lista de
+ * inadimplentes até 60 dias de atraso e depois vira INATIVO.
  *
  * Funções puras: quem chama traz as datas do banco.
  */
@@ -20,7 +24,7 @@ export const CARENCIA_DIAS = 3;
 export const AVISO_ANTES_DIAS = 5;
 /** Até quantos dias de atraso o Asaas cobra sozinho. */
 export const COBRANCA_AUTOMATICA_ATE_DIAS = 7;
-/** Até quantos dias de atraso o aluno fica na lista de inadimplentes. */
+/** Sem contrato vigente, até quantos dias de atraso o aluno fica nos inadimplentes. */
 export const INADIMPLENTE_ATE_DIAS = 60;
 
 const UM_DIA = 86_400_000;
@@ -44,53 +48,52 @@ export function diasDesde(vencimento: Date, agora = new Date()): number {
   return Math.round((hojeSaoPaulo(agora) - venc) / UM_DIA);
 }
 
-export type EtapaCobranca = "em_dia" | "cobranca_automatica" | "inadimplente" | "inativo";
-
-/** Em que ponto da régua está quem tem uma parcela `diasAtraso` dias vencida. */
-export function etapaDaCobranca(diasAtraso: number | null): EtapaCobranca {
-  if (diasAtraso == null || diasAtraso <= 0) return "em_dia";
-  if (diasAtraso <= COBRANCA_AUTOMATICA_ATE_DIAS) return "cobranca_automatica";
-  if (diasAtraso <= INADIMPLENTE_ATE_DIAS) return "inadimplente";
-  return "inativo";
-}
-
 type StatusMatricula = "DRAFT" | "PENDING_PAYMENT" | "ACTIVE" | "SUSPENDED" | "CANCELED" | "EXPIRED";
 export type SituacaoAluno = "ativo" | "pendente" | "inadimplente" | "inativo" | "cancelado";
 
-/**
- * Situação do aluno na régua. Matrícula ativa com parcela vencida há 8–60 dias
- * é inadimplente (e segue contando como ativa, como no CloudGym); passou de 60,
- * ou o plano venceu além da carência sem assinatura que renove sozinha, é
- * inativo — mesmo antes de a rotina de vencimento gravar EXPIRED.
- */
-export function situacaoDoAluno(i: {
+export interface DadosSituacao {
   matricula: StatusMatricula;
   /** Dias de atraso da parcela aberta mais antiga (null = nenhuma aberta). */
   diasAtrasoParcela: number | null;
   diasAposVencimentoPlano: number | null;
   /** Assinatura real no Asaas: a mensalidade paga empurra o vencimento do plano. */
   renovaSozinho: boolean;
-}): SituacaoAluno {
+}
+
+/**
+ * Contrato vigente: matrícula ativa com o plano valendo (ou na carência), ou
+ * com assinatura que renova sozinha. É o que o CloudGym conta como ativo.
+ */
+export function temContratoVigente(i: DadosSituacao): boolean {
+  if (i.matricula !== "ACTIVE") return false;
+  return i.renovaSozinho || (i.diasAposVencimentoPlano ?? 0) <= CARENCIA_DIAS;
+}
+
+/**
+ * Situação do aluno na régua:
+ * - contrato vigente: inadimplente com parcela vencida há 8+ dias, senão ativo;
+ * - sem contrato: inadimplente enquanto a parcela vencida tiver até 60 dias,
+ *   depois (ou sem dívida) inativo.
+ */
+export function situacaoDoAluno(i: DadosSituacao): SituacaoAluno {
   switch (i.matricula) {
     case "CANCELED":
       return "cancelado";
     case "DRAFT":
     case "PENDING_PAYMENT":
       return "pendente";
-    case "EXPIRED":
-    case "SUSPENDED":
-      return "inativo";
   }
-  const etapa = etapaDaCobranca(i.diasAtrasoParcela);
-  if (etapa === "inativo") return "inativo";
-  if (etapa === "inadimplente") return "inadimplente";
-  if (!i.renovaSozinho && (i.diasAposVencimentoPlano ?? 0) > CARENCIA_DIAS) return "inativo";
-  return "ativo";
+  const atraso = i.diasAtrasoParcela ?? 0;
+  if (temContratoVigente(i)) return atraso > COBRANCA_AUTOMATICA_ATE_DIAS ? "inadimplente" : "ativo";
+  return atraso > 0 && atraso <= INADIMPLENTE_ATE_DIAS ? "inadimplente" : "inativo";
 }
 
-/** Conta como ativo no total (o CloudGym conta o inadimplente entre os ativos). */
-export function contaComoAtivo(s: SituacaoAluno | undefined): boolean {
-  return s === "ativo" || s === "inadimplente";
+/**
+ * Conta como ativo no total: contrato vigente, em dia ou inadimplente (como no
+ * CloudGym). "ativo" sempre tem contrato; o inadimplente sem contrato fica fora.
+ */
+export function contaComoAtivo(p: { status?: SituacaoAluno; contratoVigente?: boolean }): boolean {
+  return p.status === "ativo" || (p.status === "inadimplente" && p.contratoVigente !== false);
 }
 
 /**

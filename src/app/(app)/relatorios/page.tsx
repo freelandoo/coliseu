@@ -32,7 +32,7 @@ export default async function RelatoriosPage() {
   const planoById = new Map(planos.map((p) => [p.id, p]));
 
   // ---------- base ----------
-  const naoCancelados = alunos.filter((a) => contaComoAtivo(a.status));
+  const naoCancelados = alunos.filter((a) => contaComoAtivo(a));
   const base = naoCancelados.length;
   const inadimplentes = naoCancelados.filter((a) => a.status === "inadimplente");
 

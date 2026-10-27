@@ -65,7 +65,7 @@ export async function contarLeadsPorEstagioRepo(): Promise<Record<LeadEstagio, n
  * da parcela aberta e do vencimento do plano, por isso a conta é a da lista.
  */
 export async function contarAlunosAtivosRepo(): Promise<number> {
-  return (await listarPessoasRepo(["aluno"])).filter((p) => contaComoAtivo(p.status)).length;
+  return (await listarPessoasRepo(["aluno"])).filter((p) => contaComoAtivo(p)).length;
 }
 
 export async function obterPessoaRepo(id: string): Promise<Pessoa | undefined> {

@@ -72,7 +72,7 @@ export function paraAluno(p: Pessoa): Aluno {
   return {
     id: p.id, codigo: p.codigo, nome: p.nome,
     telefone: p.telefone ?? "", email: p.email ?? "", cpf: p.cpf ?? "",
-    planoId: p.planoId ?? "", status: p.status ?? "ativo",
+    planoId: p.planoId ?? "", status: p.status ?? "ativo", contratoVigente: p.contratoVigente,
     matriculadoEm: p.matriculadoEm ?? p.criadoEm,
     vencimentoPlano: p.vencimentoPlano ?? p.criadoEm,
     ultimaPresenca: p.ultimaPresenca ?? p.criadoEm,
@@ -104,7 +104,7 @@ export async function receitaRecorrente(): Promise<number> {
   const [pessoas, planos] = await Promise.all([listarPessoasRepo(["aluno"]), listarPlanosRepo()]);
   const byId = new Map(planos.map((p) => [p.id, p]));
   return pessoas
-    .filter((p) => contaComoAtivo(p.status))
+    .filter((p) => contaComoAtivo(p))
     .reduce((s, p) => s + (p.planoId ? byId.get(p.planoId)?.valorMensal ?? 0 : 0), 0);
 }
 

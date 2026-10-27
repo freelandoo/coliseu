@@ -47,7 +47,7 @@ export function nomeDoPlano(planos: Plano[]): (planoId: string | undefined) => s
 
 /** Alunos que contam como base: matriculados que não cancelaram. */
 export function baseAtiva(pessoas: Pessoa[]): Pessoa[] {
-  return pessoas.filter((p) => p.fase === "aluno" && contaComoAtivo(p.status));
+  return pessoas.filter((p) => p.fase === "aluno" && contaComoAtivo(p));
 }
 
 export function cancelados(pessoas: Pessoa[]): Pessoa[] {

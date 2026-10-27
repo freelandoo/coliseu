@@ -1,5 +1,5 @@
 import { expect, test } from "vitest";
-import { avisoDeCarencia, diasDesde, etapaDaCobranca, situacaoDoAluno } from "@/lib/billing/regua";
+import { avisoDeCarencia, contaComoAtivo, diasDesde, situacaoDoAluno, temContratoVigente } from "@/lib/billing/regua";
 
 // 27/10/2026 às 10h em São Paulo
 const AGORA = new Date("2026-10-27T13:00:00Z");
@@ -12,29 +12,32 @@ test("dias corridos pelo calendário de São Paulo, não pela hora", () => {
   expect(diasDesde(new Date("2026-10-27T00:00:00Z"), new Date("2026-10-28T02:30:00Z"))).toBe(0);
 });
 
-test("etapas da régua", () => {
-  expect(etapaDaCobranca(null)).toBe("em_dia");
-  expect(etapaDaCobranca(0)).toBe("em_dia");
-  expect(etapaDaCobranca(1)).toBe("cobranca_automatica");
-  expect(etapaDaCobranca(7)).toBe("cobranca_automatica");
-  expect(etapaDaCobranca(8)).toBe("inadimplente");
-  expect(etapaDaCobranca(60)).toBe("inadimplente");
-  expect(etapaDaCobranca(61)).toBe("inativo");
+const vigente = { matricula: "ACTIVE" as const, diasAposVencimentoPlano: -100, renovaSozinho: false };
+const encerrado = { matricula: "ACTIVE" as const, diasAposVencimentoPlano: 10, renovaSozinho: false };
+
+test("contrato vigente: inadimplente a partir de 8 dias e nunca inativo pela parcela", () => {
+  expect(situacaoDoAluno({ ...vigente, diasAtrasoParcela: null })).toBe("ativo");
+  expect(situacaoDoAluno({ ...vigente, diasAtrasoParcela: 7 })).toBe("ativo");
+  expect(situacaoDoAluno({ ...vigente, diasAtrasoParcela: 8 })).toBe("inadimplente");
+  expect(situacaoDoAluno({ ...vigente, diasAtrasoParcela: 300 })).toBe("inadimplente");
+  expect(contaComoAtivo({ status: "inadimplente", contratoVigente: true })).toBe(true);
 });
 
-test("situação: inadimplente só de 8 a 60 dias; depois inativo", () => {
-  const base = { matricula: "ACTIVE" as const, diasAposVencimentoPlano: -100, renovaSozinho: false };
-  expect(situacaoDoAluno({ ...base, diasAtrasoParcela: 5 })).toBe("ativo");
-  expect(situacaoDoAluno({ ...base, diasAtrasoParcela: 8 })).toBe("inadimplente");
-  expect(situacaoDoAluno({ ...base, diasAtrasoParcela: 61 })).toBe("inativo");
-  expect(situacaoDoAluno({ ...base, matricula: "EXPIRED", diasAtrasoParcela: null })).toBe("inativo");
+test("sem contrato: inadimplente até 60 dias de atraso, depois inativo", () => {
+  expect(situacaoDoAluno({ ...encerrado, diasAtrasoParcela: null })).toBe("inativo");
+  expect(situacaoDoAluno({ ...encerrado, diasAtrasoParcela: 30 })).toBe("inadimplente");
+  expect(situacaoDoAluno({ ...encerrado, diasAtrasoParcela: 60 })).toBe("inadimplente");
+  expect(situacaoDoAluno({ ...encerrado, diasAtrasoParcela: 61 })).toBe("inativo");
+  expect(situacaoDoAluno({ ...encerrado, matricula: "EXPIRED", diasAtrasoParcela: 20 })).toBe("inadimplente");
+  // inadimplente sem contrato não entra no total de ativos
+  expect(contaComoAtivo({ status: "inadimplente", contratoVigente: false })).toBe(false);
 });
 
-test("plano vencido além da carência é inativo, salvo assinatura que renova sozinha", () => {
-  const base = { matricula: "ACTIVE" as const, diasAtrasoParcela: null };
-  expect(situacaoDoAluno({ ...base, diasAposVencimentoPlano: 3, renovaSozinho: false })).toBe("ativo");
-  expect(situacaoDoAluno({ ...base, diasAposVencimentoPlano: 4, renovaSozinho: false })).toBe("inativo");
-  expect(situacaoDoAluno({ ...base, diasAposVencimentoPlano: 40, renovaSozinho: true })).toBe("ativo");
+test("contrato vigente: plano na carência ou assinatura que renova sozinha", () => {
+  expect(temContratoVigente({ ...encerrado, diasAposVencimentoPlano: 3, diasAtrasoParcela: null })).toBe(true);
+  expect(temContratoVigente({ ...encerrado, diasAposVencimentoPlano: 4, diasAtrasoParcela: null })).toBe(false);
+  expect(temContratoVigente({ ...encerrado, diasAposVencimentoPlano: 40, renovaSozinho: true, diasAtrasoParcela: null })).toBe(true);
+  expect(temContratoVigente({ ...vigente, matricula: "EXPIRED", diasAtrasoParcela: null })).toBe(false);
 });
 
 test("aviso da carência para a recepção: 3, 2 e o último dia", () => {

@@ -89,7 +89,7 @@ export default async function CobrancaPage() {
 
   // Contratos (aba "Contratos"): matrícula ativa que vence nos próximos 30 dias.
   const contratos: ContratoAVencer[] = alunos
-    .filter((a) => contaComoAtivo(a.status))
+    .filter((a) => contaComoAtivo(a))
     .map((a) => ({ aluno: a, dias: -diasEntre(a.vencimentoPlano) }))
     .filter((x) => x.dias >= 0 && x.dias <= 30)
     .sort((a, b) => a.dias - b.dias)

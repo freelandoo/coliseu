@@ -10,7 +10,7 @@ import type {
   CobrancaStatus,
 } from "@/lib/types";
 import { ehIdAsaasReal } from "@/lib/asaas";
-import { diasDesde, situacaoDoAluno } from "@/lib/billing/regua";
+import { diasDesde, situacaoDoAluno, temContratoVigente } from "@/lib/billing/regua";
 import type {
   Plan as PPlan,
   Person as PPerson,
@@ -44,6 +44,14 @@ export function toPessoa(
   const m = p.memberships[0];
   const parcela = p.payments?.[0];
   const diasAtraso = parcela ? diasDesde(parcela.dueDate) : null;
+  const situacao = m
+    ? {
+        matricula: m.status,
+        diasAtrasoParcela: diasAtraso,
+        diasAposVencimentoPlano: diasDesde(m.vencimentoPlano),
+        renovaSozinho: (p.billingCustomer?.subscriptions ?? []).some((s) => ehIdAsaasReal(s.asaasSubscriptionId)),
+      }
+    : null;
   return {
     id: p.id,
     codigo: p.codigo,
@@ -59,14 +67,8 @@ export function toPessoa(
     estagio: (p.estagio ?? undefined) as LeadEstagio | undefined,
     motivoPerdido: p.motivoPerdido ?? undefined,
     planoId: m?.planId,
-    status: m
-      ? situacaoDoAluno({
-          matricula: m.status,
-          diasAtrasoParcela: diasAtraso,
-          diasAposVencimentoPlano: diasDesde(m.vencimentoPlano),
-          renovaSozinho: (p.billingCustomer?.subscriptions ?? []).some((s) => ehIdAsaasReal(s.asaasSubscriptionId)),
-        })
-      : undefined,
+    status: situacao ? situacaoDoAluno(situacao) : undefined,
+    contratoVigente: situacao ? temContratoVigente(situacao) : undefined,
     parcelaAberta: parcela
       ? {
           vencimento: parcela.dueDate.toISOString(),

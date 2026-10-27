@@ -1,7 +1,7 @@
 import { prisma } from "@/lib/db";
 import { ehIdAsaasReal } from "@/lib/asaas";
 import { recalcularAcessoDePessoa } from "@/lib/access/outbox";
-import { CARENCIA_DIAS, INADIMPLENTE_ATE_DIAS, diasDesde } from "@/lib/billing/regua";
+import { CARENCIA_DIAS, diasDesde } from "@/lib/billing/regua";
 
 /**
  * Vencimento automático de matrícula.
@@ -10,10 +10,10 @@ import { CARENCIA_DIAS, INADIMPLENTE_ATE_DIAS, diasDesde } from "@/lib/billing/r
  * passou há mais de CARENCIA_DIAS vira EXPIRED, e o acesso é reavaliado — a
  * catraca recebe DISABLE.
  *
- * Também vence quem tem parcela aberta vencida há mais de INADIMPLENTE_ATE_DIAS
- * (60): depois de 2 meses o inadimplente vira inativo (régua de 27/10/2026).
+ * Parcela atrasada NÃO vence a matrícula: com o contrato valendo, o aluno é
+ * inadimplente e segue ativo (régua de 27/10/2026, ver `regua.ts`).
  *
- * Fica de fora (do vencimento do plano) quem tem assinatura REAL ativa no Asaas: a mensalidade em dia
+ * Fica de fora quem tem assinatura REAL ativa no Asaas: a mensalidade em dia
  * empurra o vencimento (ver sincronizarMembership), e a inadimplência já é
  * tratada pela carência da cobrança. Assinatura mock/balcão não renova
  * sozinha, então não protege ninguém.
@@ -43,8 +43,6 @@ export interface CandidatoExpiracao {
   plano: string;
   vencimentoPlano: string;
   diasVencido: number;
-  /** plano: o plano venceu além da carência; parcela: parcela vencida há mais de 60 dias. */
-  motivo: "plano" | "parcela";
 }
 
 /** Quem venceria agora (sem alterar nada). */
@@ -52,15 +50,8 @@ export async function candidatosExpiracao(agora = new Date()): Promise<Candidato
   // A consulta só pré-filtra, com um dia de folga; quem decide é a conta por
   // dia de calendário (`diasDesde`) logo abaixo.
   const limite = new Date(agora.getTime() - (CARENCIA_DIAS - 1) * 86_400_000);
-  const limiteParcela = new Date(agora.getTime() - (INADIMPLENTE_ATE_DIAS - 1) * 86_400_000);
-  const ativas = await prisma.membership.findMany({
-    where: {
-      status: "ACTIVE",
-      OR: [
-        { vencimentoPlano: { lt: limite } },
-        { person: { payments: { some: { status: { in: ["PENDING", "OVERDUE"] }, dueDate: { lt: limiteParcela } } } } },
-      ],
-    },
+  const vencidas = await prisma.membership.findMany({
+    where: { status: "ACTIVE", vencimentoPlano: { lt: limite } },
     orderBy: { vencimentoPlano: "asc" },
     select: {
       id: true,
@@ -76,39 +67,27 @@ export async function candidatosExpiracao(agora = new Date()): Promise<Candidato
           billingCustomer: {
             select: { subscriptions: { where: { status: "ACTIVE" }, select: { asaasSubscriptionId: true } } },
           },
-          payments: {
-            where: { status: { in: ["PENDING", "OVERDUE"] } },
-            orderBy: { dueDate: "asc" },
-            take: 1,
-            select: { dueDate: true },
-          },
         },
       },
     },
   });
 
-  const candidatos: CandidatoExpiracao[] = [];
-  for (const m of ativas) {
+  return vencidas
     // Só a matrícula mais recente decide (renovação cria outra; a antiga não conta).
-    if (m.person.memberships[0]?.id !== m.id) continue;
-    const parcela = m.person.payments[0];
-    const atrasoParcela = parcela ? diasDesde(parcela.dueDate, agora) : 0;
-    const renovaSozinho = (m.person.billingCustomer?.subscriptions ?? []).some((s) => ehIdAsaasReal(s.asaasSubscriptionId));
-    const base = {
+    .filter((m) => m.person.memberships[0]?.id === m.id)
+    .filter(
+      (m) => !(m.person.billingCustomer?.subscriptions ?? []).some((s) => ehIdAsaasReal(s.asaasSubscriptionId)),
+    )
+    .filter((m) => diasDesde(m.vencimentoPlano, agora) > CARENCIA_DIAS)
+    .map((m) => ({
       membershipId: m.id,
       personId: m.personId,
       nome: m.person.nome,
       codigo: m.person.codigo,
       plano: m.plan.nome,
       vencimentoPlano: m.vencimentoPlano.toISOString(),
-    };
-    if (atrasoParcela > INADIMPLENTE_ATE_DIAS) {
-      candidatos.push({ ...base, diasVencido: atrasoParcela, motivo: "parcela" });
-    } else if (!renovaSozinho && diasDesde(m.vencimentoPlano, agora) > CARENCIA_DIAS) {
-      candidatos.push({ ...base, diasVencido: diasDesde(m.vencimentoPlano, agora), motivo: "plano" });
-    }
-  }
-  return candidatos;
+      diasVencido: diasDesde(m.vencimentoPlano, agora),
+    }));
 }
 
 export interface ResultadoExpiracao {
