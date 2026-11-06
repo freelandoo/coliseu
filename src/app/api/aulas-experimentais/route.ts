@@ -63,7 +63,7 @@ export async function GET(req: Request) {
  * POST — aula marcada no balcão, pela tela de Aula experimental (o outro
  * caminho é a conversa do Atendimento, que já envia a confirmação).
  *
- * CPF obrigatório e até 3 dias de aula por pessoa (ver `conferirAulaNova`). Daqui nada é
+ * CPF opcional e até 3 dias de aula por pessoa (ver `conferirAulaNova`). Daqui nada é
  * enviado: a aula entra na agenda e a resposta traz o texto da confirmação para
  * a recepção mandar pelo WhatsApp dela; o lembrete da véspera sai sozinho.
  * Liga a aula ao cadastro com o mesmo CPF — ou, sem ele, ao do mesmo telefone
@@ -103,14 +103,17 @@ export async function POST(req: Request) {
   if (!conf.ok) return NextResponse.json({ erro: conf.erro }, { status: conf.status });
   const cpf = conf.cpf;
 
-  const [porCpf, porTelefone] = await Promise.all([pessoaPorCpfRepo(cpf), acharPorTelefoneRepo(telefone)]);
+  const [porCpf, porTelefone] = await Promise.all([
+    cpf ? pessoaPorCpfRepo(cpf) : Promise.resolve(null),
+    acharPorTelefoneRepo(telefone),
+  ]);
   let personId = porCpf?.id ?? porTelefone.personId;
   let leadCriado = false;
   if (!personId) {
     const p = await criarPessoaRepo({
       nome,
       telefone: formatarTelefone(telefone),
-      cpf: `${cpf.slice(0, 3)}.${cpf.slice(3, 6)}.${cpf.slice(6, 9)}-${cpf.slice(9)}`,
+      cpf: cpf ? `${cpf.slice(0, 3)}.${cpf.slice(3, 6)}.${cpf.slice(6, 9)}-${cpf.slice(9)}` : undefined,
       origem: "balcao",
       vendedor: g.user.nome,
     });
@@ -118,7 +121,7 @@ export async function POST(req: Request) {
     await prisma.person.update({ where: { id: p.id }, data: { estagio: "interesse" } });
     personId = p.id;
     leadCriado = true;
-  } else {
+  } else if (cpf) {
     await guardarCpfNaPessoaRepo(personId, cpf);
   }
 

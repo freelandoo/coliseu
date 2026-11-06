@@ -58,8 +58,8 @@ function mascaraCpf(v: string): string {
  * confirmação sai pela conversa; aqui a aula entra na agenda e a recepção
  * manda a confirmação pelo WhatsApp dela, com o texto pronto.
  *
- * CPF obrigatório: cada pessoa tem até 3 dias de aula experimental. A tela confere
- * pelo CPF e pelo telefone + primeiro nome (no sistema e na planilha antiga)
+ * CPF opcional: cada pessoa tem até 3 dias de aula experimental. A tela confere
+ * pelo CPF (se informado) e pelo telefone + primeiro nome (no sistema e na planilha antiga)
  * antes de gravar, e mostra quem já existe com esses dados. Número novo vira
  * lead.
  */
@@ -142,7 +142,8 @@ function Formulario({ dia, agendante, onFechar }: { dia?: string; agendante: Age
     }
   }
 
-  const cpfOk = cpfValido(normalizarCpf(cpf));
+  const digitosCpf = normalizarCpf(cpf);
+  const cpfOk = !digitosCpf || cpfValido(digitosCpf);
   const telefoneOk = soDigitos(telefone).length >= 10;
   const bloqueado = Boolean(conf?.jaFez) && !liberar;
   const marcada = conf?.anteriores.find((a) => a.situacao === "marcada");
@@ -225,7 +226,10 @@ function Formulario({ dia, agendante, onFechar }: { dia?: string; agendante: Age
       </p>
 
       <div className="mt-4 grid gap-4">
-        <Campo rotulo="CPF" erro={normalizarCpf(cpf).length === 11 && !cpfOk ? "CPF inválido" : undefined}>
+        <Campo
+          rotulo="CPF (opcional)"
+          erro={cpfOk ? undefined : digitosCpf.length === 11 ? "CPF inválido" : "CPF incompleto: complete ou deixe em branco"}
+        >
           {(a) => (
             <input
               {...a}

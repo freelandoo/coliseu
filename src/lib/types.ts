@@ -385,7 +385,7 @@ export interface AulaExperimentalItem {
   agendadoPor: string | null; // null quando o colaborador saiu
   observacao: string | null; // recado da recepção, escrito no calendário
   criadoEm: string; // ISO
-  cpf: string | null; // só dígitos; aulas de antes de 26/10/2026 não têm
+  cpf: string | null; // só dígitos; opcional
   presenca: "veio" | "faltou" | null;
   lembreteEnviadoEm: string | null; // ISO
 }

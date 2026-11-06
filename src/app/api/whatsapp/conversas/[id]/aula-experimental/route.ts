@@ -87,7 +87,8 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
     papel: g.user.role,
   });
   if (!conf.ok) return NextResponse.json({ erro: conf.erro }, { status: conf.status });
-  const porCpf = await pessoaPorCpfRepo(conf.cpf);
+  const { cpf } = conf;
+  const porCpf = cpf ? await pessoaPorCpfRepo(cpf) : null;
   const personId = conversa.personId ?? porCpf?.id ?? null;
 
   const envio = await enviarTextoNaConversa({
@@ -115,9 +116,9 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
       data,
       hora,
       agendadoPorId: g.user.id,
-      cpf: conf.cpf,
+      cpf,
     });
-    if (personId) await guardarCpfNaPessoaRepo(personId, conf.cpf).catch(() => undefined);
+    if (personId && cpf) await guardarCpfNaPessoaRepo(personId, cpf).catch(() => undefined);
   } catch (e) {
     console.error("[aula-experimental] confirmação enviada, gravação falhou", e);
     const mensagem = await mensagemPorWaIdRepo(id, envio.waMessageId).catch(() => null);

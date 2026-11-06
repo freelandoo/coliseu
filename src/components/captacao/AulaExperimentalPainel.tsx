@@ -81,20 +81,24 @@ export function AulaExperimentalPainel({
   const [hora, setHora] = useState<number | null>(null);
   const [enviando, setEnviando] = useState(false);
   const [desfecho, setDesfecho] = useState<Desfecho | null>(null);
-  // CPF: até 3 dias de aula experimental por pessoa (conferido aqui e de novo no servidor).
+  // CPF opcional. Até 3 dias de aula por pessoa, conferidos por CPF ou telefone +
+  // primeiro nome (aqui e de novo no servidor).
   const [cpf, setCpf] = useState("");
   const [jaFez, setJaFez] = useState<string | null>(null);
-  const cpfOk = cpfValido(normalizarCpf(cpf));
+  const digitosCpf = normalizarCpf(cpf);
+  const cpfOk = !digitosCpf || cpfValido(digitosCpf);
+  const ultimoCpf = useRef("");
 
   async function conferirCpf(valor: string) {
     const c = normalizarCpf(valor);
+    ultimoCpf.current = c;
     setJaFez(null);
-    if (!cpfValido(c)) return;
+    if (c && !cpfValido(c)) return;
     try {
       const q = new URLSearchParams({ cpf: c, telefone: telefone.replace(/\D/g, ""), nome });
       const r = await fetch(`/api/aulas-experimentais?${q}`, { cache: "no-store" });
       const d = (await r.json()) as { jaFez: string | null };
-      if (normalizarCpf(valor) === c) setJaFez(d.jaFez);
+      if (ultimoCpf.current === c) setJaFez(d.jaFez);
     } catch {
       // o servidor confere ao enviar
     }
@@ -294,6 +298,7 @@ export function AulaExperimentalPainel({
                     onClick={() => {
                       setHora(h);
                       setPasso("revisao");
+                      void conferirCpf(cpf);
                     }}
                     className="min-h-10 rounded-lg border border-border-strong bg-surface py-2 text-sm font-medium text-ink transition-colors hover:border-brand/60 hover:bg-brand-soft"
                   >
@@ -327,7 +332,7 @@ export function AulaExperimentalPainel({
                   </div>
                 </dl>
                 <label className="flex flex-col gap-1 text-xs font-semibold text-muted">
-                  CPF da pessoa (obrigatório — até 3 dias de aula experimental por pessoa)
+                  CPF da pessoa (opcional)
                   <input
                     inputMode="numeric"
                     autoComplete="off"
@@ -340,7 +345,11 @@ export function AulaExperimentalPainel({
                     disabled={travado}
                     className={classeCampo}
                   />
-                  {normalizarCpf(cpf).length === 11 && !cpfOk && <span className="font-normal text-danger">CPF inválido</span>}
+                  {!cpfOk && (
+                    <span className="font-normal text-danger">
+                      {digitosCpf.length === 11 ? "CPF inválido" : "CPF incompleto: complete ou deixe em branco"}
+                    </span>
+                  )}
                 </label>
                 {jaFez && (
                   <p role="alert" className="rounded-lg border border-danger/40 bg-danger-soft px-3 py-2 text-xs text-ink">

@@ -968,8 +968,8 @@ model AulaExperimental {
   agendadoPorId String?
   criadoEm      DateTime @default(now())
 
-  /// Só dígitos. Obrigatório nas aulas marcadas desde 26/10/2026: é a chave
-  /// de "cada pessoa faz uma aula experimental só" (as antigas não têm).
+  /// Só dígitos. Opcional (foi obrigatório de 26/10 a 06/11/2026). Quando vem,
+  /// ajuda a casar a pessoa no limite de dias; sem ele, vale telefone + primeiro nome.
   cpf               String?
   /// Marcado pela recepção depois do horário: "veio" | "faltou". Nulo =
   /// ninguém marcou — para a regra de uma aula só, conta como feita.

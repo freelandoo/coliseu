@@ -113,6 +113,34 @@ describe("limite de aula experimental por pessoa (banco de teste)", () => {
     await prisma.aulaExperimental.deleteMany({ where: { cpf } });
   });
 
+  it("sem CPF: aceita, recusa CPF incompleto e o limite segue por telefone + primeiro nome", async () => {
+    const user = await prisma.user.findFirstOrThrow();
+    const fone = `118${k}`;
+    const vazio = await conferirAulaNova({ cpf: "", telefone: fone, nome: "Sem Documento" });
+    expect(vazio.ok).toBe(true);
+    if (vazio.ok) expect(vazio.cpf).toBeNull();
+    expect((await conferirAulaNova({ cpf: undefined, telefone: fone, nome: "Sem Documento" })).ok).toBe(true);
+    expect((await conferirAulaNova({ cpf: "529.982", telefone: fone, nome: "Sem Documento" })).ok).toBe(false);
+
+    const criadas = await Promise.all(
+      ["2020-02-01", "2020-02-02", "2020-02-03"].map((data) =>
+        criarAulaExperimentalRepo({
+          conversaId: null, personId: null, nome: "Sem Documento", telefone: fone,
+          modalidade: "Boxe", data, hora: 18, agendadoPorId: user.id, cpf: null,
+        }),
+      ),
+    );
+    try {
+      const c = await conferirAulaNova({ cpf: "", telefone: fone, nome: "Sem Outro" });
+      expect(c.ok).toBe(false);
+      if (!c.ok) expect(c.status).toBe(409);
+      // Mesmo número, outra pessoa (mãe e filho): não bloqueia.
+      expect((await conferirAulaNova({ cpf: "", telefone: fone, nome: "Maria" })).ok).toBe(true);
+    } finally {
+      await prisma.aulaExperimental.deleteMany({ where: { id: { in: criadas.map((a) => a.id) } } });
+    }
+  });
+
   it("lembrete: fora da janela não faz nada; na janela, sem WhatsApp configurado, registra o motivo", async () => {
     const user = await prisma.user.findFirstOrThrow();
     // 27/10/2026 às 03h em SP (06h UTC) = fora da janela; 15h em SP (18h UTC) = dentro.

@@ -12,13 +12,13 @@ import {
  * passou a 3 em 27/10/2026), valendo para os dois caminhos de agendamento —
  * balcão e conversa do Atendimento.
  *
- * Casa por CPF (obrigatório daqui em diante) ou por telefone + primeiro nome,
- * no sistema e na planilha antiga. Contam os dias que fez e os que tem
+ * Casa por CPF (opcional desde 06/11/2026: quando vem, tem de ser válido) ou por
+ * telefone + primeiro nome, no sistema e na planilha antiga. Contam os dias que fez e os que tem
  * marcados; falta (na agenda ou na planilha) não conta. ADMIN pode liberar
  * mesmo assim (`forcar`) — exceção consciente, não atalho do balcão.
  */
 export type ConferenciaAula =
-  | { ok: true; cpf: string; anteriores: AulaAnterior[] }
+  | { ok: true; cpf: string | null; anteriores: AulaAnterior[] }
   | { ok: false; status: number; erro: string; anteriores?: AulaAnterior[] };
 
 export function descreverAnterior(a: AulaAnterior): string {
@@ -40,9 +40,9 @@ export async function conferirAulaNova(input: {
   forcar?: unknown;
   papel?: string;
 }): Promise<ConferenciaAula> {
-  const cpf = normalizarCpf(typeof input.cpf === "string" ? input.cpf : "");
-  if (!cpfValido(cpf)) {
-    return { ok: false, status: 400, erro: `Informe um CPF válido — é ele que limita a aula experimental a ${LIMITE_DIAS_AULA} dias por pessoa.` };
+  const cpf = normalizarCpf(typeof input.cpf === "string" ? input.cpf : "") || null;
+  if (cpf && !cpfValido(cpf)) {
+    return { ok: false, status: 400, erro: "CPF inválido. Corrija ou deixe o campo em branco." };
   }
 
   const anteriores = await aulasAnterioresRepo({ cpf, telefone: input.telefone, nome: input.nome }, hojeNaAcademia());
