@@ -10,8 +10,10 @@
 import {
   atualizarStatusInstanciaRepo,
   citacaoPorWaIdRepo,
+  acharConversaRepo,
   garantirConversaRepo,
   instanciaAtualRepo,
+  instanciaPorNomeRepo,
   registrarMensagemRepo,
 } from "@/lib/repositories/whatsapp";
 import { conexaoAberta, lerMensagem, mensagensDoEvento } from "@/lib/whatsapp/payload";
@@ -79,27 +81,63 @@ export async function processarEventoWhatsapp(evento: EventoWebhook): Promise<Re
   if (tipo === "connection.update") return tratarConexao(evento);
   if (tipo !== "messages.upsert") return { tipo: "ignorado", motivo: `evento ${tipo || "vazio"}` };
 
-  const instancia = await instanciaAtualRepo();
+  // A instância vem no evento; a mais antiga é só o recuo para evento sem nome.
+  const instancia =
+    (evento.instance ? await instanciaPorNomeRepo(evento.instance) : null) ?? (await instanciaAtualRepo());
   if (!instancia) return { tipo: "ignorado", motivo: "nenhuma instância registrada" };
 
-  let gravadas = 0;
-  let duplicadas = 0;
+  const r = await ingerirMensagens(mensagensDoEvento(evento.data), instancia.id);
+  return { tipo: "mensagens", gravadas: r.gravadas, duplicadas: r.duplicadas };
+}
 
-  for (const bruta of mensagensDoEvento(evento.data)) {
+export interface OpcoesIngestao {
+  /** Mensagem antiga: não conta como não lida, sem push, sem puxar a conversa para o topo. */
+  historico?: boolean;
+  /** Só grava em conversa que já existe — a importação de histórico não cria lead novo. */
+  soConversaExistente?: boolean;
+}
+
+export interface ResultadoLote {
+  gravadas: number;
+  duplicadas: number;
+  /** Sem conteúdo aproveitável, conversa não atendível ou (com `soConversaExistente`) sem conversa. */
+  puladas: number;
+}
+
+/**
+ * Grava itens no formato do `messages.upsert`. É o caminho único: webhook,
+ * conferência com a Evolution e importação de histórico passam todos aqui.
+ */
+export async function ingerirMensagens(
+  itens: unknown[],
+  instanceId: string,
+  opcoes: OpcoesIngestao = {},
+): Promise<ResultadoLote> {
+  const r: ResultadoLote = { gravadas: 0, duplicadas: 0, puladas: 0 };
+
+  for (const bruta of itens) {
     const msg = lerMensagem(bruta);
-    if (!msg) continue;
-    if (!ehConversaAtendivel(msg.remoteJid)) continue;
+    if (!msg || !ehConversaAtendivel(msg.remoteJid)) {
+      r.puladas++;
+      continue;
+    }
 
     const grupo = ehJidGrupo(msg.remoteJid);
-    const conversa = await garantirConversaRepo({
-      instanceId: instancia.id,
-      remoteJid: msg.remoteJid,
-      // Em grupo o pushName é de quem escreveu, não do grupo: usar isso como
-      // nome da conversa faria o título trocar a cada mensagem. O assunto do
-      // grupo vem da sincronização com a Evolution, fora da ingestão.
-      pushName: grupo ? "" : msg.pushName,
-      ehGrupo: grupo,
-    });
+    const conversa = opcoes.soConversaExistente
+      ? await acharConversaRepo(instanceId, msg.remoteJid)
+      : await garantirConversaRepo({
+          instanceId,
+          remoteJid: msg.remoteJid,
+          // Em grupo o pushName é de quem escreveu, não do grupo: usar isso como
+          // nome da conversa faria o título trocar a cada mensagem. O assunto do
+          // grupo vem da sincronização com a Evolution, fora da ingestão.
+          pushName: grupo ? "" : msg.pushName,
+          ehGrupo: grupo,
+        });
+    if (!conversa) {
+      r.puladas++;
+      continue;
+    }
 
     // Respondeu citando: preferimos a nossa própria cópia da original (sabe
     // quem escreveu) e caímos na prévia que o WhatsApp mandou quando a citada é
@@ -124,13 +162,14 @@ export async function processarEventoWhatsapp(evento: EventoWebhook): Promise<Re
       tipoMidia: msg.tipoMidia,
       enviadaEm: msg.enviadaEm,
       citada,
+      historico: opcoes.historico,
     });
 
-    if (novo) gravadas++;
-    else duplicadas++;
+    if (novo) r.gravadas++;
+    else r.duplicadas++;
   }
 
-  return { tipo: "mensagens", gravadas, duplicadas };
+  return r;
 }
 
 /** Log de webhook sem vazar telefone completo (LGPD). */

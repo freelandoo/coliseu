@@ -35,6 +35,11 @@ export async function instanciaAtualRepo() {
   return prisma.whatsappInstance.findFirst({ orderBy: { criadoEm: "asc" } });
 }
 
+/** Instância pelo nome da Evolution — é o que vem em `evento.instance`. */
+export async function instanciaPorNomeRepo(evolutionInstance: string) {
+  return prisma.whatsappInstance.findUnique({ where: { evolutionInstance } });
+}
+
 export async function registrarInstanciaRepo(evolutionInstance: string, nome: string) {
   const unitId = await unitIdAtual();
   return prisma.whatsappInstance.upsert({
@@ -86,6 +91,11 @@ async function acharPessoaPorTelefone(telefone: string): Promise<string | null> 
     await prisma.person.update({ where: { id: dono.id }, data: { fase: "lead", estagio: "novo" } });
   }
   return dono.id;
+}
+
+/** Conversa existente, sem criar nada — usada pela importação de histórico. */
+export async function acharConversaRepo(instanceId: string, remoteJid: string) {
+  return prisma.conversa.findUnique({ where: { instanceId_remoteJid: { instanceId, remoteJid } } });
 }
 
 /**
@@ -706,11 +716,18 @@ export async function registrarMensagemRepo(input: {
   erro?: string | null;
   /** Mensagem citada, quando esta é uma resposta a outra. */
   citada?: CitacaoGravada | null;
+  /**
+   * Importação de histórico (mensagem antiga que o webhook perdeu): entra na
+   * conversa, mas não conta como não lida, não toca push e não puxa a conversa
+   * para o topo.
+   */
+  historico?: boolean;
 }): Promise<boolean> {
   const enviadaEm = input.enviadaEm ?? new Date();
+  const historico = input.historico ?? false;
   try {
-    await prisma.$transaction([
-      prisma.mensagem.create({
+    await prisma.$transaction(async (tx) => {
+      await tx.mensagem.create({
         data: {
           conversaId: input.conversaId,
           waMessageId: input.waMessageId,
@@ -726,16 +743,28 @@ export async function registrarMensagemRepo(input: {
           citadaTexto: input.citada?.texto.slice(0, LIMITE_CITACAO) ?? null,
           citadaAutor: input.citada?.autor ?? null,
         },
-      }),
-      prisma.conversa.update({
-        where: { id: input.conversaId },
-        data: {
-          ultimaMensagemEm: enviadaEm,
-          ultimaMensagemPreview: input.texto.slice(0, 140),
-          ...(input.direcao === "IN" ? { naoLidas: { increment: 1 } } : { naoLidas: 0 }),
-        },
-      }),
-    ]);
+      });
+      // Resumo só anda para a frente: mensagem que chega atrasada (reentrega,
+      // conferência com a Evolution) não pode voltar a conversa no tempo nem
+      // trocar a prévia pela de uma mensagem velha.
+      await tx.conversa.updateMany({
+        // Compara com as mensagens, não com `ultimaMensagemEm`: conversa recém-
+        // criada nasce com "agora", um instante depois do horário da 1ª mensagem.
+        where: { id: input.conversaId, mensagens: { none: { enviadaEm: { gt: enviadaEm } } } },
+        data: { ultimaMensagemEm: enviadaEm, ultimaMensagemPreview: input.texto.slice(0, 140) },
+      });
+      // Não lidas: recebida soma; resposta dada **pela tela do Coliseu** zera.
+      // Envio pelo celular/WhatsApp Web (sem autor) e aviso automático não
+      // zeram — uma lista de transmissão para 200 contatos não significa que
+      // alguém leu as 200 conversas. A leitura feita no celular chega pela
+      // sincronização de leitura (ver `sincronizarLeiturasRepo`).
+      const naoLidas =
+        historico ? null : input.direcao === "IN" ? { increment: 1 } : input.autorUserId ? 0 : null;
+      if (naoLidas !== null) {
+        await tx.conversa.update({ where: { id: input.conversaId }, data: { naoLidas } });
+      }
+    });
+    if (historico) return true;
     // Avisa as conexões SSE abertas — só quando é mensagem nova (não duplicata).
     publicarMensagem({ conversaId: input.conversaId, direcao: input.direcao });
     // Push no celular só para mensagem recebida; fire-and-forget — o aviso

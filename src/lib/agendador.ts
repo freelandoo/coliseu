@@ -5,6 +5,7 @@ import { enviarLembretesAula, lembreteLigado } from "@/lib/aula-experimental-lem
 import { freelandooConfigurado } from "@/lib/freelandoo/cliente";
 import { processarFila } from "@/lib/freelandoo/fila";
 import { sincronizarFreelandoo } from "@/lib/freelandoo/sincronizar";
+import { rodarConferenciaWhatsapp } from "@/lib/whatsapp/conferencia";
 
 /**
  * Tarefas periódicas do servidor:
@@ -16,7 +17,10 @@ import { sincronizarFreelandoo } from "@/lib/freelandoo/sincronizar";
  *   10 min. Sem FREELANDOO_API_URL/FREELANDOO_PARTNER_KEY as duas não fazem nada;
  * - espelho no CloudGym, a cada 10 min, até o corte (CLOUDGYM_ESPELHO);
  * - lembrete de aula experimental na véspera, a cada 10 min das 9h às 20h
- *   (segunda exceção ao "nada sai sozinho" — ver aula-experimental-lembrete).
+ *   (segunda exceção ao "nada sai sozinho" — ver aula-experimental-lembrete);
+ * - conferência do WhatsApp com a Evolution, a cada 5 min: importa o que o
+ *   webhook perdeu, acompanha a leitura feita no celular e avisa os admins
+ *   quando o número para de receber (ver whatsapp/conferencia). Não envia nada.
  *
  * Este módulo alcança o envio de WhatsApp (boas-vindas da Freelandoo); só o
  * `instrumentation.ts` o importa — ver `envio-automatico.test.ts`.
@@ -73,6 +77,18 @@ const rodarLembretesAula = semSobreposicao("lembrete de aula", async () => {
   if (r.enviados || r.falhas) console.log(`[agendador] lembretes de aula: ${r.enviados} enviado(s), ${r.falhas} falha(s)`);
 });
 
+const rodarConferencia = semSobreposicao("conferência WhatsApp", async () => {
+  const r = await rodarConferenciaWhatsapp();
+  if (!r) return;
+  if (r.mensagens.gravadas || r.leituras || r.recebimento === "avisado") {
+    console.log(
+      `[agendador] conferência WhatsApp: ${r.mensagens.gravadas} mensagem(ns) recuperada(s), ` +
+        `${r.leituras} conversa(s) com leitura do celular` +
+        (r.recebimento === "avisado" ? " — ALERTA: número sem receber mensagens" : ""),
+    );
+  }
+});
+
 async function rodarExpiracao() {
   if (modoExpiracao() === "desligada") return;
   try {
@@ -116,4 +132,6 @@ export function iniciarAgendador(): void {
   setInterval(rodarEspelhoCloudgym, DEZ_MINUTOS).unref?.();
   setTimeout(rodarLembretesAula, 120_000).unref?.();
   setInterval(rodarLembretesAula, DEZ_MINUTOS).unref?.();
+  setTimeout(rodarConferencia, 150_000).unref?.();
+  setInterval(rodarConferencia, 5 * UM_MINUTO).unref?.();
 }

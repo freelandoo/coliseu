@@ -136,13 +136,46 @@ export async function criarInstancia(cfg: ConfigEvolution, nome: string): Promis
   await aplicarWebhook(cfg, instancia);
 }
 
-/** Reaplicar o webhook é seguro e cobre instância criada fora do Coliseu. */
+/**
+ * Reaplicar o webhook é seguro e cobre instância criada fora do Coliseu.
+ *
+ * Antes a falha aqui era engolida — e o Coliseu podia ficar semanas sem
+ * receber nada com o QR "funcionando" (foi o que aconteceu de 10 a 26/10/2026).
+ * Agora: sem URL pública configurada é erro, falha da Evolution é erro, e
+ * depois de aplicar a gente lê de volta e confere.
+ */
 export async function aplicarWebhook(cfg: ConfigEvolution, nome: string): Promise<void> {
   const webhook = configWebhook(cfg);
-  if (!webhook) return;
-  await chamar(cfg, "POST", `/webhook/set/${encodeURIComponent(validarNomeInstancia(nome))}`, {
-    webhook,
-  }).catch(() => undefined); // webhook é reaplicado a cada conexão; falha aqui não trava o QR
+  if (!webhook) {
+    throw new EvolutionError(
+      "PUBLIC_APP_URL não configurada: sem ela o Coliseu não recebe as mensagens do WhatsApp.",
+      500,
+    );
+  }
+  const instancia = encodeURIComponent(validarNomeInstancia(nome));
+  const r = await chamar(cfg, "POST", `/webhook/set/${instancia}`, { webhook });
+  if (r.status >= 400) {
+    throw new EvolutionError(`Não foi possível configurar o recebimento: ${mensagemDeErro(r.data)}`, r.status);
+  }
+  const problema = conferirWebhook(webhook, (await chamar(cfg, "GET", `/webhook/find/${instancia}`)).data);
+  if (problema) throw new EvolutionError(`Recebimento de mensagens não ficou configurado: ${problema}.`, 502);
+}
+
+/** Compara o que a Evolution guardou com o que mandamos. Devolve o problema ou null. */
+export function conferirWebhook(
+  esperado: { url: string; events: string[]; headers?: Record<string, string> },
+  salvo: Record<string, unknown> | null | undefined,
+): string | null {
+  if (!salvo || typeof salvo !== "object") return "a Evolution não devolveu o webhook";
+  if (salvo.enabled !== true) return "webhook desligado";
+  if (salvo.url !== esperado.url) return `endereço diferente (${String(salvo.url ?? "vazio")})`;
+  const eventos = Array.isArray(salvo.events) ? salvo.events.map(String) : [];
+  const faltando = esperado.events.filter((e) => !eventos.includes(e));
+  if (faltando.length) return `faltam os eventos ${faltando.join(", ")}`;
+  const segredo = esperado.headers?.["x-webhook-secret"];
+  const headers = (salvo.headers ?? {}) as Record<string, unknown>;
+  if (segredo && headers["x-webhook-secret"] !== segredo) return "senha do webhook diferente da do Coliseu";
+  return null;
 }
 
 export interface Pareamento {

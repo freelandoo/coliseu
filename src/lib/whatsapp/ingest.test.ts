@@ -1,4 +1,4 @@
-import { afterAll, beforeEach, expect, test } from "vitest";
+import { afterAll, beforeEach, describe, expect, test } from "vitest";
 import { prisma } from "@/lib/db";
 import { unitIdAtual } from "@/lib/repositories/unit";
 import { proximoCodigoRepo } from "@/lib/repositories/pessoas";
@@ -7,9 +7,10 @@ import {
   dadosMidiaMensagemRepo,
   limparMensagensRepo,
   listarMensagensRepo,
+  registrarMensagemRepo,
   removerConversaRepo,
 } from "@/lib/repositories/whatsapp";
-import { processarEventoWhatsapp } from "@/lib/whatsapp/ingest";
+import { ingerirMensagens, processarEventoWhatsapp } from "@/lib/whatsapp/ingest";
 
 const INSTANCIA = "teste-ingestao";
 const JID = "5511999000111@s.whatsapp.net";
@@ -168,8 +169,9 @@ test("mensagem enviada pelo aparelho entra como saída sem autor de sistema", as
   const conversa = await prisma.conversa.findFirst({ where: { remoteJid: JID } });
   const mensagens = await listarMensagensRepo(conversa!.id);
   expect(mensagens.at(-1)).toMatchObject({ direcao: "OUT", autor: "ATENDENTE", autorNome: null });
-  // Responder zera o contador de não lidas.
-  expect(conversa?.naoLidas).toBe(0);
+  // Envio pelo celular não zera: pode ser uma transmissão, não uma leitura.
+  // Quem zera é a resposta pela tela ou a leitura confirmada pelo celular.
+  expect(conversa?.naoLidas).toBe(1);
 });
 
 test("grupo vira conversa para atender, mas não vira lead", async () => {
@@ -434,4 +436,102 @@ test("perdido guarda o motivo no cadastro", async () => {
 
   const pessoa = await prisma.person.findUnique({ where: { id: conversa!.personId! } });
   expect(pessoa).toMatchObject({ estagio: "perdido", motivoPerdido: "Achou caro" });
+});
+
+describe("não lidas e ordem da conversa", () => {
+  async function conversa() {
+    return prisma.conversa.findFirstOrThrow({ where: { remoteJid: JID } });
+  }
+
+  test("envio pelo celular/WhatsApp Web não zera as não lidas", async () => {
+    await processarEventoWhatsapp(evento({ id: "NL-1" }));
+    await processarEventoWhatsapp(evento({ id: "NL-2", texto: "alô?" }));
+    // Transmissão da Black Friday saindo pelo WhatsApp Web: fromMe, sem autor.
+    await processarEventoWhatsapp(evento({ id: "NL-3", fromMe: true, texto: "BLACK FRIDAY" }));
+    expect((await conversa()).naoLidas).toBe(2);
+  });
+
+  test("resposta dada pela tela do Coliseu zera", async () => {
+    await processarEventoWhatsapp(evento({ id: "NL-4" }));
+    const c = await conversa();
+    const u = await prisma.user.findFirstOrThrow();
+    await registrarMensagemRepo({
+      conversaId: c.id,
+      waMessageId: "NL-5",
+      direcao: "OUT",
+      autor: "ATENDENTE",
+      autorUserId: u.id,
+      texto: "Respondido pela recepção",
+    });
+    expect((await conversa()).naoLidas).toBe(0);
+  });
+
+  test("mensagem atrasada não volta a conversa no tempo", async () => {
+    await processarEventoWhatsapp(evento({ id: "NL-6", texto: "a mais nova" }));
+    const antes = await conversa();
+    await registrarMensagemRepo({
+      conversaId: antes.id,
+      waMessageId: "NL-7",
+      direcao: "IN",
+      autor: "LEAD",
+      texto: "chegou atrasada",
+      enviadaEm: new Date(antes.ultimaMensagemEm.getTime() - 60 * 60 * 1000),
+    });
+    const depois = await conversa();
+    expect(depois.ultimaMensagemPreview).toBe("a mais nova");
+    expect(depois.ultimaMensagemEm.getTime()).toBe(antes.ultimaMensagemEm.getTime());
+    expect(depois.naoLidas).toBe(2); // atrasada, mas ninguém leu: ainda conta
+  });
+
+  test("histórico importado entra sem contar como não lida", async () => {
+    await processarEventoWhatsapp(evento({ id: "NL-8" }));
+    const c = await conversa();
+    const r = await ingerirMensagens(
+      [
+        {
+          key: { id: "NL-HIST", remoteJid: JID, fromMe: false },
+          pushName: "Cliente Teste",
+          messageTimestamp: Math.floor(Date.now() / 1000) - 30 * 24 * 3600,
+          message: { conversation: "mensagem de outubro" },
+        },
+      ],
+      c.instanceId,
+      { historico: true, soConversaExistente: true },
+    );
+    expect(r).toMatchObject({ gravadas: 1, puladas: 0 });
+    const depois = await conversa();
+    expect(depois.naoLidas).toBe(1);
+    expect(depois.ultimaMensagemPreview).toBe("Oi, quanto custa?");
+  });
+
+  test("histórico não cria conversa nem lead novo", async () => {
+    const instancia = await prisma.whatsappInstance.findFirstOrThrow({ where: { evolutionInstance: INSTANCIA } });
+    const r = await ingerirMensagens(
+      [
+        {
+          key: { id: "NL-NOVO", remoteJid: "5511999000222@s.whatsapp.net", fromMe: false },
+          messageTimestamp: Math.floor(Date.now() / 1000),
+          message: { conversation: "nunca escrevi depois" },
+        },
+      ],
+      instancia.id,
+      { historico: true, soConversaExistente: true },
+    );
+    expect(r).toMatchObject({ gravadas: 0, puladas: 1 });
+    expect(await prisma.person.count({ where: { telefone: "5511999000222" } })).toBe(0);
+  });
+
+  test("evento usa a instância que veio nele, não a mais antiga", async () => {
+    const outra = await prisma.whatsappInstance.create({
+      data: { unitId: await unitIdAtual(), evolutionInstance: "teste-ingestao-2", nome: "Outra", status: "CONNECTED" },
+    });
+    try {
+      await processarEventoWhatsapp({ ...evento({ id: "NL-INST" }), instance: "teste-ingestao-2" });
+      const c = await prisma.conversa.findFirstOrThrow({ where: { remoteJid: JID } });
+      expect(c.instanceId).toBe(outra.id);
+    } finally {
+      await prisma.conversa.deleteMany({ where: { instanceId: outra.id } });
+      await prisma.whatsappInstance.delete({ where: { id: outra.id } });
+    }
+  });
 });

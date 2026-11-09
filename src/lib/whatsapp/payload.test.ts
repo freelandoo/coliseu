@@ -139,6 +139,65 @@ describe("lerMensagem", () => {
   });
 });
 
+describe("formatos que antes sumiam", () => {
+  const ler = (message: Record<string, unknown>) => lerMensagem({ ...BASE, message });
+
+  test("mensagem temporária e visualização única abrem o envelope", () => {
+    expect(ler({ ephemeralMessage: { message: { conversation: "oi temporário" } } })?.texto).toBe("oi temporário");
+    const foto = ler({ viewOnceMessageV2: { message: { imageMessage: { caption: "só uma vez" } } } });
+    expect(foto).toMatchObject({ texto: "só uma vez", tipoMidia: "imagem" });
+    const dupla = ler({ ephemeralMessage: { message: { extendedTextMessage: { text: "dentro de dois" } } } });
+    expect(dupla?.texto).toBe("dentro de dois");
+  });
+
+  test("foto de álbum e documento com legenda", () => {
+    expect(ler({ associatedChildMessage: { message: { imageMessage: {} } } })?.tipoMidia).toBe("imagem");
+    expect(
+      ler({ documentWithCaptionMessage: { message: { documentMessage: { caption: "contrato" } } } }),
+    ).toMatchObject({ texto: "contrato", tipoMidia: "documento" });
+  });
+
+  test("contato, localização, enquete e evento viram texto legível", () => {
+    expect(ler({ contactMessage: { displayName: "Tawane", vcard: "BEGIN:VCARD" } })?.texto).toBe("👤 Contato: Tawane");
+    expect(
+      ler({ contactsArrayMessage: { contacts: [{ displayName: "Ana" }, { displayName: "Bia" }] } })?.texto,
+    ).toBe("👤 Contatos: Ana, Bia");
+    expect(ler({ locationMessage: { name: "Academia Coliseu", address: "R. Gen. Osório, 272" } })?.texto).toBe(
+      "📍 Localização: Academia Coliseu — R. Gen. Osório, 272",
+    );
+    expect(ler({ pollCreationMessageV3: { name: "Melhor horário?" } })?.texto).toBe("📊 Enquete: Melhor horário?");
+    expect(ler({ eventMessage: { name: "Aulão" } })?.texto).toBe("📅 Evento: Aulão");
+  });
+
+  test("mensagens de empresa (botões, template, interativa) mostram o corpo", () => {
+    expect(ler({ buttonsMessage: { contentText: "Quer ver os planos?" } })?.texto).toBe("Quer ver os planos?");
+    expect(ler({ templateMessage: { hydratedTemplate: { hydratedContentText: "Seu boleto" } } })?.texto).toBe(
+      "Seu boleto",
+    );
+    expect(ler({ interactiveMessage: { body: { text: "Comece agora" } } })?.texto).toBe("Comece agora");
+    expect(ler({ templateButtonReplyMessage: { selectedDisplayText: "Quero" } })?.texto).toBe("Quero");
+  });
+
+  test("tipo desconhecido é registrado como não suportada, não descartado", () => {
+    expect(ler({ algumTipoNovoMessage: { x: 1 } })).toMatchObject({
+      texto: "Mensagem não suportada — veja no celular",
+      tipoMidia: "outro",
+    });
+  });
+
+  test("reação, edição, voto e aviso de álbum continuam fora", () => {
+    for (const m of [
+      { reactionMessage: { text: "❤️" } },
+      { protocolMessage: { type: 0 } },
+      { messageContextInfo: {}, secretEncryptedMessage: { encIv: "x" } },
+      { albumMessage: { expectedImageCount: 2 }, messageContextInfo: {} },
+      { pinInChatMessage: {} },
+    ]) {
+      expect(ler(m)).toBeNull();
+    }
+  });
+});
+
 describe("mensagensDoEvento", () => {
   test("aceita os dois formatos que a Evolution manda", () => {
     expect(mensagensDoEvento({ messages: [{ a: 1 }, { a: 2 }] })).toHaveLength(2);

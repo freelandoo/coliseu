@@ -73,7 +73,7 @@ export const ROTULO_MIDIA: Record<Exclude<TipoMidia, "texto">, string> = {
   audio: "🎤 Áudio",
   video: "🎬 Vídeo",
   documento: "📎 Documento",
-  outro: "Mensagem não suportada",
+  outro: "Mensagem não suportada — veja no celular",
 };
 
 function classificar(message: Record<string, unknown>): { tipo: TipoMidia; legenda: string } {
@@ -81,6 +81,7 @@ function classificar(message: Record<string, unknown>): { tipo: TipoMidia; legen
   if (message.stickerMessage) return { tipo: "imagem", legenda: "" };
   if (message.audioMessage) return { tipo: "audio", legenda: "" };
   if (message.videoMessage) return { tipo: "video", legenda: textoDe(message.videoMessage) };
+  if (message.ptvMessage) return { tipo: "video", legenda: "" };
   if (message.documentMessage) return { tipo: "documento", legenda: textoDe(message.documentMessage) };
   return { tipo: "texto", legenda: "" };
 }
@@ -91,17 +92,128 @@ function classificar(message: Record<string, unknown>): { tipo: TipoMidia; legen
  * que tem exatamente a mesma forma.
  */
 function conteudoDe(message: Record<string, unknown>): { texto: string; tipoMidia: TipoMidia } {
+  const m = desembrulhar(message);
   const direto =
-    textoDe(message.conversation) ||
-    textoDe(message.extendedTextMessage) ||
-    textoDe(message.buttonsResponseMessage) ||
-    textoDe((message.listResponseMessage as { title?: string } | undefined)?.title);
+    textoDe(m.conversation) ||
+    textoDe(m.extendedTextMessage) ||
+    textoDe(m.buttonsResponseMessage) ||
+    textoDe(m.templateButtonReplyMessage) ||
+    textoDe((m.listResponseMessage as { title?: string } | undefined)?.title) ||
+    textoDe((m.interactiveResponseMessage as { body?: unknown } | undefined)?.body) ||
+    textoEspecial(m);
 
-  const { tipo, legenda } = classificar(message);
-  return {
-    texto: tipo === "texto" ? direto : legenda || direto || ROTULO_MIDIA[tipo],
-    tipoMidia: tipo,
-  };
+  const { tipo, legenda } = classificar(m);
+  if (tipo !== "texto") return { texto: legenda || direto || ROTULO_MIDIA[tipo], tipoMidia: tipo };
+  if (direto) return { texto: direto, tipoMidia: "texto" };
+  // Nada reconhecido: o que é ruído de protocolo some; o resto entra como
+  // "não suportada" para a recepção saber que a pessoa mandou algo e abrir no
+  // celular — descartar em silêncio é que não pode.
+  if (ehSoProtocolo(m)) return { texto: "", tipoMidia: "texto" };
+  return { texto: ROTULO_MIDIA.outro, tipoMidia: "outro" };
+}
+
+/**
+ * Envelopes do Baileys: a mensagem de verdade vem dentro de `.message`.
+ * Mensagem temporária, visualização única, documento com legenda e a foto de
+ * um álbum chegam assim. Profundidade limitada — envelope dentro de envelope
+ * existe, loop infinito não.
+ */
+const ENVELOPES = [
+  "ephemeralMessage",
+  "viewOnceMessage",
+  "viewOnceMessageV2",
+  "viewOnceMessageV2Extension",
+  "documentWithCaptionMessage",
+  "associatedChildMessage",
+  "groupMentionedMessage",
+  "botInvokeMessage",
+  "lottieStickerMessage",
+  "deviceSentMessage",
+] as const;
+
+function desembrulhar(message: Record<string, unknown>): Record<string, unknown> {
+  let atual = message;
+  for (let i = 0; i < 4; i++) {
+    const envelope = ENVELOPES.map((k) => atual[k] as { message?: unknown } | undefined).find(
+      (v) => v && typeof v === "object" && v.message && typeof v.message === "object",
+    );
+    if (!envelope) return atual;
+    atual = envelope.message as Record<string, unknown>;
+  }
+  return atual;
+}
+
+/**
+ * Conteúdo que não é texto nem mídia baixável, mas que a pessoa vê no
+ * WhatsApp: contato, localização, enquete, evento, botões de empresa. Vira um
+ * texto legível — o original continua no celular.
+ */
+function textoEspecial(m: Record<string, unknown>): string {
+  const o = (k: string) => (m[k] && typeof m[k] === "object" ? (m[k] as Record<string, unknown>) : null);
+  const s = (v: unknown) => (typeof v === "string" ? v.trim() : "");
+
+  const contato = o("contactMessage");
+  if (contato) return `👤 Contato: ${s(contato.displayName) || "sem nome"}`;
+  const contatos = o("contactsArrayMessage");
+  if (contatos) {
+    const nomes = Array.isArray(contatos.contacts)
+      ? (contatos.contacts as { displayName?: unknown }[]).map((c) => s(c.displayName)).filter(Boolean)
+      : [];
+    return `👤 Contatos: ${nomes.join(", ") || s(contatos.displayName) || "sem nome"}`;
+  }
+  const local = o("locationMessage") ?? o("liveLocationMessage");
+  if (local) {
+    const onde = [s(local.name), s(local.address)].filter(Boolean).join(" — ");
+    return `📍 Localização${onde ? `: ${onde}` : ""}`;
+  }
+  const enquete = o("pollCreationMessage") ?? o("pollCreationMessageV2") ?? o("pollCreationMessageV3");
+  if (enquete) return `📊 Enquete: ${s(enquete.name)}`;
+  const evento = o("eventMessage");
+  if (evento) return `📅 Evento: ${s(evento.name)}`;
+
+  const botoes = o("buttonsMessage");
+  if (botoes) return s(botoes.contentText) || s(botoes.text);
+  const interativa = o("interactiveMessage");
+  if (interativa) return textoDe(interativa.body);
+  const lista = o("listMessage");
+  if (lista) return s(lista.description) || s(lista.title);
+  const modelo = o("templateMessage");
+  if (modelo) {
+    const h = (modelo.hydratedTemplate ?? modelo.hydratedFourRowTemplate) as Record<string, unknown> | undefined;
+    return s(h?.hydratedContentText) || s(h?.hydratedTitleText);
+  }
+  return "";
+}
+
+/**
+ * Mensagens que não são conversa: reação, edição/apagamento, fixar, aviso de
+ * álbum (as fotos chegam uma a uma), voto cifrado, troca de chaves. Ninguém
+ * precisa ver "mensagem não suportada" por causa delas.
+ */
+const SO_PROTOCOLO = new Set([
+  "reactionMessage",
+  "encReactionMessage",
+  "protocolMessage",
+  "secretEncryptedMessage",
+  "pinInChatMessage",
+  "keepInChatMessage",
+  "albumMessage",
+  "pollUpdateMessage",
+  "encEventResponseMessage",
+  "senderKeyDistributionMessage",
+  "messageContextInfo",
+  "deviceSentMessage",
+  "editedMessage",
+  "messageHistoryBundle",
+  "messageHistoryNotice",
+  // Texto que veio vazio (só espaços) não é "não suportada": é nada.
+  "conversation",
+  "extendedTextMessage",
+]);
+
+function ehSoProtocolo(m: Record<string, unknown>): boolean {
+  const chaves = Object.keys(m).filter((k) => m[k] != null);
+  return chaves.length === 0 || chaves.every((k) => SO_PROTOCOLO.has(k));
 }
 
 /**

@@ -116,7 +116,8 @@ export function Bolha({
   onRecolocar?: () => void;
 }) {
   const saida = mensagem.direcao === "OUT";
-  const temMidia = mensagem.tipoMidia !== "texto" && !mensagem.erro;
+  // "outro" é a mensagem não suportada: não há arquivo para abrir, só o aviso.
+  const temMidia = mensagem.tipoMidia !== "texto" && mensagem.tipoMidia !== "outro" && !mensagem.erro;
   const legenda = temMidia && ROTULOS.has(mensagem.texto) ? "" : mensagem.texto;
   const podeCitar = !!onCitar && mensagem.citavel;
   const estado = saida ? estadoEnvio(mensagem) : null;
