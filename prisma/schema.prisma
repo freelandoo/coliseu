@@ -1340,3 +1340,23 @@ model CobrancaEnvio {
   @@index([personId, criadoEm])
   @@index([criadoEm])
 }
+
+/// Tentativa de login recusada. Serve para responder "fulano tentou entrar e
+/// não conseguiu — o que houve?": o login digitado e o motivo. A senha
+/// digitada NUNCA é guardada, nem em hash.
+model LoginFalha {
+  id            String   @id @default(cuid())
+  /// O que a pessoa digitou no campo de login, já normalizado (trim + minúsculas).
+  identificador String
+  /// usuario_inexistente | senha_errada | desativado
+  motivo        String
+  /// Conta encontrada pelo login (nula quando o login não existe). Sem FK de
+  /// propósito: o registro sobrevive se a conta for apagada.
+  userId        String?
+  ip            String?
+  userAgent     String?
+  criadaEm      DateTime @default(now())
+
+  @@index([criadaEm])
+  @@index([identificador, criadaEm])
+}

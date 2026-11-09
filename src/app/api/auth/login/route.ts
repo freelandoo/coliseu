@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { verifyPassword } from "@/lib/auth/password";
 import { criarSessao } from "@/lib/auth/session";
+import { registrarLoginFalha } from "@/lib/auth/login-falha";
 
 export async function POST(req: Request) {
   const body = (await req.json()) as { login?: string; email?: string; senha?: string };
@@ -19,10 +20,16 @@ export async function POST(req: Request) {
     where: { OR: [{ login: identificador }, { email: identificador }] },
   });
 
-  if (!user || !(await verifyPassword(user.passwordHash, senha))) {
+  if (!user) {
+    await registrarLoginFalha(req, identificador, "usuario_inexistente", null);
+    return NextResponse.json({ erro: "Credenciais inválidas" }, { status: 401 });
+  }
+  if (!(await verifyPassword(user.passwordHash, senha))) {
+    await registrarLoginFalha(req, identificador, "senha_errada", user.id);
     return NextResponse.json({ erro: "Credenciais inválidas" }, { status: 401 });
   }
   if (!user.ativo) {
+    await registrarLoginFalha(req, identificador, "desativado", user.id);
     return NextResponse.json({ erro: "Acesso desativado. Fale com o administrador." }, { status: 403 });
   }
 
