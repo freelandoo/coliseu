@@ -80,10 +80,10 @@ const rodarLembretesAula = semSobreposicao("lembrete de aula", async () => {
 const rodarConferencia = semSobreposicao("conferência WhatsApp", async () => {
   const r = await rodarConferenciaWhatsapp();
   if (!r) return;
-  if (r.mensagens.gravadas || r.leituras || r.recebimento === "avisado") {
+  if (r.mensagens.gravadas || r.leituras || r.juntadas || r.recebimento === "avisado") {
     console.log(
       `[agendador] conferência WhatsApp: ${r.mensagens.gravadas} mensagem(ns) recuperada(s), ` +
-        `${r.leituras} conversa(s) com leitura do celular` +
+        `${r.leituras} conversa(s) com leitura do celular, ${r.juntadas} conversa(s) sem número juntada(s)` +
         (r.recebimento === "avisado" ? " — ALERTA: número sem receber mensagens" : ""),
     );
   }

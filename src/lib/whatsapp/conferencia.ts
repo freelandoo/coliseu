@@ -13,6 +13,8 @@
  * - `verificarRecebimento`: Evolution conectada, equipe enviando, e nada
  *   chegando há horas em horário de atendimento = sessão quebrada. Avisa os
  *   admins (sininho + push) uma vez por incidente.
+ * - `juntarConversasLid`: conversa que nasceu só com o @lid volta para a do
+ *   telefone quando o número aparece.
  *
  * INVARIANTE: não importa `@/lib/whatsapp/evolution` (o envio). Conferir não
  * responde ninguém.
@@ -24,6 +26,7 @@ import { notificarAdmins } from "@/lib/notificacoes";
 import { instanciaAtualRepo } from "@/lib/repositories/whatsapp";
 import { publicarMensagem } from "@/lib/whatsapp/eventos";
 import { ingerirMensagens, type OpcoesIngestao, type ResultadoLote } from "@/lib/whatsapp/ingest";
+import { juntarConversasLid } from "@/lib/whatsapp/juntar-lid";
 
 /** O schema da Evolution só existe onde ela grava (produção). Em dev/teste, nada a fazer. */
 export async function evolutionNoBanco(): Promise<boolean> {
@@ -214,7 +217,9 @@ export async function rodarConferenciaWhatsapp(agora = new Date()) {
     new Date(agora.getTime() - 24 * 60 * 60 * 1000),
     new Date(agora.getTime() - 2 * 60 * 1000),
   );
+  // Conversa "sem número" cujo telefone apareceu depois: volta para a do telefone.
+  const lid = await juntarConversasLid(true);
   const leituras = await sincronizarLeituras();
   const recebimento = await verificarRecebimento(agora);
-  return { mensagens, leituras, recebimento };
+  return { mensagens, leituras, recebimento, juntadas: lid.juntadas };
 }

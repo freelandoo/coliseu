@@ -11,6 +11,7 @@ import {
   removerConversaRepo,
 } from "@/lib/repositories/whatsapp";
 import { ingerirMensagens, processarEventoWhatsapp } from "@/lib/whatsapp/ingest";
+import { juntarConversasLid } from "@/lib/whatsapp/juntar-lid";
 
 const INSTANCIA = "teste-ingestao";
 const JID = "5511999000111@s.whatsapp.net";
@@ -561,6 +562,24 @@ describe("contato que chega só com o @lid", () => {
     expect(await prisma.conversa.count({ where: { remoteJid: LID } })).toBe(0);
     const c = await prisma.conversa.findFirstOrThrow({ where: { remoteJid: JID } });
     expect(await prisma.mensagem.count({ where: { conversaId: c.id } })).toBe(2);
+  });
+
+  test("conversa sem número volta para a do telefone quando o número aparece", async () => {
+    const SEM = "11112222333344@lid";
+    await processarEventoWhatsapp(evento({ id: "J-1" })); // conversa do telefone
+    await processarEventoWhatsapp(evento({ id: "J-2", remoteJid: SEM, texto: "sem número" }));
+    expect(await prisma.conversa.count({ where: { remoteJid: SEM } })).toBe(1);
+
+    // Mais tarde a Evolution vê o mesmo contato com o telefone.
+    await prisma.$executeRawUnsafe(
+      `insert into evolution."Message" values ('{"id":"NOVA","remoteJid":"${SEM}","remoteJidAlt":"${JID}"}', 2)`,
+    );
+    const r = await juntarConversasLid(true);
+    expect(r.juntadas).toBe(1);
+    expect(await prisma.conversa.count({ where: { remoteJid: SEM } })).toBe(0);
+    const c = await prisma.conversa.findFirstOrThrow({ where: { remoteJid: JID } });
+    expect(await prisma.mensagem.count({ where: { conversaId: c.id } })).toBe(2);
+    expect(c.naoLidas).toBe(2);
   });
 
   test("mensagem nossa não dá o nosso nome ('Você') ao contato", async () => {
