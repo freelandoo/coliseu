@@ -4,6 +4,7 @@
  */
 export async function register() {
   if (process.env.NEXT_RUNTIME !== "nodejs") return;
+  console.log(`[boot] node ${process.version}`);
   if (process.env.NODE_ENV !== "production" && process.env.AGENDADOR_DEV !== "1") return;
   const { iniciarAgendador } = await import("@/lib/agendador");
   iniciarAgendador();

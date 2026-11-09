@@ -1,5 +1,6 @@
 # Estágio "dev" — usado pelo docker-compose local (target: dev): next dev com hot reload.
-FROM node:22-alpine AS dev
+# Versão EXATA do Node (segurança): etiqueta solta pegava o patch em cache do Railway. 22.23.4 = release de segurança de 2026-10-20.
+FROM node:22.23.4-alpine AS dev
 
 WORKDIR /app
 
@@ -20,7 +21,7 @@ CMD ["npm", "run", "dev", "--", "--webpack", "-H", "0.0.0.0"]
 # ------------------------------------------------------------------
 # Estágio de produção (último = padrão do Railway/`docker build` sem --target).
 # slim (glibc) em vez de alpine: é a base recomendada pelo Prisma.
-FROM node:22-slim AS prod
+FROM node:22.23.4-slim AS prod
 
 WORKDIR /app
 
