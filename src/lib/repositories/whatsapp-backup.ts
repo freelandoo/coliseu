@@ -1,4 +1,5 @@
 import { prisma } from "@/lib/db";
+import { cortarTexto } from "@/lib/whatsapp/cortar";
 import { formatarTelefone } from "@/lib/whatsapp/telefone";
 import type { BackupMotivo, ConversaBackupItem, ConversaInteresse } from "@/lib/types";
 import type { Prisma } from "@prisma/client";
@@ -297,7 +298,7 @@ export async function restaurarBackupRepo(backupId: string): Promise<Restauracao
         where: { id: destino.id },
         data: {
           ultimaMensagemEm: ultima.enviadaEm,
-          ultimaMensagemPreview: ultima.texto.slice(0, 140),
+          ultimaMensagemPreview: cortarTexto(ultima.texto, 140),
         },
       });
     }

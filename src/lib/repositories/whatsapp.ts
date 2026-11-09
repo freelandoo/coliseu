@@ -2,6 +2,7 @@ import { prisma } from "@/lib/db";
 import { unitIdAtual } from "@/lib/repositories/unit";
 import { chaveTelefone, formatarTelefone, telefoneDoJid } from "@/lib/whatsapp/telefone";
 import { publicarMensagem } from "@/lib/whatsapp/eventos";
+import { cortarTexto } from "@/lib/whatsapp/cortar";
 import { notificarMensagemRecebida } from "@/lib/push/notificar";
 import { proximoCodigoRepo } from "@/lib/repositories/pessoas";
 import { arquivarConversaRepo } from "@/lib/repositories/whatsapp-backup";
@@ -660,7 +661,7 @@ function paraCitacao(m: MensagemParaCitar | null): CitacaoGravada | null {
   if (!m || !podeSerCitada(m)) return null;
   return {
     waId: m.waMessageId,
-    texto: m.texto.slice(0, LIMITE_CITACAO),
+    texto: cortarTexto(m.texto, LIMITE_CITACAO),
     autor: autorDaCitacao(m),
   };
 }
@@ -740,7 +741,7 @@ export async function registrarMensagemRepo(input: {
           enviadaEm,
           erro: input.erro ?? null,
           citadaWaId: input.citada?.waId ?? null,
-          citadaTexto: input.citada?.texto.slice(0, LIMITE_CITACAO) ?? null,
+          citadaTexto: input.citada ? cortarTexto(input.citada.texto, LIMITE_CITACAO) : null,
           citadaAutor: input.citada?.autor ?? null,
         },
       });
@@ -751,7 +752,7 @@ export async function registrarMensagemRepo(input: {
         // Compara com as mensagens, não com `ultimaMensagemEm`: conversa recém-
         // criada nasce com "agora", um instante depois do horário da 1ª mensagem.
         where: { id: input.conversaId, mensagens: { none: { enviadaEm: { gt: enviadaEm } } } },
-        data: { ultimaMensagemEm: enviadaEm, ultimaMensagemPreview: input.texto.slice(0, 140) },
+        data: { ultimaMensagemEm: enviadaEm, ultimaMensagemPreview: cortarTexto(input.texto, 140) },
       });
       // Não lidas: recebida soma; resposta dada **pela tela do Coliseu** zera.
       // Envio pelo celular/WhatsApp Web (sem autor) e aviso automático não
