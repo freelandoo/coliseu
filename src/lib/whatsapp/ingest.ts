@@ -15,6 +15,7 @@ import {
   instanciaAtualRepo,
   instanciaPorNomeRepo,
   registrarMensagemRepo,
+  telefoneDoLidRepo,
 } from "@/lib/repositories/whatsapp";
 import { conexaoAberta, lerMensagem, mensagensDoEvento } from "@/lib/whatsapp/payload";
 import {
@@ -123,15 +124,19 @@ export async function ingerirMensagens(
     }
 
     const grupo = ehJidGrupo(msg.remoteJid);
+    // Contato que veio só com o @lid: o número sai do que a Evolution já viu.
+    // Sem isso nasceria uma conversa duplicada e sem telefone.
+    const remoteJid = (await telefoneDoLidRepo(msg.remoteJid)) ?? msg.remoteJid;
     const conversa = opcoes.soConversaExistente
-      ? await acharConversaRepo(instanceId, msg.remoteJid)
+      ? await acharConversaRepo(instanceId, remoteJid)
       : await garantirConversaRepo({
           instanceId,
-          remoteJid: msg.remoteJid,
+          remoteJid,
           // Em grupo o pushName é de quem escreveu, não do grupo: usar isso como
           // nome da conversa faria o título trocar a cada mensagem. O assunto do
           // grupo vem da sincronização com a Evolution, fora da ingestão.
-          pushName: grupo ? "" : msg.pushName,
+          // Mensagem nossa (fromMe) traz o NOSSO nome ("Você"), não o do contato.
+          pushName: grupo || msg.fromMe ? "" : msg.pushName,
           ehGrupo: grupo,
         });
     if (!conversa) {

@@ -94,6 +94,37 @@ async function acharPessoaPorTelefone(telefone: string): Promise<string | null> 
   return dono.id;
 }
 
+const cacheLid = new Map<string, string>();
+
+/**
+ * Telefone (JID `@s.whatsapp.net`) de um contato que chegou só com o `@lid`.
+ *
+ * O WhatsApp esconde o número em alguns envios — no histórico que vem logo
+ * depois de escanear o QR, principalmente. Sem isso o Coliseu criava uma
+ * conversa "sem número", duplicada da verdadeira, onde não dá para responder
+ * (aconteceu em 09/11/2026). A Evolution já viu esse contato com o número em
+ * outra mensagem (`remoteJidAlt`): é de lá que vem. Sem o schema da Evolution
+ * (dev/teste) ou sem registro, devolve null.
+ */
+export async function telefoneDoLidRepo(lid: string): Promise<string | null> {
+  if (!lid.endsWith("@lid")) return null;
+  const emCache = cacheLid.get(lid);
+  if (emCache) return emCache;
+  try {
+    const r = await prisma.$queryRaw<{ alt: string }[]>`
+      select e.key->>'remoteJidAlt' alt
+        from evolution."Message" e
+       where e.key->>'remoteJid' = ${lid} and e.key->>'remoteJidAlt' like '%@s.whatsapp.net'
+       order by e."messageTimestamp" desc
+       limit 1`;
+    const alt = r[0]?.alt ?? null;
+    if (alt) cacheLid.set(lid, alt);
+    return alt;
+  } catch {
+    return null; // schema da Evolution ausente: segue como antes
+  }
+}
+
 /** Conversa existente, sem criar nada — usada pela importação de histórico. */
 export async function acharConversaRepo(instanceId: string, remoteJid: string) {
   return prisma.conversa.findUnique({ where: { instanceId_remoteJid: { instanceId, remoteJid } } });

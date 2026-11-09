@@ -535,3 +535,38 @@ describe("não lidas e ordem da conversa", () => {
     }
   });
 });
+
+describe("contato que chega só com o @lid", () => {
+  const LID = "99887766554433@lid";
+
+  beforeEach(async () => {
+    await prisma.$executeRawUnsafe(`create schema if not exists evolution`);
+    await prisma.$executeRawUnsafe(
+      `create table if not exists evolution."Message" (key jsonb, "messageTimestamp" int)`,
+    );
+    await prisma.$executeRawUnsafe(`delete from evolution."Message"`);
+    await prisma.$executeRawUnsafe(
+      `insert into evolution."Message" values ('{"id":"OLD","remoteJid":"${LID}","remoteJidAlt":"${JID}"}', 1)`,
+    );
+  });
+
+  afterAll(async () => {
+    await prisma.$executeRawUnsafe(`drop table if exists evolution."Message"`);
+  });
+
+  test("vai para a conversa do telefone, sem criar duplicata sem número", async () => {
+    await processarEventoWhatsapp(evento({ id: "LID-1" })); // conversa verdadeira, pelo telefone
+    await processarEventoWhatsapp(evento({ id: "LID-2", remoteJid: LID, texto: "veio sem número" }));
+
+    expect(await prisma.conversa.count({ where: { remoteJid: LID } })).toBe(0);
+    const c = await prisma.conversa.findFirstOrThrow({ where: { remoteJid: JID } });
+    expect(await prisma.mensagem.count({ where: { conversaId: c.id } })).toBe(2);
+  });
+
+  test("mensagem nossa não dá o nosso nome ('Você') ao contato", async () => {
+    await processarEventoWhatsapp(evento({ id: "VOCE-1", fromMe: true, pushName: "Você", texto: "Olá!" }));
+    const c = await prisma.conversa.findFirstOrThrow({ where: { remoteJid: JID }, include: { person: true } });
+    expect(c.pushName).not.toBe("Você");
+    expect(c.person?.nome).not.toBe("Você");
+  });
+});
