@@ -150,10 +150,36 @@ export async function acharPorTelefoneRepo(
 }
 
 /**
- * Reescreve a observação da aula. Só esse campo se mexe: data, hora e
- * modalidade são o que foi combinado com a pessoa por mensagem, e mudar isso
- * pela agenda deixaria a lista dizendo uma coisa e o WhatsApp dela outra —
- * remarcar continua sendo agendar de novo pela conversa.
+ * Corrige uma aula já gravada (pedido de 11/11/2026: marcaram 20h em vez de
+ * 8h). Data ou hora mudando zera o lembrete da véspera, para o próximo sair
+ * com o horário certo. Não conta como dia novo no limite de 3: é a mesma aula.
+ *
+ * `null` quando a aula não existe mais.
+ */
+export async function editarAulaRepo(
+  id: string,
+  input: { nome: string; telefone: string; modalidade: string; data: string; hora: number },
+): Promise<{ aula: AulaExperimentalItem; mudouHorario: boolean } | null> {
+  const atual = await prisma.aulaExperimental.findUnique({ where: { id }, select: { data: true, hora: true } });
+  if (!atual) return null;
+  const mudouHorario = atual.data !== input.data || atual.hora !== input.hora;
+  const aula = await prisma.aulaExperimental.update({
+    where: { id },
+    data: {
+      nome: input.nome,
+      telefone: input.telefone,
+      modalidade: input.modalidade,
+      data: input.data,
+      hora: input.hora,
+      ...(mudouHorario ? { lembreteEnviadoEm: null, lembreteErro: null } : {}),
+    },
+    select: SELECT,
+  });
+  return { aula: toItem(aula), mudouHorario };
+}
+
+/**
+ * Reescreve só a observação da aula (o resto se corrige em `editarAulaRepo`).
  *
  * `null` quando a aula não existe mais (alguém apagou entre abrir a tela e
  * salvar), para a rota responder 404 em vez de estourar.

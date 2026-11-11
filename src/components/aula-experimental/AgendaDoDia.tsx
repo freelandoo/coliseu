@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
+import { EditarAula } from "@/components/aula-experimental/EditarAula";
 import { AgendarAulaBalcao, type AgendanteAula } from "@/components/aula-experimental/AgendarAulaBalcao";
 import { cn } from "@/lib/cn";
 import {
@@ -203,7 +204,10 @@ function ItemAgenda({ aula, momento }: { aula: AulaExperimentalItem; momento: Mo
         </p>
 
         <div className="mt-2.5 flex flex-wrap items-center justify-between gap-2 pl-4">
-          <BadgeStatus tom={status.tom}>{status.rotulo}</BadgeStatus>
+          <span className="flex items-center gap-3">
+            <BadgeStatus tom={status.tom}>{status.rotulo}</BadgeStatus>
+            <EditarAula aula={aula} />
+          </span>
           {aula.conversaId ? (
             <Link
               href={`/atendimento?c=${aula.conversaId}`}

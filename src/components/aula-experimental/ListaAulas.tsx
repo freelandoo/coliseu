@@ -8,6 +8,7 @@ import { cn } from "@/lib/cn";
 import { formatarDataCompleta, formatarHora } from "@/lib/aula-experimental";
 import type { AulaExperimentalItem } from "@/lib/types";
 import { useCascata } from "@/lib/useCascata";
+import { EditarAula } from "@/components/aula-experimental/EditarAula";
 
 export type FiltroAulas = "hoje" | "proximas" | "todas";
 type Filtro = FiltroAulas;
@@ -197,10 +198,18 @@ function QuandoEtiqueta({ aula, hoje }: { aula: AulaExperimentalItem; hoje: stri
  */
 function Acoes({ aula, hoje }: { aula: AulaExperimentalItem; hoje: string }) {
   // Sem conversa não há para onde levar (aula marcada por conversa apagada).
-  if (!aula.conversaId) return <span className="text-xs text-muted">sem conversa</span>;
+  if (!aula.conversaId) {
+    return (
+      <span className="inline-flex flex-col items-end gap-1 whitespace-nowrap">
+        <EditarAula aula={aula} />
+        <span className="text-xs text-muted">sem conversa</span>
+      </span>
+    );
+  }
 
   return (
     <span className="inline-flex flex-col items-end gap-1 whitespace-nowrap">
+      <EditarAula aula={aula} />
       {aula.data <= hoje && (
         <Link
           href={`/atendimento?c=${aula.conversaId}&remarcar=${aula.data}`}
